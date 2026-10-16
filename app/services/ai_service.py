@@ -6,7 +6,7 @@ import time
 from typing import Literal
 
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, contains_eager
 
 from app.config import settings
 from app.models.enums import UserRole
@@ -70,6 +70,7 @@ class AIService:
         query = (
             db.query(KnowledgeChunk)
             .join(KnowledgeDocument)
+            .options(contains_eager(KnowledgeChunk.document))
             .filter(KnowledgeDocument.is_active.is_(True), KnowledgeDocument.is_approved.is_(True))
         )
         if role != UserRole.HR_ADMIN:
@@ -82,19 +83,24 @@ class AIService:
         if not tokens:
             return []
         ranked = []
-        for chunk in cls.accessible_chunks(db, user_role).all():
+        for chunk in cls.accessible_chunks(db, user_role).yield_per(100):
             # Exact token coverage, not substring counts or repeated keyword sums.
             evidence = cls._tokenize(f"{chunk.section_title} {chunk.content} {chunk.tags or ''}")
             score = len(tokens & evidence) / len(tokens)
             if score >= settings.AI_CONFIDENCE_THRESHOLD:
                 ranked.append((chunk, score))
+                ranked = sorted(ranked, key=lambda item: (-item[1], item[0].id))[:2]
         return sorted(ranked, key=lambda item: (-item[1], item[0].id))
 
     @classmethod
-    def source(cls, db: Session, chunk_id: int, role: UserRole):
+    def source(cls, db: Session, chunk_id: int, role: UserRole, revision: int | None = None):
         chunk = cls.accessible_chunks(db, role).filter(KnowledgeChunk.id == chunk_id).first()
         if not chunk:
             raise HTTPException(404, "Approved knowledge source not found")
+        if revision is not None and chunk.document.revision != revision:
+            raise HTTPException(
+                409, "Source changed; ask the question again for a current citation"
+            )
         return {
             "chunk_id": chunk.id,
             "document_id": chunk.document_id,
@@ -102,6 +108,7 @@ class AIService:
             "section_title": chunk.section_title,
             "content": chunk.content,
             "version": chunk.document.version,
+            "document_revision": chunk.document.revision,
             "is_synthetic": chunk.document.is_synthetic,
         }
 
@@ -142,6 +149,7 @@ class AIService:
                 section_title=c.section_title,
                 snippet=c.content[:220],
                 version=c.document.version,
+                document_revision=c.document.revision,
                 is_synthetic=c.document.is_synthetic,
             )
             for c in chunks
@@ -160,6 +168,14 @@ class AIService:
                 "question_hash": hashlib.sha256(question.encode()).hexdigest(),
                 "status": answer_status,
                 "source_ids": [c.id for c in chunks],
+                "source_revisions": [
+                    {
+                        "chunk_id": c.id,
+                        "document_revision": c.document.revision,
+                        "content_hash": hashlib.sha256(c.content.encode()).hexdigest(),
+                    }
+                    for c in chunks
+                ],
             },
         )
         db.commit()

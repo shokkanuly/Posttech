@@ -31,11 +31,14 @@ class NotificationService:
         return notification
 
     @staticmethod
-    def get_user_notifications(db: Session, user_id: int, limit: int = 50) -> List[Notification]:
+    def get_user_notifications(
+        db: Session, user_id: int, limit: int = 50, offset: int = 0
+    ) -> List[Notification]:
         return (
             db.query(Notification)
             .filter(Notification.user_id == user_id)
-            .order_by(Notification.created_at.desc())
+            .order_by(Notification.created_at.desc(), Notification.id.desc())
+            .offset(offset)
             .limit(limit)
             .all()
         )

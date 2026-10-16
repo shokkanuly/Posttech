@@ -24,14 +24,26 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     key = login_limiter.check(request.client.host if request.client else "unknown")
+    failed = False
+    try:
+        return authenticate_login(payload, db)
+    except HTTPException as exc:
+        failed = exc.status_code == 401
+        raise
+    finally:
+        login_limiter.finish(key, failed=failed)
+
+
+def authenticate_login(payload: LoginRequest, db: Session) -> TokenResponse:
     user = (
         db.query(User).filter(User.email == payload.email.lower(), User.is_active.is_(True)).first()
     )
     valid = auth_service.verify_password(
         payload.password, user.password_hash if user else DUMMY_PASSWORD_HASH
     )
+    if settings.ENVIRONMENT == "production" and payload.password == "Password123!":
+        valid = False
     if not user or not valid:
-        login_limiter.failed(key)
         audit_service.log_event(
             db, action="LOGIN_FAILED", details={"reason": "invalid_credentials"}
         )

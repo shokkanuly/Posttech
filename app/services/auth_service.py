@@ -30,7 +30,8 @@ class LoginLimiter:
     """Bounded single-process limiter. A shared gateway is needed for multiple workers."""
 
     def __init__(self):
-        self.failures = {}
+        self.failures: dict[str, deque[float]] = {}
+        self.inflight: dict[str, int] = {}
         self.lock = threading.Lock()
 
     def check(self, address: str):
@@ -41,17 +42,27 @@ class LoginLimiter:
             queue = self.failures.get(key, deque())
             while queue and queue[0] <= now - 60:
                 queue.popleft()
-            if len(queue) >= 5 or len(self.failures) >= 10000:
+            tracked = self.failures.keys() | self.inflight.keys()
+            if len(queue) + self.inflight.get(key, 0) >= 5 or (
+                key not in tracked and len(tracked) >= 10000
+            ):
                 raise HTTPException(
                     429,
-                    "Too many failed login attempts; retry in one minute",
+                    "Too many failed or concurrent login attempts; retry in one minute",
                     headers={"Retry-After": "60"},
                 )
+            self.inflight[key] = self.inflight.get(key, 0) + 1
         return key
 
-    def failed(self, key: str):
+    def finish(self, key: str, failed: bool):
         with self.lock:
-            self.failures.setdefault(key, deque()).append(time.monotonic())
+            count = self.inflight.get(key, 0)
+            if count <= 1:
+                self.inflight.pop(key, None)
+            else:
+                self.inflight[key] = count - 1
+            if failed:
+                self.failures.setdefault(key, deque(maxlen=5)).append(time.monotonic())
 
 
 login_limiter = LoginLimiter()
@@ -88,7 +99,11 @@ class AuthService:
         user_id: int, db: Session, expires_delta: Optional[timedelta] = None
     ) -> str:
         now = datetime.now(timezone.utc)
-        expires = now + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+        expires = now + (
+            expires_delta
+            if expires_delta is not None
+            else timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        )
         jti = secrets.token_hex(32)
         db.add(AuthSession(id=jti, user_id=user_id, expires_at=expires))
         db.flush()

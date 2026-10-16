@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, Query
-from pydantic import PositiveInt
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session, contains_eager
 
 from app.database import get_db
 from app.integrations.documentolog import documentolog_adapter
@@ -10,8 +9,9 @@ from app.models.enums import RequestStatus, UserRole
 from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
 from app.models.request import Request
 from app.models.user import User
+from app.pagination import Page
 from app.schemas.academy import CourseDetailResponse, EnrollmentCreate
-from app.schemas.common import AdminSummaryResponse, AuditResponse
+from app.schemas.common import AdminSummaryResponse, AuditResponse, DatabaseID
 from app.schemas.integration import AdapterTelemetry
 from app.schemas.knowledge import (
     DocumentCreate,
@@ -30,10 +30,14 @@ admin = require_role(UserRole.HR_ADMIN)
 
 
 @router.get("/knowledge/documents", response_model=list[KnowledgeDocumentResponse])
-def list_documents(current_user: User = Depends(admin), db: Session = Depends(get_db)):
+def list_documents(page: Page, current_user: User = Depends(admin), db: Session = Depends(get_db)):
     return [
         knowledge_service.serialize_document(d)
-        for d in db.query(KnowledgeDocument).order_by(KnowledgeDocument.id).all()
+        for d in db.query(KnowledgeDocument)
+        .order_by(KnowledgeDocument.id)
+        .offset(page.offset)
+        .limit(page.limit)
+        .all()
     ]
 
 
@@ -46,7 +50,7 @@ def create_document(
 
 @router.patch("/knowledge/documents/{document_id}", response_model=KnowledgeDocumentResponse)
 def update_document(
-    document_id: PositiveInt,
+    document_id: DatabaseID,
     payload: DocumentPatch,
     current_user: User = Depends(admin),
     db: Session = Depends(get_db),
@@ -55,10 +59,18 @@ def update_document(
 
 
 @router.get("/knowledge", response_model=list[KnowledgeChunkResponse])
-def get_admin_knowledge(current_user: User = Depends(admin), db: Session = Depends(get_db)):
+def get_admin_knowledge(
+    page: Page, current_user: User = Depends(admin), db: Session = Depends(get_db)
+):
     return [
         knowledge_service.serialize_chunk(c)
-        for c in db.query(KnowledgeChunk).join(KnowledgeDocument).all()
+        for c in db.query(KnowledgeChunk)
+        .join(KnowledgeDocument)
+        .options(contains_eager(KnowledgeChunk.document))
+        .order_by(KnowledgeChunk.id)
+        .offset(page.offset)
+        .limit(page.limit)
+        .all()
     ]
 
 
@@ -73,7 +85,7 @@ def add_admin_knowledge_chunk(
 
 @router.patch("/knowledge/{chunk_id}", response_model=KnowledgeChunkResponse)
 def update_chunk(
-    chunk_id: PositiveInt,
+    chunk_id: DatabaseID,
     payload: KnowledgeChunkPatch,
     current_user: User = Depends(admin),
     db: Session = Depends(get_db),
@@ -95,14 +107,15 @@ def get_admin_integrations(current_user: User = Depends(admin)):
 
 @router.get("/audit", response_model=list[AuditResponse])
 def get_audit_trail(
-    limit: int = Query(50, ge=1, le=100),
+    page: Page,
     current_user: User = Depends(admin),
     db: Session = Depends(get_db),
 ):
     events = (
         db.query(AuditEvent)
         .order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc())
-        .limit(limit)
+        .offset(page.offset)
+        .limit(page.limit)
         .all()
     )
     return [

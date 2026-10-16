@@ -2,8 +2,8 @@ import json
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
-from sqlalchemy import update
-from sqlalchemy.orm import Session
+from sqlalchemy import func, update
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.academy import Course, Enrollment, Lesson, LessonProgress
 from app.models.enums import EnrollmentStatus, NotificationType
@@ -69,8 +69,7 @@ class AcademyService:
         return cls.get_course_detail(db, course_id, user)
 
     @classmethod
-    def course_response(cls, db, course, user):
-        enrollment = cls.get_enrollment(db, user.id, course.id)
+    def course_response(cls, course: Course, enrollment: Enrollment | None):
         return CourseResponse(
             id=course.id,
             code=course.code,
@@ -90,9 +89,18 @@ class AcademyService:
         )
 
     @classmethod
-    def get_user_courses(cls, db: Session, user: User):
+    def get_user_courses(cls, db: Session, user: User, limit: int | None = None, offset: int = 0):
+        enrollments = {
+            e.course_id: e for e in db.query(Enrollment).filter(Enrollment.user_id == user.id).all()
+        }
         return [
-            cls.course_response(db, c, user) for c in db.query(Course).order_by(Course.id).all()
+            cls.course_response(c, enrollments.get(c.id))
+            for c in db.query(Course)
+            .options(selectinload(Course.lessons))
+            .order_by(Course.id)
+            .offset(offset)
+            .limit(limit)
+            .all()
         ]
 
     @classmethod
@@ -120,7 +128,7 @@ class AcademyService:
             lessons[0].id if lessons else None,
         )
         return CourseDetailResponse(
-            **cls.course_response(db, course, user).model_dump(),
+            **cls.course_response(course, enrollment).model_dump(),
             lessons=lessons,
             current_lesson_id=current,
         )
@@ -238,12 +246,12 @@ class AcademyService:
 
     @staticmethod
     def get_user_overall_learning_progress(db: Session, user_id: int) -> float:
-        enrollments = db.query(Enrollment).filter(Enrollment.user_id == user_id).all()
-        return (
-            round(sum(e.progress_percent for e in enrollments) / len(enrollments), 1)
-            if enrollments
-            else 0.0
+        average = (
+            db.query(func.avg(Enrollment.progress_percent))
+            .filter(Enrollment.user_id == user_id)
+            .scalar()
         )
+        return round(float(average or 0.0), 1)
 
 
 academy_service = AcademyService()

@@ -38,6 +38,18 @@ async function api(path, options = {}) {
   return data;
 }
 
+async function apiAll(path) {
+  const tokenAtStart = state.token;
+  const rows = [];
+  for (let offset = 0; offset <= 1000000; offset += 100) {
+    if (tokenAtStart !== state.token) throw new Error("Session changed; please retry.");
+    const page = await api(`${path}${path.includes("?") ? "&" : "?"}limit=100&offset=${offset}`);
+    rows.push(...page);
+    if (page.length < 100) return rows;
+  }
+  throw new Error("Too many results; narrow the filter.");
+}
+
 function toast(msg) {
   const el = document.getElementById("toast");
   if (!el) return;
@@ -278,7 +290,7 @@ async function loadDashboard() {
     document.getElementById("statCourses").textContent = data.assigned_courses_count;
     document.getElementById("statNotifications").textContent = data.unread_notifications_count;
 
-    const courses = (await api("/courses")).filter(c => c.assigned);
+    const courses = (await apiAll("/courses")).filter(c => c.assigned);
     const nextCourse = courses.find(c => c.status !== "COMPLETED") || courses[0];
     const homeCourse = document.getElementById("homeCourseCard");
     homeCourse.innerHTML = nextCourse ? `<div style="width:100%"><h4>${esc(nextCourse.title)}</h4>
@@ -290,7 +302,7 @@ async function loadDashboard() {
     document.getElementById("homeActivity").textContent = notifications[0]?.title || "No updates yet.";
 
     // Load recent requests for the quick list
-    const requests = await api("/requests");
+    const requests = await apiAll("/requests");
     const listEl = document.getElementById("homeRequests");
     if (requests && requests.length > 0) {
       listEl.innerHTML = requests.slice(0, 3).map(r => `
@@ -342,7 +354,7 @@ async function loadRequestsPage() {
   if (tf && tf !== "all") path += `type=${encodeURIComponent(tf)}&`;
 
   try {
-    const requests = await api(path);
+    const requests = await apiAll(path);
     const tbody = document.getElementById("requestTable");
     if (!requests || requests.length === 0) {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:25px;color:var(--muted)">No requests found.</td></tr>`;
@@ -374,7 +386,7 @@ async function loadRequestsPage() {
 // 4. JANA ACADEMY
 async function loadAcademyPage() {
   try {
-    const courses = await api("/courses");
+    const courses = await apiAll("/courses");
     state.courses = courses;
     const grid = document.getElementById("academyGrid");
 
@@ -402,7 +414,7 @@ async function loadAcademyPage() {
 // 5. NOTIFICATIONS
 async function loadNotificationsPage() {
   try {
-    const notifs = await api("/notifications");
+    const notifs = await apiAll("/notifications");
     state.notifications = notifs;
     const listEl = document.getElementById("notificationsList");
 
@@ -466,10 +478,10 @@ async function updateNotificationBadge() {
 // 6. MANAGER PORTAL
 async function loadTeamPage() {
   try {
-    const requests = await api("/manager/requests?status=Pending");
+    const requests = await apiAll("/manager/requests?status=Pending");
     const teamTable = document.getElementById("teamTable");
     document.getElementById("teamScope").textContent = state.user.role === "hr_admin" ? "Company" : "Direct reports";
-    const members = await api("/manager/team");
+    const members = await apiAll("/manager/team");
     document.getElementById("teamCount").textContent = members.length;
     document.getElementById("teamPendingStat").textContent = requests.length;
 
@@ -501,7 +513,7 @@ async function loadTeamPage() {
     `).join("");
 
     // Load team members count
-    const teamMembers = await api("/manager/team");
+    const teamMembers = await apiAll("/manager/team");
     document.getElementById("teamCount").textContent = teamMembers.length;
     document.getElementById("teamPendingStat").textContent = requests.length;
   } catch (err) {
@@ -523,7 +535,7 @@ async function loadAdminPage() {
     const summary = await api("/admin/summary");
     document.getElementById("adminEmployeeCount").textContent = summary.active_accounts;
     // Load Knowledge Sources
-    const chunks = await api("/admin/knowledge");
+    const chunks = await apiAll("/admin/knowledge");
     document.getElementById("adminKnowledgeCount").textContent = chunks.length;
     const kList = document.getElementById("knowledgeList");
     kList.innerHTML = chunks.map(c => `
@@ -531,25 +543,25 @@ async function loadAdminPage() {
         <div class="notice-icon">▤</div>
         <div style="flex:1">
           <b>${esc(c.document_title)} · ${esc(c.section_title)}</b><p>${c.is_approved ? "Approved" : "Draft"}${c.is_synthetic ? " · Synthetic example" : ""}</p>
-          <p>${esc(c.content.substring(0, 140))}...</p>
+          <details><summary>Review full source text</summary><p data-verbatim style="white-space:pre-wrap">${esc(c.content)}</p></details>
         </div>
       </div>
     `).join("");
 
-    const documents = await api("/admin/knowledge/documents");
+    const documents = await apiAll("/admin/knowledge/documents");
     const documentList = document.getElementById("knowledgeDocuments");
     documentList.innerHTML = documents.map(doc => `<div class="notice"><div style="flex:1">
       <b>${esc(doc.title)} · v${esc(doc.version)}</b>
       <p>${doc.is_synthetic ? "Synthetic example · " : ""}${doc.is_approved ? "Approved" : "Draft"} · ${doc.is_active ? "Active" : "Inactive"}</p>
-      ${!doc.is_approved && doc.is_active ? `<button class="small-btn" data-approve-document="${doc.id}">Approve reviewed source</button>` : ""}
-      ${doc.is_active ? `<button class="small-btn" data-deactivate-document="${doc.id}">Deactivate</button>` : ""}
+      ${!doc.is_approved && doc.is_active ? `<button class="small-btn" data-approve-document="${doc.id}" data-revision="${chunks.some(c => c.document_id === doc.id) ? Math.min(...chunks.filter(c => c.document_id === doc.id).map(c => c.document_revision)) : doc.revision}">Approve reviewed source</button>` : ""}
+      ${doc.is_active ? `<button class="small-btn" data-deactivate-document="${doc.id}" data-revision="${doc.revision}">Deactivate</button>` : ""}
     </div></div>`).join("");
     documentList.querySelectorAll("[data-approve-document], [data-deactivate-document]").forEach(button => {
       button.addEventListener("click", async () => {
         try {
           const id = button.dataset.approveDocument || button.dataset.deactivateDocument;
           await api(`/admin/knowledge/documents/${id}`, {method:"PATCH", body:JSON.stringify(
-            button.dataset.approveDocument ? {is_approved:true} : {is_active:false})});
+            button.dataset.approveDocument ? {is_approved:true, expected_revision:Number(button.dataset.revision)} : {is_active:false, expected_revision:Number(button.dataset.revision)})});
           await loadAdminPage();
         } catch (error) { toast(error.message); }
       });
@@ -827,7 +839,7 @@ async function submitLessonQuiz() {
 
 async function loadKnowledgeSummary() {
   try {
-    const documents = await api("/ai/documents");
+    const documents = await apiAll("/ai/documents");
     document.getElementById("approvedKnowledgeList").innerHTML = documents.length
       ? documents.map(doc => `<div class="notice"><div><b>${esc(doc.title)}</b><p>v${esc(doc.version)} · ${doc.is_synthetic ? "Synthetic example" : "Approved source"}</p></div></div>`).join("")
       : "<p>No approved sources are available for your account.</p>";
@@ -910,7 +922,7 @@ async function sendAIQuery(question) {
       const source = res.sources[Number(button.dataset.sourceIndex)];
       button.addEventListener("click", async () => {
         try {
-          const full = await api(`/ai/sources/${source.chunk_id}`);
+          const full = await api(`/ai/sources/${source.chunk_id}?revision=${source.document_revision}`);
           showCitationModal(`${full.document_title} · v${full.version}`, full.section_title,
             `${full.is_synthetic ? "Synthetic example; not official HR policy.\n\n" : ""}${full.content}`);
         } catch (error) { toast(error.message); }

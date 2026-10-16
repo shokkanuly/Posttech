@@ -13,6 +13,7 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-[]}
       AI_CONFIDENCE_THRESHOLD: ${AI_CONFIDENCE_THRESHOLD:-0.8}
       ENABLE_MOCK_INTEGRATIONS: "false"
+      MAX_REQUEST_BODY_BYTES: ${MAX_REQUEST_BODY_BYTES:-262144}
     volumes:
       - janamen_data:/data
     command: ["sh", "-c", "python -m app.migrate && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]

@@ -13,6 +13,8 @@ def normalize_utc(value: datetime) -> datetime:
 
 
 UTCDateTime = Annotated[datetime, AfterValidator(normalize_utc)]
+DatabaseID = Annotated[int, Field(gt=0, le=2**63 - 1)]
+BodyDatabaseID = Annotated[int, Field(gt=0, le=2**63 - 1, strict=True)]
 
 
 class ErrorField(BaseModel):

@@ -2,12 +2,13 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import Request as FastAPIRequest
-from pydantic import PositiveInt
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.enums import RequestStatus, RequestType
 from app.models.user import User
+from app.pagination import Page
+from app.schemas.common import DatabaseID
 from app.schemas.request import (
     RequestCreate,
     RequestDetailResponse,
@@ -22,6 +23,7 @@ router = APIRouter(prefix="/requests", tags=["Employee Requests"])
 
 @router.get("", response_model=List[RequestResponse])
 def list_requests(
+    page: Page,
     status: Optional[RequestStatus] = Query(
         None, description="Filter by status (Pending, Approved, Rejected)"
     ),
@@ -32,7 +34,12 @@ def list_requests(
     db: Session = Depends(get_db),
 ):
     requests = request_service.get_user_requests(
-        db, current_user, status_filter=status, type_filter=type
+        db,
+        current_user,
+        status_filter=status,
+        type_filter=type,
+        limit=page.limit,
+        offset=page.offset,
     )
     return [request_service.to_response(r) for r in requests]
 
@@ -51,7 +58,7 @@ def create_request(
 
 @router.get("/{request_id}", response_model=RequestDetailResponse)
 def get_request_detail(
-    request_id: PositiveInt,
+    request_id: DatabaseID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -61,7 +68,7 @@ def get_request_detail(
 
 @router.post("/{request_id}/approve", response_model=RequestDetailResponse)
 def approve_request(
-    request_id: PositiveInt,
+    request_id: DatabaseID,
     request: FastAPIRequest,
     payload: Optional[RequestReview] = None,
     current_user: User = Depends(get_current_user),
@@ -84,7 +91,7 @@ def approve_request(
 
 @router.post("/{request_id}/reject", response_model=RequestDetailResponse)
 def reject_request(
-    request_id: PositiveInt,
+    request_id: DatabaseID,
     request: FastAPIRequest,
     payload: Optional[RequestReview] = None,
     current_user: User = Depends(get_current_user),

@@ -1,8 +1,8 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
-from app.schemas.common import UTCDateTime
+from app.schemas.common import BodyDatabaseID, UTCDateTime
 
 AccessLevel = Literal["all", "employee", "manager", "hr_admin"]
 
@@ -13,7 +13,7 @@ class DocumentCreate(BaseModel):
     category: str = Field(default="HR Policy", min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=2000)
     version: str = Field(default="1.0", min_length=1, max_length=20)
-    is_synthetic: bool = False
+    is_synthetic: StrictBool = False
 
 
 class DocumentPatch(BaseModel):
@@ -22,13 +22,21 @@ class DocumentPatch(BaseModel):
     category: str | None = Field(default=None, min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=2000)
     version: str | None = Field(default=None, min_length=1, max_length=20)
-    is_active: bool | None = None
-    is_approved: bool | None = None
+    is_active: StrictBool | None = None
+    is_approved: StrictBool | None = None
+    expected_revision: BodyDatabaseID | None = None
+
+    @model_validator(mode="after")
+    def require_reviewed_revision(self):
+        if self.is_approved is True and self.expected_revision is None:
+            raise ValueError("Approval requires the expected_revision of the reviewed document")
+        return self
 
 
 class KnowledgeChunkCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-    document_id: int = Field(gt=0)
+    document_id: BodyDatabaseID
+    expected_revision: BodyDatabaseID | None = None
     section_title: str = Field(min_length=1, max_length=255)
     content: str = Field(min_length=1, max_length=20000)
     tags: str | None = Field(default=None, max_length=255)
@@ -41,6 +49,7 @@ class KnowledgeChunkPatch(BaseModel):
     content: str | None = Field(default=None, min_length=1, max_length=20000)
     tags: str | None = Field(default=None, max_length=255)
     access_level: AccessLevel | None = None
+    expected_revision: BodyDatabaseID | None = None
 
 
 class KnowledgeChunkResponse(BaseModel):
@@ -53,6 +62,7 @@ class KnowledgeChunkResponse(BaseModel):
     access_level: AccessLevel
     is_approved: bool
     is_synthetic: bool
+    document_revision: int
 
 
 class KnowledgeDocumentResponse(BaseModel):
@@ -61,6 +71,7 @@ class KnowledgeDocumentResponse(BaseModel):
     category: str
     description: str | None
     version: str
+    revision: int
     is_active: bool
     is_approved: bool
     is_synthetic: bool

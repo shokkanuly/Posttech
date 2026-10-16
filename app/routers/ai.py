@@ -2,12 +2,15 @@ from typing import List
 
 from fastapi import APIRouter, Depends
 from fastapi import Request as FastAPIRequest
-from pydantic import PositiveInt
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.enums import UserRole
+from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
 from app.models.user import User
+from app.pagination import Page
 from app.schemas.ai import AIChatRequest, AIChatResponse, KnowledgeSourceResponse
+from app.schemas.common import DatabaseID
 from app.schemas.knowledge import KnowledgeDocumentSummary
 from app.services.ai_service import ai_service
 from app.services.auth_service import get_current_user
@@ -45,22 +48,31 @@ def get_prompt_suggestions(current_user: User = Depends(get_current_user)):
 
 @router.get("/sources/{chunk_id}", response_model=KnowledgeSourceResponse)
 def get_source(
-    chunk_id: PositiveInt,
+    chunk_id: DatabaseID,
+    revision: DatabaseID | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return ai_service.source(db, chunk_id, current_user.role)
+    return ai_service.source(db, chunk_id, current_user.role, revision)
 
 
 @router.get("/documents", response_model=list[KnowledgeDocumentSummary])
-def get_documents(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    documents = {
-        chunk.document.id: chunk.document
-        for chunk in ai_service.accessible_chunks(db, current_user.role).all()
-    }
+def get_documents(
+    page: Page, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    query = (
+        db.query(KnowledgeDocument)
+        .join(KnowledgeChunk)
+        .filter(KnowledgeDocument.is_active.is_(True), KnowledgeDocument.is_approved.is_(True))
+    )
+    if current_user.role != UserRole.HR_ADMIN:
+        query = query.filter(KnowledgeChunk.access_level.in_(["all", current_user.role.value]))
+    documents = (
+        query.distinct().order_by(KnowledgeDocument.id).offset(page.offset).limit(page.limit).all()
+    )
     return [
         KnowledgeDocumentSummary(
             id=d.id, title=d.title, version=d.version, is_synthetic=d.is_synthetic
         )
-        for d in documents.values()
+        for d in documents
     ]

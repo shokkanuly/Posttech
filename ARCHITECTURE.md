@@ -30,7 +30,7 @@ Authentication is bearer-only. Passwords use PBKDF2-SHA256 with a per-hash rando
 | `enrollments` | Unique (user FK, course FK), status, progress, percentage of lessons passed, completion timestamp |
 | `lesson_progress` | Unique (enrollment FK, lesson FK), completion/pass flags and timestamp |
 | `notifications` | Owner FK, title/message/type, reference, read flag and timestamp |
-| `knowledge_documents` | Title/version/category, active/approved/synthetic flags, approver FK and timestamps |
+| `knowledge_documents` | Title/version/category, monotonic revision, active/approved/synthetic flags, approver FK and timestamps |
 | `knowledge_chunks` | Document FK, section, exact source text, tags and allowed role |
 | `audit_events` | Actor FK, action, target, minimal structured metadata and timestamp |
 

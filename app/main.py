@@ -10,7 +10,8 @@ from sqlalchemy import text
 from app.config import settings
 from app.database import engine
 from app.errors import install_error_handlers
-from app.migrate import require_current_schema
+from app.middleware import RequestBodyLimitMiddleware
+from app.migrate import SchemaNotCurrentError, require_current_schema
 from app.routers.academy import router as academy_router
 from app.routers.admin import router as admin_router
 from app.routers.ai import router as ai_router
@@ -39,10 +40,12 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
     responses={
-        code: {"model": ErrorResponse} for code in (400, 401, 403, 404, 409, 422, 429, 500, 503)
+        code: {"model": ErrorResponse}
+        for code in (400, 401, 403, 404, 409, 413, 422, 429, 500, 503)
     },
 )
 
+app.add_middleware(RequestBodyLimitMiddleware, max_bytes=settings.MAX_REQUEST_BODY_BYTES)
 install_error_handlers(app)
 
 # Same-origin by default. Optional development/deployment origins are explicit.
@@ -91,7 +94,12 @@ if os.path.exists(static_dir):
 def health_check():
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
-    require_current_schema(engine)
+    try:
+        require_current_schema(engine)
+    except SchemaNotCurrentError:
+        from fastapi import HTTPException
+
+        raise HTTPException(503, "Database schema is not ready; contact the operator") from None
     return {
         "status": "healthy",
         "platform": "JanaMen Digital HR",

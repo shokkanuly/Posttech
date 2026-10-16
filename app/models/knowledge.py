@@ -16,6 +16,7 @@ class KnowledgeDocument(Base):
     category: Mapped[str] = mapped_column(String(100), default="HR Policy", nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     version: Mapped[str] = mapped_column(String(20), default="1.0", nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_approved: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=false(), nullable=False

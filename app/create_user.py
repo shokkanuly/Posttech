@@ -4,7 +4,7 @@ import argparse
 from datetime import date
 from getpass import getpass
 
-from pydantic import EmailStr, TypeAdapter
+from pydantic import EmailStr, TypeAdapter, ValidationError
 
 from app.database import SessionLocal, engine
 from app.migrate import require_current_schema
@@ -29,7 +29,12 @@ def main():
     parser.add_argument("--leave-balance", type=float, required=True)
     parser.add_argument("--manager-email")
     args = parser.parse_args()
-    email = str(TypeAdapter(EmailStr).validate_python(args.email)).lower()
+    try:
+        email = str(TypeAdapter(EmailStr).validate_python(args.email)).lower()
+    except ValidationError:
+        parser.error("Invalid email format")
+    if len(email) > 255:
+        parser.error("Email must fit within 255 characters")
     if not 0 <= args.leave_balance <= 10000:
         parser.error("Leave balance must be finite and between 0 and 10000")
     for key in ("name", "employee_code", "company", "department", "position", "location"):

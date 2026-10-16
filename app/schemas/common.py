@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Annotated
 
-from pydantic import AfterValidator
+from pydantic import AfterValidator, BaseModel, Field
 
 
 def normalize_utc(value: datetime) -> datetime:
@@ -13,8 +13,6 @@ def normalize_utc(value: datetime) -> datetime:
 
 
 UTCDateTime = Annotated[datetime, AfterValidator(normalize_utc)]
-
-from pydantic import BaseModel, Field
 
 
 class ErrorField(BaseModel):

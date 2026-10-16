@@ -536,7 +536,7 @@ def test_local_provisioning_creates_readonly_profile(client, db_session, db_engi
         [
             "create_user",
             "--email",
-            "new@example.test",
+            "new@example.com",
             "--name",
             "Synthetic New",
             "--role",
@@ -561,7 +561,7 @@ def test_local_provisioning_creates_readonly_profile(client, db_session, db_engi
     )
     provisioning.main()
     result = client.post(
-        "/api/v1/auth/login", json={"email": "new@example.test", "password": "SyntheticNew123!"}
+        "/api/v1/auth/login", json={"email": "new@example.com", "password": "SyntheticNew123!"}
     )
     assert result.status_code == 200
     profile = client.get(

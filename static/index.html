@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>JanaМен · People Workspace | Jana Post</title>
-  <meta name="description" content="JanaМен — Unified Digital HR Self-Service Platform for Jana Post employees, managers, and HR administrators.">
+  <title>JanaМен · Кабинет сотрудника | Jana Post</title>
+  <meta name="description" content="JanaМен — единый кадровый кабинет для сотрудников, руководителей и кадровой службы Jana Post.">
   <link rel="stylesheet" href="/static/css/style.css">
   <script src="/static/js/i18n.js" defer></script>
   <script src="/static/js/app.js" defer></script>
@@ -18,39 +18,39 @@
         <div class="logo">J</div>
         <div>
           <strong>JanaМен</strong>
-          <small>People workspace</small>
+          <small>Кабинет сотрудника</small>
         </div>
       </div>
 
       <div>
-        <div class="nav-label" data-i18n="workspace">Workspace</div>
+        <div class="nav-label" data-i18n="workspace">Рабочее пространство</div>
         <nav class="nav" id="nav">
-          <button class="active" data-page="home"><span class="ico">◫</span><span data-i18n="overview">Overview</span></button>
-          <button data-page="profile"><span class="ico">◉</span><span data-i18n="myProfile">My profile</span></button>
-          <button data-page="requests"><span class="ico">▤</span><span data-i18n="myRequests">My requests</span></button>
-          <button data-page="academy"><span class="ico">▧</span><span data-i18n="janaAcademy">Jana Academy</span></button>
-          <button data-page="assistant"><span class="ico">✳</span><span data-i18n="aiJana">AI Jana</span></button>
+          <button class="active" data-page="home"><span class="ico">◫</span><span data-i18n="overview">Главная</span></button>
+          <button data-page="profile"><span class="ico">◉</span><span data-i18n="myProfile">Мой профиль</span></button>
+          <button data-page="requests"><span class="ico">▤</span><span data-i18n="myRequests">Мои заявки</span></button>
+          <button data-page="academy"><span class="ico">▧</span><span data-i18n="janaAcademy">Академия Jana</span></button>
+          <button data-page="assistant"><span class="ico">✳</span><span data-i18n="aiJana">ИИ Jana</span></button>
           <button data-page="notifications">
-            <span class="ico">♧</span><span data-i18n="notifications">Notifications</span>
+            <span class="ico">♧</span><span data-i18n="notifications">Уведомления</span>
             <span class="count" id="navNotifCount" style="display:none">0</span>
           </button>
         </nav>
       </div>
 
       <div>
-        <div class="nav-label" data-i18n="workspaceTools">Workspace tools</div>
+        <div class="nav-label" data-i18n="workspaceTools">Инструменты</div>
         <nav class="nav">
-          <button data-page="team" id="teamNav" style="display:none"><span class="ico">♙</span><span data-i18n="teamApprovals">Team & approvals</span></button>
-          <button data-page="admin" id="adminNav" style="display:none"><span class="ico">⚙</span><span data-i18n="hrAdmin">HR administration</span></button>
+          <button data-page="team" id="teamNav" style="display:none"><span class="ico">♙</span><span data-i18n="teamApprovals">Команда и согласования</span></button>
+          <button data-page="admin" id="adminNav" style="display:none"><span class="ico">⚙</span><span data-i18n="hrAdmin">Кадровое администрирование</span></button>
         </nav>
       </div>
 
       <div class="side-bottom">
         <div class="help-card">
           <div style="font-size:22px;color:var(--green)">✦</div>
-          <b data-i18n="needAHand">Need a hand?</b>
-          <p data-i18n="needAHandDesc">Find answers in the verified HR knowledge base.</p>
-          <button class="small-btn primary" data-goto="assistant" data-i18n="askAiJana">Ask AI Jana ↗</button>
+          <b data-i18n="needAHand">Нужна помощь?</b>
+          <p data-i18n="needAHandDesc">Найдите ответы в утверждённой кадровой базе знаний.</p>
+          <button class="small-btn primary" data-goto="assistant" data-i18n="askAiJana">Спросить Jana ↗</button>
         </div>
       </div>
     </aside>
@@ -60,42 +60,41 @@
       <!-- Topbar Header -->
       <header class="topbar">
         <div style="display:flex;align-items:center;gap:12px">
-          <button class="icon-btn mobile-menu" id="menuBtn" aria-label="Open navigation menu">☰</button>
+          <button class="icon-btn mobile-menu" id="menuBtn" aria-label="Открыть меню">☰</button>
           <div class="crumb">
             <span>JanaМен</span>
             <span style="color:var(--line)">/</span>
-            <b id="crumb">Overview</b>
+            <b id="crumb">Главная</b>
           </div>
         </div>
 
         <div class="top-actions">
           <!-- Language Switcher -->
-          <select class="lang-switcher-select" id="langSwitch" aria-label="Select language">
-            <option value="en">EN</option>
-            <option value="ru">RU</option>
-            <option value="kz">KZ</option>
+          <select class="lang-switcher-select" id="langSwitch" data-language-select aria-label="Выбрать язык">
+            <option value="ru">РУС</option>
+            <option value="kz">ҚАЗ</option>
           </select>
 
           <!-- Role / Persona Quick-Switcher -->
-          <select class="role-switcher-select" id="roleSwitch" aria-label="Switch active persona">
-            <option value="employee">Persona: Employee (Aruzhan S.)</option>
-            <option value="manager">Persona: Manager (Timur K.)</option>
-            <option value="hr_admin">Persona: HR Admin (Aigerim N.)</option>
+          <select class="role-switcher-select" id="roleSwitch" aria-label="Выбрать демонстрационную учётную запись">
+            <option value="employee">Демо: Сотрудник</option>
+            <option value="manager">Демо: Руководитель</option>
+            <option value="hr_admin">Демо: Кадровая служба</option>
           </select>
 
-          <button class="small-btn" id="logoutBtn">Sign out</button>
+          <button class="small-btn" id="logoutBtn">Выйти</button>
 
           <!-- Notifications Bell -->
-          <button class="icon-btn" data-goto="notifications" aria-label="Notifications" title="Notifications">
+          <button class="icon-btn" data-goto="notifications" aria-label="Уведомления" title="Уведомления">
             ♧<span class="dot" id="notifDot" style="display:none"></span>
           </button>
 
           <!-- User Chip -->
           <div class="user-chip">
-            <div class="avatar" id="avatar">AS</div>
+            <div class="avatar" id="avatar">АС</div>
             <div>
-              <strong id="userName">Aruzhan Sadykova</strong>
-              <small id="userRole">Product Operations</small>
+              <strong id="userName">Аружан Садыкова</strong>
+              <small id="userRole">Операционное сопровождение продукта</small>
             </div>
           </div>
         </div>
@@ -106,26 +105,26 @@
         <section class="page active" id="page-home">
           <div class="welcome">
             <div>
-              <div class="eyebrow">OCTOBER 2026 · HACKATHON EDITION</div>
+              <div class="eyebrow">ОКТЯБРЬ 2026 · ХАКАТОН</div>
               <h1 id="greeting">Good afternoon, Aruzhan <span>✳</span></h1>
-              <p>Your work life, in one place. Here's your unified snapshot for today.</p>
+              <p>Заявки, обучение и кадровая информация — всё в одном кабинете.</p>
             </div>
-            <div class="date-pill">◷ &nbsp; Local HR records · 1C:ZUP unconnected</div>
+            <div class="date-pill">◷ Локальные кадровые данные · 1С:ЗУП не подключена</div>
           </div>
 
           <!-- Hero Leave Balance Banner -->
           <div class="hero">
             <div>
-              <div class="eyebrow">ANNUAL VACATION BALANCE</div>
-              <h2>A little time off goes a long way.</h2>
-              <p>Plan your rest. Submit a request in seconds and follow approval progress in real time.</p>
-              <button class="primary" data-action="new-request" data-i18n="requestTimeOff">Request time off ↗</button>
+              <div class="eyebrow">ОСТАТОК ДНЕЙ ОТПУСКА</div>
+              <h2>Пора запланировать отдых.</h2>
+              <p>Подайте заявку на отпуск и отслеживайте её согласование в кабинете.</p>
+              <button class="primary" data-action="new-request" data-i18n="requestTimeOff">Подать заявку на отпуск ↗</button>
             </div>
             <div class="hero-right">
               <div class="leave-ring">
                 <div>
                   <strong id="leaveDays">18.5</strong>
-                  <span data-i18n="daysAvailable">days available</span>
+                  <span data-i18n="daysAvailable">дней доступно</span>
                 </div>
               </div>
             </div>
@@ -135,38 +134,38 @@
           <div class="grid stats">
             <div class="card">
               <div class="stat-top">
-                <span data-i18n="openRequests">Open requests</span>
+                <span data-i18n="openRequests">Активные заявки</span>
                 <span class="stat-icon">▤</span>
               </div>
               <div class="stat-num" id="statRequests">1</div>
-              <div class="stat-foot">Documentolog · unconnected</div>
+              <div class="stat-foot">Documentolog · не подключён</div>
             </div>
 
             <div class="card">
               <div class="stat-top">
-                <span data-i18n="learningProgress">Learning progress</span>
+                <span data-i18n="learningProgress">Прогресс обучения</span>
                 <span class="stat-icon">▧</span>
               </div>
               <div class="stat-num" id="statLearning">75%</div>
-              <div class="stat-foot">Persisted in <em>Jana Academy</em></div>
+              <div class="stat-foot">Сохраняется автоматически</div>
             </div>
 
             <div class="card">
               <div class="stat-top">
-                <span data-i18n="coursesAssigned">Courses assigned</span>
+                <span data-i18n="coursesAssigned">Назначено курсов</span>
                 <span class="stat-icon">✦</span>
               </div>
               <div class="stat-num" id="statCourses">2</div>
-              <div class="stat-foot">Mandatory security training</div>
+              <div class="stat-foot">Назначенное обучение</div>
             </div>
 
             <div class="card">
               <div class="stat-top">
-                <span data-i18n="notifications">Unread updates</span>
+                <span data-i18n="notifications">Непрочитанные уведомления</span>
                 <span class="stat-icon">♧</span>
               </div>
               <div class="stat-num" id="statNotifications">2</div>
-              <div class="stat-foot">Persistent notifications</div>
+              <div class="stat-foot">Сохранённые уведомления</div>
             </div>
           </div>
 
@@ -174,29 +173,29 @@
           <div class="grid lower">
             <div class="card">
               <div class="section-head">
-                <h3 data-i18n="recentRequests">Recent requests</h3>
-                <button class="text-link" data-goto="requests" data-i18n="viewAll">View all ↗</button>
+                <h3 data-i18n="recentRequests">Последние заявки</h3>
+                <button class="text-link" data-goto="requests" data-i18n="viewAll">Посмотреть все ↗</button>
               </div>
               <div class="request-list" id="homeRequests"></div>
             </div>
 
             <div class="card">
               <div class="section-head">
-                <h3 data-i18n="pickUpWhereYouLeftOff">Pick up where you left off</h3>
-                <button class="text-link" data-goto="academy">All courses ↗</button>
+                <h3 data-i18n="pickUpWhereYouLeftOff">Продолжить обучение</h3>
+                <button class="text-link" data-goto="academy">Все курсы ↗</button>
               </div>
               <div id="homeCourseCard" class="course-card" style="display:flex;gap:14px;align-items:flex-start">
                 <div class="tile-art" style="width:70px;height:75px;border-radius:12px;background:linear-gradient(145deg,#d9f27a,#84c99a);display:grid;place-items:center;font-size:24px;color:#173e2b;flex:0 0 auto">▤</div>
                 <div style="min-width:0;flex:1">
-                  <h4 style="font-size:13.5px;font-weight:750;margin-bottom:4px">Data protection essentials</h4>
-                  <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px">Lesson 4 of 4: Incident reporting</p>
+                  <h4 style="font-size:13.5px;font-weight:750;margin-bottom:4px">Основы защиты данных</h4>
+                  <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px">Урок 4 из 4: Сообщение об инцидентах</p>
                   <div class="progress"><span style="width:75%"></span></div>
-                  <div class="progress-label"><span>Progress</span><b>75%</b></div>
-                  <button class="text-link" style="padding-top:10px" data-goto="academy" data-i18n="continueLearning">Continue learning →</button>
+                  <div class="progress-label"><span>Прогресс</span><b>75%</b></div>
+                  <button class="text-link" style="padding-top:10px" data-goto="academy" data-i18n="continueLearning">Продолжить обучение →</button>
                 </div>
               </div>
               <div class="mini-divider"></div>
-              <div class="activity" id="homeActivity">Your latest notification will appear here.</div>
+              <div class="activity" id="homeActivity">Здесь появится последнее уведомление.</div>
             </div>
           </div>
         </section>
@@ -205,85 +204,71 @@
         <section class="page" id="page-profile">
           <div class="page-head">
             <div>
-              <div class="eyebrow">YOUR DETAILS</div>
-              <h1 data-i18n="myProfile">My profile</h1>
-              <p>Your read-only local HR profile. External systems are unconnected.</p>
+              <div class="eyebrow">ВАШИ ДАННЫЕ</div>
+              <h1 data-i18n="myProfile">Мой профиль</h1>
+              <p>Локальные кадровые данные доступны только для чтения. Внешние системы не подключены.</p>
             </div>
-            <button class="small-btn" data-i18n="officialHrData">HR fields · Read-only</button>
+            <button class="small-btn" data-i18n="officialHrData">Кадровые данные · Только чтение</button>
           </div>
 
           <div class="grid profile-grid">
             <div class="card">
               <div class="profile-banner">
-                <div class="big-avatar">AS</div>
+                <div class="big-avatar">АС</div>
                 <div>
-                  <h2 id="profName">Aruzhan Sadykova</h2>
-                  <p id="profPosition">Product Operations Specialist</p>
-                  <span class="status approved" style="margin-top:6px;font-size:10px">● Active Employee</span>
+                  <h2 id="profName">Аружан Садыкова</h2>
+                  <p id="profPosition">Специалист по операционному сопровождению</p>
+                  <span class="status approved" style="margin-top:6px;font-size:10px">● Действующий сотрудник</span>
                 </div>
               </div>
               <div class="mini-divider"></div>
               <div class="detail-grid">
                 <div class="detail">
-                  <label>Employee ID</label>
+                  <label>Табельный номер</label>
                   <strong id="profEmpCode">JP-10428</strong>
                 </div>
                 <div class="detail">
-                  <label>Department</label>
-                  <strong id="profDept">Product Operations</strong>
+                  <label>Подразделение</label>
+                  <strong id="profDept">Операционное сопровождение продукта</strong>
                 </div>
                 <div class="detail">
-                  <label>Company</label>
-                  <strong id="profCompany">Jana Post Kazakhstan</strong>
+                  <label>Компания</label>
+                  <strong id="profCompany">Jana Post Казахстан</strong>
                 </div>
                 <div class="detail">
-                  <label>Direct Manager</label>
-                  <strong id="profManager">Timur Kasymov</strong>
+                  <label>Непосредственный руководитель</label>
+                  <strong id="profManager">Тимур Касымов</strong>
                 </div>
                 <div class="detail">
-                  <label>Start Date</label>
-                  <strong id="profHireDate">12 Mar 2023</strong>
+                  <label>Дата приёма на работу</label>
+                  <strong id="profHireDate">—</strong>
                 </div>
                 <div class="detail">
-                  <label>Work Location</label>
-                  <strong id="profLocation">Almaty, Kazakhstan</strong>
+                  <label>Место работы</label>
+                  <strong id="profLocation">Алматы, Казахстан</strong>
                 </div>
               </div>
             </div>
 
             <div class="card">
               <div class="section-head">
-                <h3>Employment snapshot</h3>
-                <span class="status approved">1C:ZUP Master Source</span>
+                <h3>Кадровая информация</h3>
+                <span class="status approved">1С:ЗУП не подключена</span>
               </div>
               <div class="grid stats" style="grid-template-columns:1fr 1fr;margin-bottom:18px">
                 <div style="padding:16px;background:var(--surface2);border-radius:var(--radius-md)">
-                  <div class="stat-foot" data-i18n="annualLeaveBalance">Annual leave balance</div>
-                  <div class="stat-num" id="profLeaveBalance" style="font-size:24px">18.5 days</div>
-                  <div class="stat-foot">Synchronized read-only</div>
+                  <div class="stat-foot" data-i18n="annualLeaveBalance">Остаток дней отпуска</div>
+                  <div class="stat-num" id="profLeaveBalance" style="font-size:24px">18,5 дней</div>
+                  <div class="stat-foot">Локальная запись · Только чтение</div>
                 </div>
                 <div style="padding:16px;background:var(--surface2);border-radius:var(--radius-md)">
-                  <div class="stat-foot" data-i18n="learningProgress">Learning completion</div>
+                  <div class="stat-foot" data-i18n="learningProgress">Прогресс обучения</div>
                   <div class="stat-num" id="profLearningPct" style="font-size:24px">75%</div>
-                  <div class="stat-foot">2 assigned courses</div>
+                  <div class="stat-foot" id="profileCourseCount">—</div>
                 </div>
               </div>
               <div class="mini-divider"></div>
-              <h3 style="font-size:14px;margin-bottom:10px">Compliance & Assigned Training</h3>
-              <div class="activity">
-                <span class="activity-dot"></span>
-                <div>
-                  <b>Data protection essentials</b>
-                  <p>Mandatory · Due 30 October 2026</p>
-                </div>
-              </div>
-              <div class="activity">
-                <span class="activity-dot" style="background:var(--orange)"></span>
-                <div>
-                  <b>Working safely with customer data</b>
-                  <p>Recommended · 25 minutes</p>
-                </div>
-              </div>
+              <div id="profileCourses"></div>
             </div>
           </div>
         </section>
@@ -292,27 +277,27 @@
         <section class="page" id="page-requests">
           <div class="page-head">
             <div>
-              <div class="eyebrow">TRACK EVERY STEP</div>
-              <h1 data-i18n="myRequests">My requests</h1>
-              <p>Submit a request and follow its journey, from creation to manager resolution.</p>
+              <div class="eyebrow">ИСТОРИЯ ВАШИХ ОБРАЩЕНИЙ</div>
+              <h1 data-i18n="myRequests">Мои заявки</h1>
+              <p>Создавайте заявки и отслеживайте их рассмотрение руководителем.</p>
             </div>
-            <button class="primary" data-action="new-request" data-i18n="newRequest">＋ New request</button>
+            <button class="primary" data-action="new-request" data-i18n="newRequest">＋ Создать заявку</button>
           </div>
 
           <div class="card">
             <div class="section-head">
-              <h3>Request history</h3>
+              <h3>История заявок</h3>
               <div class="toolbar">
                 <select id="statusFilter" style="width:auto" onchange="loadRequestsPage()">
-                  <option value="all" data-i18n="allStatuses">All statuses</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Rejected">Rejected</option>
+                  <option value="all" data-i18n="allStatuses">Все статусы</option>
+                  <option value="Pending">На рассмотрении</option>
+                  <option value="Approved">Одобрено</option>
+                  <option value="Rejected">Отклонено</option>
                 </select>
                 <select id="typeFilter" style="width:auto" onchange="loadRequestsPage()">
-                  <option value="all" data-i18n="allTypes">All types</option>
-                  <option value="Vacation">Vacation</option>
-                  <option value="Advance payment">Advance payment</option>
+                  <option value="all" data-i18n="allTypes">Все типы</option>
+                  <option value="Vacation">Отпуск</option>
+                  <option value="Advance payment">Аванс</option>
                 </select>
               </div>
             </div>
@@ -321,11 +306,11 @@
               <table class="table">
                 <thead>
                   <tr>
-                    <th>REQUEST</th>
-                    <th>SUBMITTED</th>
-                    <th>PERIOD / DETAILS</th>
-                    <th>STATUS</th>
-                    <th>ACTION</th>
+                    <th>ЗАЯВКА</th>
+                    <th>ПОДАНА</th>
+                    <th>ПЕРИОД / ПОДРОБНОСТИ</th>
+                    <th>СТАТУС</th>
+                    <th>ДЕЙСТВИЕ</th>
                   </tr>
                 </thead>
                 <tbody id="requestTable"></tbody>
@@ -338,11 +323,11 @@
         <section class="page" id="page-academy">
           <div class="page-head">
             <div>
-              <div class="eyebrow">GROW EVERY DAY</div>
-              <h1 data-i18n="janaAcademy">Jana Academy</h1>
-              <p>Learning that moves with you. Assigned courses, lesson material, and quizzes.</p>
+              <div class="eyebrow">РАЗВИВАЙТЕСЬ КАЖДЫЙ ДЕНЬ</div>
+              <h1 data-i18n="janaAcademy">Академия Jana</h1>
+              <p>Назначенные курсы, учебные материалы и проверка знаний.</p>
             </div>
-            <span class="status approved">LMS Active</span>
+            <span class="status approved">Обучение доступно</span>
           </div>
 
           <div class="grid course-grid" id="academyGrid"></div>
@@ -352,11 +337,11 @@
         <section class="page" id="page-assistant">
           <div class="page-head">
             <div>
-              <div class="eyebrow">YOUR HR KNOWLEDGE COMPANION</div>
-              <h1>AI Jana <span style="color:var(--green)">✳</span></h1>
-              <p>Answers from approved documents. Demo sources are synthetic examples, not official HR policy.</p>
+              <div class="eyebrow">ВАШ ПОМОЩНИК ПО КАДРОВЫМ ВОПРОСАМ</div>
+              <h1>ИИ Jana <span style="color:var(--green)">✳</span></h1>
+              <p>Ответы из утверждённых документов. Демонстрационные источники — вымышленные примеры, а не официальные кадровые правила.</p>
             </div>
-            <span class="status approved">Approved-source retrieval</span>
+            <span class="status approved">Поиск по утверждённым источникам</span>
           </div>
 
           <div class="chat-layout">
@@ -365,33 +350,32 @@
                 <div style="display:flex;align-items:center;gap:10px">
                   <div class="logo" style="width:34px;height:34px;border-radius:10px">✳</div>
                   <div>
-                    <h3>Ask AI Jana</h3>
-                    <div class="stat-foot">Approved document retrieval · partial RU / KZ interface</div>
+                    <h3>Спросить Jana</h3>
+                    <div class="stat-foot">Утверждённые документы · Русский / Қазақша</div>
                   </div>
                 </div>
-                <button class="small-btn" id="clearChat" data-i18n="newChat">New chat</button>
+                <button class="small-btn" id="clearChat" data-i18n="newChat">Новый диалог</button>
               </div>
 
               <!-- Suggestion Chips -->
               <div class="suggestions">
-                <button data-question="How do I request vacation in the system?">How do I request vacation?</button>
-                <button data-question="Where can I find my leave balance and how many days do I get?">Where is my leave balance?</button>
-                <button data-question="What is the advance payment policy?">Advance payment policy?</button>
-                <button data-question="What are official working hours?">Working hours?</button>
-                <button data-question="What is the pet insurance reimbursement policy?">Pet insurance? (Fallback demo)</button>
+                <button data-question="Как подать заявку на отпуск?">Как подать заявку на отпуск?</button>
+                <button data-question="Где посмотреть остаток дней отпуска?">Где посмотреть остаток дней отпуска?</button>
+                <button data-question="Как запросить аванс?">Как запросить аванс?</button>
+                <button data-question="Какой график работы?">Какой график работы?</button>
+                <button data-question="Есть ли страховка домашних животных?">Есть ли страховка домашних животных?</button>
               </div>
 
               <div class="chat-messages" id="chatMessages">
                 <div class="message">
-                  Hi! I'm AI Jana. I assist Jana Post employees with HR policy questions.
-                  Every answer I provide is grounded in verified documentation and cites the exact source.
-                  <small>AI Jana · Ready to help</small>
+                  Здравствуйте! Я Jana, помощник по кадровым вопросам. Я ищу ответы в утверждённых документах и показываю источники. Демонстрационные документы содержат вымышленные примеры.
+                  <small>Jana · Готова помочь</small>
                 </div>
               </div>
 
               <form class="chat-compose" id="chatForm">
-                <input class="field" id="chatInput" placeholder="Ask an HR policy question…" data-i18n="askQuestionPlaceholder" autocomplete="off" required>
-                <button class="primary" type="submit" data-i18n="send">Send ↗</button>
+                <input class="field" id="chatInput" placeholder="Задайте вопрос по кадровым правилам…" aria-label="Задайте вопрос по кадровым правилам…" data-i18n="askQuestionPlaceholder" autocomplete="off" required>
+                <button class="primary" type="submit" data-i18n="send">Отправить ↗</button>
               </form>
             </div>
 
@@ -399,35 +383,35 @@
             <aside>
               <div class="card">
                 <div class="section-head">
-                  <h3 data-i18n="sourcesIncluded">Trust comes first</h3>
+                  <h3 data-i18n="sourcesIncluded">Доверие — прежде всего</h3>
                   <span style="color:var(--green)">✳</span>
                 </div>
                 <div class="activity">
                   <span class="activity-dot"></span>
                   <div>
-                    <b data-i18n="sourcesIncluded">Sources included</b>
-                    <p data-i18n="sourcesIncludedDesc">Every supported answer points to a verified knowledge source.</p>
+                    <b data-i18n="sourcesIncluded">Ответы с источниками</b>
+                    <p data-i18n="sourcesIncludedDesc">Подтверждённые ответы содержат ссылки на утверждённые источники.</p>
                   </div>
                 </div>
                 <div class="activity">
                   <span class="activity-dot" style="background:var(--orange)"></span>
                   <div>
-                    <b data-i18n="noGuesswork">No guesswork</b>
-                    <p data-i18n="noGuessworkDesc">If the knowledge base is silent, AI Jana says so safely.</p>
+                    <b data-i18n="noGuesswork">Без выдумок</b>
+                    <p data-i18n="noGuessworkDesc">Если в базе нет ответа, Jana сообщит об этом и предложит обратиться в кадровую службу.</p>
                   </div>
                 </div>
                 <div class="activity">
                   <span class="activity-dot" style="background:var(--green)"></span>
                   <div>
-                    <b data-i18n="privacyAware">Privacy-aware</b>
-                    <p data-i18n="privacyAwareDesc">Personal HR records are protected and never disclosed in public Q&A.</p>
+                    <b data-i18n="privacyAware">Защита персональных данных</b>
+                    <p data-i18n="privacyAwareDesc">Личные кадровые сведения недоступны через поиск по базе знаний.</p>
                   </div>
                 </div>
               </div>
 
               <div class="card" style="margin-top:16px">
-                <h3 style="margin:0 0 8px;font-size:14px">Approved Knowledge Base</h3>
-                <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Synthetic sample documents approved for demonstration.</p>
+                <h3 style="margin:0 0 8px;font-size:14px">Утверждённая база знаний</h3>
+                <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Вымышленные документы, утверждённые для демонстрации.</p>
                 <div id="approvedKnowledgeList"></div>
               </div>
             </aside>
@@ -438,11 +422,11 @@
         <section class="page" id="page-notifications">
           <div class="page-head">
             <div>
-              <div class="eyebrow">STAY IN THE LOOP</div>
-              <h1 data-i18n="notifications">Notifications</h1>
-              <p>Updates on your request workflow, assigned training, and corporate events.</p>
+              <div class="eyebrow">БУДЬТЕ В КУРСЕ</div>
+              <h1 data-i18n="notifications">Уведомления</h1>
+              <p>Статусы заявок, назначенное обучение и другие обновления.</p>
             </div>
-            <button class="small-btn" onclick="markAllNotificationsRead()" data-i18n="markAllRead">Mark all as read</button>
+            <button class="small-btn" onclick="markAllNotificationsRead()" data-i18n="markAllRead">Прочитать все</button>
           </div>
 
           <div class="card" id="notificationsList"></div>
@@ -452,27 +436,27 @@
         <section class="page" id="page-team">
           <div class="page-head">
             <div>
-              <div class="eyebrow">MANAGER WORKSPACE</div>
-              <h1 data-i18n="teamApprovals">Team & approvals</h1>
-              <p>Review requests in your direct report scope and take action.</p>
+              <div class="eyebrow">КАБИНЕТ РУКОВОДИТЕЛЯ</div>
+              <h1 data-i18n="teamApprovals">Команда и согласования</h1>
+              <p>Рассматривайте заявки сотрудников в пределах своих полномочий.</p>
             </div>
-            <span class="status pending" id="teamPendingBadge">Pending review</span>
+            <span class="status pending" id="teamPendingBadge">Ожидает рассмотрения</span>
           </div>
 
           <div class="card">
             <div class="section-head">
-              <h3 data-i18n="pendingApprovals">Pending approvals</h3>
-              <span class="stat-foot">Scoped to direct reports; HR has company-wide access</span>
+              <h3 data-i18n="pendingApprovals">Заявки на согласовании</h3>
+              <span class="stat-foot">Руководителю доступны прямые подчинённые, кадровой службе — вся компания.</span>
             </div>
             <div class="table-wrap">
               <table class="table">
                 <thead>
                   <tr>
-                    <th>EMPLOYEE</th>
-                    <th>REQUEST</th>
-                    <th>DATES / DETAILS</th>
-                    <th>STATUS</th>
-                    <th>ACTION</th>
+                    <th>СОТРУДНИК</th>
+                    <th>ЗАЯВКА</th>
+                    <th>ДАТЫ / ПОДРОБНОСТИ</th>
+                    <th>СТАТУС</th>
+                    <th>ДЕЙСТВИЕ</th>
                   </tr>
                 </thead>
                 <tbody id="teamTable"></tbody>
@@ -481,19 +465,19 @@
           </div>
 
           <div class="card" style="margin-top:20px">
-            <h3 style="margin-top:0">Team overview</h3>
+            <h3 style="margin-top:0">Информация о команде</h3>
             <div class="grid stats" style="grid-template-columns:repeat(3, 1fr);margin-bottom:0">
               <div>
-                <div class="stat-foot">Direct reports</div>
+                <div class="stat-foot">Сотрудников в зоне ответственности</div>
                 <div class="stat-num" id="teamCount">3</div>
               </div>
               <div>
-                <div class="stat-foot">Awaiting review</div>
+                <div class="stat-foot">Ожидают рассмотрения</div>
                 <div class="stat-num" id="teamPendingStat">1</div>
               </div>
               <div>
-                <div class="stat-foot">Review scope</div>
-                <div class="stat-num" id="teamScope" style="font-size:18px">Direct reports</div>
+                <div class="stat-foot">Область полномочий</div>
+                <div class="stat-num" id="teamScope" style="font-size:18px">Прямые подчинённые</div>
               </div>
             </div>
           </div>
@@ -503,39 +487,39 @@
         <section class="page" id="page-admin">
           <div class="page-head">
             <div>
-              <div class="eyebrow">HR OPERATIONS & INTEGRATIONS</div>
-              <h1 data-i18n="hrAdmin">HR administration</h1>
-              <p>Platform controls for knowledge sources, integration adapters, and audit trails.</p>
+              <div class="eyebrow">КАДРОВЫЕ ПРОЦЕССЫ И ИНТЕГРАЦИИ</div>
+              <h1 data-i18n="hrAdmin">Кадровое администрирование</h1>
+              <p>Управление базой знаний, статусами интеграций и журналом действий.</p>
             </div>
-            <span class="status approved">HR access</span>
+            <span class="status approved">Доступ кадровой службы</span>
           </div>
 
           <div class="grid stats" style="grid-template-columns:repeat(3, minmax(0, 1fr))">
             <div class="card">
-              <div class="stat-top">Active accounts <span class="stat-icon">♙</span></div>
+              <div class="stat-top">Активные учётные записи <span class="stat-icon">♙</span></div>
               <div class="stat-num" id="adminEmployeeCount">—</div>
-              <div class="stat-foot">Database-backed account count</div>
+              <div class="stat-foot">По данным базы</div>
             </div>
             <div class="card">
-              <div class="stat-top">Knowledge chunks <span class="stat-icon">▤</span></div>
+              <div class="stat-top">Фрагменты базы знаний <span class="stat-icon">▤</span></div>
               <div class="stat-num" id="adminKnowledgeCount">6</div>
-              <div class="stat-foot">Indexed for AI retrieval</div>
+              <div class="stat-foot">Сохранённые фрагменты источников</div>
             </div>
             <div class="card">
-              <div class="stat-top">Enterprise adapters <span class="stat-icon">↔</span></div>
+              <div class="stat-top">Корпоративные интеграции <span class="stat-icon">↔</span></div>
               <div class="stat-num">2</div>
-              <div class="stat-foot">1C:ZUP & Documentolog</div>
+              <div class="stat-foot">1С:ЗУП и Documentolog</div>
             </div>
           </div>
 
           <!-- Integration Boundaries -->
           <div class="card" style="margin-top:20px">
             <div class="section-head">
-              <h3>Enterprise Integration Boundaries</h3>
-              <span class="status pending">Unconnected</span>
+              <h3>Подключения внешних систем</h3>
+              <span class="status pending">Не подключено</span>
             </div>
             <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px">
-              Demonstrates where and how external corporate systems integrate with JanaMen. Official HR data remains read-only.
+              Здесь отображаются границы подключения внешних систем. Кадровые поля доступны только для чтения; внешние системы не подключены.
             </p>
             <div id="adminIntegrationsList"></div>
           </div>
@@ -544,38 +528,38 @@
           <div class="grid lower" style="margin-top:20px">
             <div class="card">
               <div class="section-head">
-                <h3>Knowledge Sources</h3>
-                <span class="stat-foot">Indexed passages</span>
+                <h3>Источники базы знаний</h3>
+                <span class="stat-foot">Фрагменты документов</span>
               </div>
               <details style="margin-bottom:16px">
-                <summary>Create a knowledge document</summary>
+                <summary>Создать документ базы знаний</summary>
                 <form id="knowledgeForm" class="form-grid" style="margin-top:12px">
-                  <label>Document title<input class="field" name="title" required maxlength="255"></label>
-                  <label>Section title<input class="field" name="section" required maxlength="255"></label>
-                  <label>Source text<textarea class="field" name="content" required maxlength="20000"></textarea></label>
-                  <label>Access<select class="field" name="access"><option value="all">All roles</option><option value="employee">Employees</option><option value="manager">Managers</option><option value="hr_admin">HR only</option></select></label>
-                  <label><input type="checkbox" name="synthetic" checked> Synthetic example</label>
-                  <button class="primary" type="submit">Save draft</button>
+                  <label>Название документа<input class="field" name="title" required maxlength="255"></label>
+                  <label>Название раздела<input class="field" name="section" required maxlength="255"></label>
+                  <label>Текст источника<textarea class="field" name="content" required maxlength="20000"></textarea></label>
+                  <label>Доступ<select class="field" name="access"><option value="all">Все роли</option><option value="employee">Сотрудники</option><option value="manager">Руководители</option><option value="hr_admin">Только кадровая служба</option></select></label>
+                  <label><input type="checkbox" name="synthetic" checked> Вымышленный пример</label>
+                  <button class="primary" type="submit">Сохранить черновик</button>
                 </form>
               </details>
-              <p>Review source text before approval. Draft or inactive documents are excluded from AI Jana.</p>
+              <p>Проверьте полный текст перед утверждением. Черновики и неактивные документы не участвуют в ответах Jana.</p>
               <div id="knowledgeDocuments"></div>
               <div id="knowledgeList" style="max-height:360px;overflow-y:auto"></div>
             </div>
 
             <div class="card">
               <div class="section-head">
-                <h3>System Audit Trail</h3>
-                <span class="status approved">Application audit trail</span>
+                <h3>Журнал действий</h3>
+                <span class="status approved">Журнал приложения</span>
               </div>
               <div class="table-wrap" style="max-height:360px;overflow-y:auto">
                 <table class="table">
                   <thead>
                     <tr>
-                      <th>ACTION</th>
-                      <th>ACTOR</th>
-                      <th>TARGET</th>
-                      <th>TIME</th>
+                      <th>ДЕЙСТВИЕ</th>
+                      <th>ИНИЦИАТОР</th>
+                      <th>ОБЪЕКТ</th>
+                      <th>ВРЕМЯ</th>
                     </tr>
                   </thead>
                   <tbody id="adminAuditTable"></tbody>
@@ -592,47 +576,47 @@
   <div class="modal-backdrop" id="requestModal">
     <div class="modal">
       <div class="modal-head">
-        <h3>Create a request</h3>
-        <button class="close" id="closeModal" aria-label="Close modal">✕</button>
+        <h3>Создать заявку</h3>
+        <button class="close" id="closeModal" aria-label="Закрыть окно">✕</button>
       </div>
       <p style="color:var(--muted);font-size:12.5px;margin-top:-8px;margin-bottom:18px">
-        Your request will be validated by the backend and routed to your direct manager for review.
+        Заполните форму. Заявка будет проверена и направлена уполномоченному руководителю или в кадровую службу.
       </p>
 
       <form id="requestForm">
         <div class="form-grid">
           <div class="form-group full">
-            <label for="reqType" data-i18n="requestType">Request type</label>
+            <label for="reqType" data-i18n="requestType">Тип заявки</label>
             <select id="reqType">
-              <option value="Vacation">Vacation</option>
-              <option value="Advance payment">Advance payment</option>
+              <option value="Vacation">Отпуск</option>
+              <option value="Advance payment">Аванс</option>
             </select>
           </div>
 
           <div class="form-group">
-            <label for="reqStart" data-i18n="startDate">Start date / requested date</label>
+            <label for="reqStart" data-i18n="startDate">Дата начала / дата выплаты</label>
             <input class="field" id="reqStart" type="date" required>
           </div>
 
           <div class="form-group" id="reqEndGroup">
-            <label for="reqEnd" data-i18n="endDate">End date</label>
+            <label for="reqEnd" data-i18n="endDate">Дата окончания</label>
             <input class="field" id="reqEnd" type="date">
           </div>
 
           <div class="form-group full" id="reqAmountGroup" style="display:none">
-            <label for="reqAmount" data-i18n="amount">Amount in KZT (₸)</label>
-            <input class="field" id="reqAmount" type="number" min="5000" step="5000" placeholder="e.g. 100000">
+            <label for="reqAmount" data-i18n="amount">Сумма в тенге (₸)</label>
+            <input class="field" id="reqAmount" type="number" min="0.01" step="0.01" placeholder="Например, 100000">
           </div>
 
           <div class="form-group full">
-            <label for="reqReason" data-i18n="reason">Reason / handover notes</label>
-            <textarea id="reqReason" rows="3" placeholder="Provide notes or handover coverage details…"></textarea>
+            <label for="reqReason" data-i18n="reason">Причина / передача дел</label>
+            <textarea id="reqReason" rows="3" placeholder="Укажите причину и порядок передачи дел…"></textarea>
           </div>
         </div>
 
         <div class="form-actions">
-          <button class="small-btn" type="button" id="cancelModal" data-i18n="cancel">Cancel</button>
-          <button class="primary" type="submit" data-i18n="submitRequest">Submit request ↗</button>
+          <button class="small-btn" type="button" id="cancelModal" data-i18n="cancel">Отмена</button>
+          <button class="primary" type="submit" data-i18n="submitRequest">Отправить заявку ↗</button>
         </div>
       </form>
     </div>
@@ -642,39 +626,39 @@
   <div class="modal-backdrop" id="requestDetailModal">
     <div class="modal">
       <div class="modal-head">
-        <h3 id="detailModalTitle">Request details</h3>
-        <button class="close" id="closeDetailModal" aria-label="Close modal">✕</button>
+        <h3 id="detailModalTitle">Подробности заявки</h3>
+        <button class="close" id="closeDetailModal" aria-label="Закрыть окно">✕</button>
       </div>
 
       <div class="detail-grid" style="margin-top:0;margin-bottom:18px">
         <div class="detail">
-          <label>Request ID</label>
+          <label>Номер заявки</label>
           <strong id="detailModalCode">REQ-1042</strong>
         </div>
         <div class="detail">
-          <label>Status</label>
+          <label>Статус</label>
           <div id="detailModalStatus"></div>
         </div>
         <div class="detail">
-          <label>Requester</label>
-          <strong id="detailModalRequester">Aruzhan S.</strong>
+          <label>Заявитель</label>
+          <strong id="detailModalRequester">Аружан С.</strong>
         </div>
         <div class="detail">
-          <label>Department</label>
-          <strong id="detailModalDept">Product Operations</strong>
+          <label>Подразделение</label>
+          <strong id="detailModalDept">Операционное сопровождение продукта</strong>
         </div>
         <div class="detail">
-          <label>Details</label>
-          <strong id="detailModalDates">26–30 Oct 2026</strong>
+          <label>Подробности</label>
+          <strong id="detailModalDates">—</strong>
         </div>
         <div class="detail">
-          <label>Documentolog Reference</label>
+          <label>Регистрация в Documentolog</label>
           <code id="detailModalSync" style="font-size:11px">DOCLOG-2026-1042</code>
         </div>
       </div>
 
       <div class="mini-divider"></div>
-      <h4 style="font-size:13px;margin-bottom:12px">Audit & Event History</h4>
+      <h4 style="font-size:13px;margin-bottom:12px">История действий по заявке</h4>
       <div id="detailModalTimeline"></div>
     </div>
   </div>
@@ -683,33 +667,33 @@
   <div class="modal-backdrop" id="coursePlayerModal">
     <div class="modal" style="width:min(680px, 100%)">
       <div class="modal-head">
-        <h3 id="playerCourseTitle">Course Player</h3>
-        <button class="close" id="closeCourseModal" aria-label="Close modal">✕</button>
+        <h3 id="playerCourseTitle">Просмотр курса</h3>
+        <button class="close" id="closeCourseModal" aria-label="Закрыть окно">✕</button>
       </div>
 
       <div class="progress"><span id="playerProgressBar" style="width:75%"></span></div>
       <div class="progress-label" style="margin-bottom:16px">
-        <span id="playerProgressLabel">75% complete</span>
-        <span>Jana Academy LMS</span>
+        <span id="playerProgressLabel">Пройдено: 75%</span>
+        <span>Обучение в Академии Jana</span>
       </div>
 
       <div class="grid" style="grid-template-columns:220px 1fr;gap:18px">
         <!-- Lessons Navigation -->
         <div>
-          <div class="nav-label" style="padding:0;margin-bottom:8px">Lessons</div>
+          <div class="nav-label" style="padding:0;margin-bottom:8px">Уроки</div>
           <div id="playerLessonsList"></div>
         </div>
 
         <!-- Lesson Reader & Quiz Activity -->
         <div style="background:var(--surface2);padding:18px;border-radius:var(--radius-md)">
-          <h4 id="playerLessonTitle" style="margin-bottom:8px;font-size:15px">Lesson Title</h4>
-          <p id="playerLessonContent" style="font-size:13px;line-height:1.55;color:var(--ink);margin-bottom:18px">Lesson content...</p>
+          <h4 id="playerLessonTitle" style="margin-bottom:8px;font-size:15px">Название урока</h4>
+          <p id="playerLessonContent" style="font-size:13px;line-height:1.55;color:var(--ink);margin-bottom:18px">Материалы урока…</p>
 
           <div id="playerQuizBox" style="border-top:1px solid var(--line);padding-top:14px;display:none">
-            <b style="font-size:12.5px;display:block;margin-bottom:8px" id="playerQuizQuestion">Quiz Question</b>
+            <b style="font-size:12.5px;display:block;margin-bottom:8px" id="playerQuizQuestion">Вопрос теста</b>
             <div id="playerQuizOptions"></div>
             <div id="playerQuizFeedback" style="margin-top:10px;display:none"></div>
-            <button class="primary" style="margin-top:12px;width:100%;justify-content:center" onclick="submitLessonQuiz()">Submit Answer</button>
+            <button class="primary" style="margin-top:12px;width:100%;justify-content:center" onclick="submitLessonQuiz()">Ответить</button>
           </div>
         </div>
       </div>
@@ -720,15 +704,15 @@
   <div class="modal-backdrop" id="citationModal">
     <div class="modal" style="width:min(500px, 100%)">
       <div class="modal-head">
-        <h3>Verified Knowledge Source</h3>
-        <button class="close" id="closeCitationModal" aria-label="Close modal">✕</button>
+        <h3>Утверждённый источник</h3>
+        <button class="close" id="closeCitationModal" aria-label="Закрыть окно">✕</button>
       </div>
 
       <div style="padding:16px;background:var(--surface2);border-radius:var(--radius-md)">
-        <span class="eyebrow" id="citationDocTitle">Employee Request Guide</span>
-        <h4 id="citationSecTitle" style="font-size:15px;margin:6px 0 10px">Section Title</h4>
-        <p id="citationSnippet" style="font-size:13px;line-height:1.55;color:var(--ink)">Source content snippet...</p>
-        <span class="status approved" style="margin-top:10px;font-size:10px">Approved source · check document version</span>
+        <span class="eyebrow" id="citationDocTitle">Руководство по заявкам</span>
+        <h4 id="citationSecTitle" style="font-size:15px;margin:6px 0 10px">Название раздела</h4>
+        <p id="citationSnippet" style="font-size:13px;line-height:1.55;color:var(--ink)">Текст источника…</p>
+        <span class="status approved" style="margin-top:10px;font-size:10px">Утверждённый источник · проверьте версию</span>
       </div>
     </div>
   </div>
@@ -736,12 +720,12 @@
 
   <div class="modal-backdrop" id="reviewModal" role="dialog" aria-labelledby="reviewTitle" aria-modal="true">
     <div class="modal">
-      <h3 id="reviewTitle">Review request</h3>
+      <h3 id="reviewTitle">Рассмотрение заявки</h3>
       <form id="reviewForm" class="form-grid">
-        <label for="reviewComment">Review comment (optional)</label>
+        <label for="reviewComment">Комментарий к решению (необязательно)</label>
         <textarea id="reviewComment" class="field" maxlength="2000"></textarea>
-        <button class="small-btn" id="cancelReview" type="button">Cancel</button>
-        <button class="primary" id="submitReview" type="submit">Confirm review</button>
+        <button class="small-btn" id="cancelReview" type="button">Отмена</button>
+        <button class="primary" id="submitReview" type="submit">Подтвердить решение</button>
       </form>
     </div>
   </div>
@@ -752,14 +736,14 @@
 
 <div class="auth-gate" id="loginGate" role="dialog" aria-labelledby="loginTitle" aria-modal="true">
   <div class="modal">
-    <div class="brand"><div class="logo">J</div><strong>JanaМен</strong></div>
-    <h1 id="loginTitle">Sign in to your workspace</h1>
-    <p id="loginHint">Use your account email and password.</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div class="brand"><div class="logo">J</div><strong>JanaМен</strong></div><select id="loginLangSwitch" data-language-select class="field" style="width:auto" aria-label="Выбрать язык"><option value="ru">Русский</option><option value="kz">Қазақша</option></select></div>
+    <h1 id="loginTitle">Вход в личный кабинет</h1>
+    <p id="loginHint">Введите электронную почту и пароль учётной записи.</p>
     <form id="loginForm" class="form-grid">
-      <label for="loginEmail">Email</label><input id="loginEmail" class="field" type="email" autocomplete="username" required maxlength="255">
-      <label for="loginPassword">Password</label><input id="loginPassword" class="field" type="password" autocomplete="current-password" required maxlength="256">
+      <label for="loginEmail">Электронная почта</label><input id="loginEmail" class="field" type="email" autocomplete="username" required maxlength="255">
+      <label for="loginPassword">Пароль</label><input id="loginPassword" class="field" type="password" autocomplete="current-password" required maxlength="256">
       <p id="loginError" role="alert"></p>
-      <button class="primary" id="loginSubmit" type="submit">Sign in</button>
+      <button class="primary" id="loginSubmit" type="submit">Войти</button>
     </form>
   </div>
 </div>

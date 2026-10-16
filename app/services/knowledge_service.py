@@ -6,6 +6,7 @@ from sqlalchemy import update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
+from app.localization import document_text, source_text
 from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
 from app.schemas.knowledge import KnowledgeChunkResponse
 from app.services.audit_service import audit_service
@@ -36,22 +37,29 @@ class KnowledgeService:
                 "approved_by_id",
                 "approved_at",
                 "updated_at",
+                "language",
+                "translations",
             )
-        }
+        } | document_text(doc)
 
     @staticmethod
     def serialize_chunk(chunk):
+        localized = source_text(chunk)
         return KnowledgeChunkResponse(
             id=chunk.id,
             document_id=chunk.document_id,
-            document_title=chunk.document.title,
-            section_title=chunk.section_title,
-            content=chunk.content,
+            document_title=localized["document_title"]
+            if localized
+            else document_text(chunk.document)["title"],
+            section_title=localized["section_title"] if localized else chunk.section_title,
+            content=localized["content"] if localized else chunk.content,
             tags=chunk.tags,
             access_level=chunk.access_level,
             is_approved=chunk.document.is_approved,
             is_synthetic=chunk.document.is_synthetic,
             document_revision=chunk.document.revision,
+            language=localized["language"] if localized else chunk.document.language,
+            translations=chunk.translations,
         )
 
     @staticmethod
@@ -109,6 +117,13 @@ class KnowledgeService:
             raise HTTPException(422, "Provide non-null document changes")
         doc = cls.prepare_change(db, document_id, payload.expected_revision)
         approved = changes.pop("is_approved", False)
+        if {
+            "title",
+            "category",
+            "description",
+            "language",
+        } & changes.keys() and "translations" not in changes:
+            doc.translations = {}
         for key, value in changes.items():
             setattr(doc, key, value)
         if approved:
@@ -164,6 +179,8 @@ class KnowledgeService:
             raise HTTPException(422, "Provide non-null source changes")
         doc = cls.prepare_change(db, chunk.document_id, payload.expected_revision)
         db.refresh(chunk)
+        if {"section_title", "content"} & changes.keys() and "translations" not in changes:
+            chunk.translations = {}
         for key, value in changes.items():
             setattr(chunk, key, value)
         audit_service.log_event(

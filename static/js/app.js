@@ -10,7 +10,7 @@ const state = {
   user: null,
   profile: null,
   page: "home",
-  lang: "en",
+  lang: I18n.savedLanguage(),
   notifications: [],
   courses: [],
   currentCourse: null,
@@ -21,18 +21,22 @@ let demoAccounts = {};
 
 // --- HTTP CLIENT HELPERS ---
 async function api(path, options = {}) {
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const headers = { "Content-Type": "application/json", "Accept-Language": localeCode(), ...(options.headers || {}) };
   if (state.token) {
     headers["Authorization"] = `Bearer ${state.token}`;
   }
 
   const tokenAtStart = state.token;
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const languageAtStart = state.lang;
+  let res;
+  try { res = await fetch(`${API_BASE}${path}`, { ...options, headers }); }
+  catch { throw new Error(I18n.t("Unable to connect. Please try again.")); }
   const data = await res.json().catch(() => ({}));
   if (tokenAtStart !== state.token) throw new Error("Session changed; please retry.");
+  if (languageAtStart !== state.lang) throw new Error("Language changed; please retry.");
   if (res.status === 401 && !path.includes("/auth/login")) showLogin();
   if (!res.ok) {
-    const fields = data.error?.fields?.map(f => `${f.location.slice(1).join(".")}: ${f.message}`).join("; ");
+    const fields = data.error?.fields?.map(f => f.message).join("; ");
     throw new Error(fields || data.error?.message || data.detail || `Request failed (${res.status})`);
   }
   return data;
@@ -40,9 +44,11 @@ async function api(path, options = {}) {
 
 async function apiAll(path) {
   const tokenAtStart = state.token;
+  const languageAtStart = state.lang;
   const rows = [];
   for (let offset = 0; offset <= 1000000; offset += 100) {
     if (tokenAtStart !== state.token) throw new Error("Session changed; please retry.");
+    if (languageAtStart !== state.lang) throw new Error("Language changed; please retry.");
     const page = await api(`${path}${path.includes("?") ? "&" : "?"}limit=100&offset=${offset}`);
     rows.push(...page);
     if (page.length < 100) return rows;
@@ -63,8 +69,25 @@ function esc(s) {
   return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+function localeCode() { return state.lang === "kz" ? "kk-KZ" : "ru-RU"; }
+function formatDate(value) {
+  const date = new Date(value.length === 10 ? `${value}T12:00:00` : value);
+  const months = state.lang === "kz"
+    ? ["қаңтар", "ақпан", "наурыз", "сәуір", "мамыр", "маусым", "шілде", "тамыз", "қыркүйек", "қазан", "қараша", "желтоқсан"]
+    : ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} ${state.lang === "kz" ? "ж." : "г."}`;
+}
+function formatTime(value) { return new Date(value).toLocaleTimeString("ru-RU", {hour:"2-digit", minute:"2-digit", hour12:false}); }
+function formatPeriod(request) {
+  const start = formatDate(request.start_date);
+  if (request.type === "Advance payment") return `${new Intl.NumberFormat("ru-RU", {minimumFractionDigits:2, maximumFractionDigits:2}).format(request.amount)} ₸ · ${start}`;
+  return request.end_date && request.end_date !== request.start_date ? `${start} — ${formatDate(request.end_date)}` : start;
+}
+
 // --- INITIALIZATION & AUTH ---
 async function initApp() {
+  try { await I18n.load(); }
+  catch (error) { document.getElementById("loginError").textContent = error.message; return; }
   // Bind listeners
   setupNavigation();
   setupRoleSwitch();
@@ -124,7 +147,7 @@ function showLogin(email = "") {
   state.pendingReview = null;
   document.getElementById("app").hidden = true;
   document.querySelectorAll(".modal-backdrop").forEach(el => el.classList.remove("open"));
-  ["homeRequests", "academyGrid", "notificationsList", "teamTable", "requestTable", "knowledgeList",
+  ["homeRequests", "profileCourses", "academyGrid", "notificationsList", "teamTable", "requestTable", "knowledgeList",
    "knowledgeDocuments", "approvedKnowledgeList", "adminAuditTable", "chatMessages", "playerLessonsList", "playerQuizOptions", "detailModalTimeline"]
     .forEach(id => document.getElementById(id)?.replaceChildren());
   document.querySelectorAll('[id^="prof"], #userName, #userRole, #greeting, #citationSnippet, #playerLessonContent')
@@ -310,7 +333,7 @@ async function loadDashboard() {
           <div class="req-icon">${r.type === "Vacation" ? "◷" : "＄"}</div>
           <div>
             <div class="req-title">${esc(r.type)}</div>
-            <div class="req-sub">${esc(r.request_code)} · ${esc(r.period_or_details)}</div>
+            <div class="req-sub">${esc(r.request_code)} · ${esc(formatPeriod(r))}</div>
           </div>
           <span class="status ${r.status.toLowerCase()}">${r.status}</span>
         </div>
@@ -333,12 +356,15 @@ async function loadProfilePage() {
     document.getElementById("profDept").textContent = p.department;
     document.getElementById("profCompany").textContent = p.company;
     document.getElementById("profManager").textContent = p.manager_name || "None (Department Head)";
-    document.getElementById("profHireDate").textContent = new Date(p.hire_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    document.getElementById("profHireDate").textContent = formatDate(p.hire_date);
     document.getElementById("profLocation").textContent = p.location;
     document.getElementById("profLeaveBalance").textContent = `${p.leave_balance_days.toFixed(1)} days`;
 
     // Fetch learning summary
     document.getElementById("profLearningPct").textContent = `${p.learning_progress_percent}%`;
+    document.getElementById("profileCourseCount").textContent = `${p.courses.length} assigned courses`;
+    document.getElementById("profileCourses").innerHTML = `<h3>Assigned learning results</h3>` +
+      (p.courses.length ? p.courses.map(course => `<p><b>${esc(course.title)}</b> · ${course.progress_percent}% complete${course.score === null ? "" : ` · ${course.score}% lessons passed`}</p>`).join("") : "<p>No courses assigned.</p>");
   } catch (err) {
     toast(`Error loading profile: ${err.message}`);
   }
@@ -367,9 +393,9 @@ async function loadRequestsPage() {
           <b>${esc(r.type)}</b>
           <div class="req-sub">${esc(r.request_code)}</div>
         </td>
-        <td>${esc(r.submitted_date_formatted)}</td>
+        <td>${esc(formatDate(r.created_at))}</td>
         <td>
-          ${esc(r.period_or_details)}
+          ${esc(formatPeriod(r))}
           <div class="req-sub">${esc(r.reason || "No comment")}</div>
         </td>
         <td><span class="status ${r.status.toLowerCase()}">${r.status}</span></td>
@@ -399,7 +425,7 @@ async function loadAcademyPage() {
         <div class="progress"><span style="width:${c.progress_percent}%"></span></div>
         <div class="progress-label">
           <span>${c.progress_percent.toFixed(0)}% complete</span>
-          <span>${c.status === "COMPLETED" ? `Passed ${c.score}% ✓` : (c.assigned ? (c.due_date ? `Due ${c.due_date}` : "Assigned") : "Available to enroll")}</span>
+          <span>${c.status === "COMPLETED" ? `Passed ${c.score}% ✓` : (c.assigned ? (c.due_date ? `Due ${formatDate(c.due_date)}` : "Assigned") : "Available to enroll")}</span>
         </div>
         <button class="${c.progress_percent === 100 ? 'small-btn' : 'primary'}" style="margin-top:16px" onclick="openCoursePlayer(${c.id})">
           ${c.progress_percent === 100 ? "Review course →" : (c.progress_percent > 0 ? "Continue course →" : "Start course →")}
@@ -501,7 +527,7 @@ async function loadTeamPage() {
         </td>
         <td>${esc(r.type)}</td>
         <td>
-          ${esc(r.period_or_details)}
+          ${esc(formatPeriod(r))}
           <div class="req-sub">${esc(r.reason || "No comment")}</div>
         </td>
         <td><span class="status pending">Pending</span></td>
@@ -589,10 +615,10 @@ async function loadAdminPage() {
     const auditTable = document.getElementById("adminAuditTable");
     auditTable.innerHTML = logs.map(l => `
       <tr>
-        <td><code>${esc(l.action)}</code></td>
+        <td><code>${esc(I18n.t(l.action))}</code></td>
         <td>${esc(l.actor_name)}</td>
-        <td>${esc(l.target_type || "—")}: ${esc(l.target_id || "—")}</td>
-        <td><small>${esc(new Date(l.timestamp).toLocaleTimeString())}</small></td>
+        <td>${esc(I18n.t(l.target_type || "—"))}: ${esc(l.target_id || "—")}</td>
+        <td><small>${esc(formatTime(l.timestamp))}</small></td>
       </tr>
     `).join("");
   } catch (err) {
@@ -608,7 +634,7 @@ function setupKnowledgeForm() {
     submit.disabled = true;
     try {
       const doc = await api("/admin/knowledge/documents", {method:"POST", body:JSON.stringify({
-        title:form.elements.title.value, is_synthetic:form.elements.synthetic.checked,
+        title:form.elements.title.value, language:state.lang === "kz" ? "kk" : "ru", is_synthetic:form.elements.synthetic.checked,
       })});
       await api("/admin/knowledge", {method:"POST", body:JSON.stringify({document_id:doc.id,
         section_title:form.elements.section.value, content:form.elements.content.value,
@@ -721,7 +747,7 @@ async function openRequestDetailModal(id) {
     document.getElementById("detailModalStatus").innerHTML = `<span class="status ${r.status.toLowerCase()}">${r.status}</span>`;
     document.getElementById("detailModalRequester").textContent = r.user_name;
     document.getElementById("detailModalDept").textContent = r.department;
-    document.getElementById("detailModalDates").textContent = r.period_or_details;
+    document.getElementById("detailModalDates").textContent = formatPeriod(r);
     document.getElementById("detailModalSync").textContent = r.external_sync_id || "Documentolog is unconnected; no external registration";
 
     // Build timeline of events
@@ -731,7 +757,7 @@ async function openRequestDetailModal(id) {
         <span class="activity-dot" style="${ev.event_type === 'APPROVED' ? 'background:var(--green)' : (ev.event_type === 'REJECTED' ? 'background:var(--red)' : '')}"></span>
         <div>
           <b>${esc(ev.event_type)} by ${esc(ev.actor_name)}</b>
-          <p>${esc(ev.comment || '')} · <span style="font-size:10px">${new Date(ev.created_at).toLocaleString()}</span></p>
+          <p>${esc(ev.comment || '')} · <span style="font-size:10px">${formatDate(ev.created_at)} ${formatTime(ev.created_at)}</span></p>
         </div>
       </div>
     `).join("");
@@ -881,6 +907,7 @@ async function sendAIQuery(question) {
   // Append user bubble
   const userBubble = document.createElement("div");
   userBubble.className = "message user";
+  userBubble.dataset.verbatim = "";
   userBubble.textContent = question;
   container.appendChild(userBubble);
   container.scrollTop = container.scrollHeight;
@@ -898,11 +925,11 @@ async function sendAIQuery(question) {
       body: JSON.stringify({ question }),
     });
 
-    let html = `<div style="white-space:pre-wrap">${esc(res.answer)}</div>`;
+    let html = `<div data-verbatim style="white-space:pre-wrap">${esc(res.answer)}</div>`;
 
     if (res.sources?.length) {
       html += '<div class="citation-buttons">' + res.sources.map((source, index) =>
-        `<button class="source-pill" type="button" data-source-index="${index}">📖 ${esc(source.document_title)} · ${esc(source.section_title)}</button>`
+        `<button class="source-pill" type="button" data-verbatim data-source-index="${index}">📖 ${esc(source.document_title)} · ${esc(source.section_title)}</button>`
       ).join("") + '</div>';
     }
 
@@ -922,9 +949,9 @@ async function sendAIQuery(question) {
       const source = res.sources[Number(button.dataset.sourceIndex)];
       button.addEventListener("click", async () => {
         try {
-          const full = await api(`/ai/sources/${source.chunk_id}?revision=${source.document_revision}`);
+          const full = await api(`/ai/sources/${source.chunk_id}?revision=${source.document_revision}&language=${source.language}`);
           showCitationModal(`${full.document_title} · v${full.version}`, full.section_title,
-            `${full.is_synthetic ? "Synthetic example; not official HR policy.\n\n" : ""}${full.content}`);
+            `${full.is_synthetic ? I18n.t("Synthetic example; not official HR policy.") + "\n\n" : ""}${full.content}`);
         } catch (error) { toast(error.message); }
       });
     });
@@ -951,25 +978,23 @@ function setupRoleSwitch() {
 }
 
 function setupLanguageSwitch() {
-  const sel = document.getElementById("langSwitch");
-  if (!sel) return;
-  sel.addEventListener("change", e => {
-    state.lang = e.target.value;
-    applyLanguage(state.lang);
+  document.querySelectorAll("[data-language-select]").forEach(select => {
+    select.value = state.lang;
+    select.addEventListener("change", async event => {
+      state.lang = event.target.value;
+      I18n.apply(state.lang);
+      document.querySelectorAll(".modal-backdrop").forEach(modal => modal.classList.remove("open"));
+      if (state.token) {
+        try {
+          const me = await api("/me");
+          state.user = me.user;
+          state.profile = me.profile;
+          updateUserUI();
+          await refreshCurrentPage();
+        } catch (error) { toast(error.message); }
+      }
+    });
   });
-}
-
-function applyLanguage(lang) {
-  const dict = I18N[lang] || I18N.en;
-  document.querySelectorAll("[data-i18n]").forEach(el => {
-    const key = el.dataset.i18n;
-    if (dict[key]) {
-      if (el.hasAttribute("placeholder")) el.placeholder = dict[key];
-      else el.textContent = dict[key];
-    }
-  });
-  document.documentElement.lang = lang === "kz" ? "kk" : lang;
-  toast(`Language changed to ${lang.toUpperCase()}`);
 }
 
 // Start application when DOM is ready

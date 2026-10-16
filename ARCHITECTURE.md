@@ -30,8 +30,8 @@ Authentication is bearer-only. Passwords use PBKDF2-SHA256 with a per-hash rando
 | `enrollments` | Unique (user FK, course FK), status, progress, percentage of lessons passed, completion timestamp |
 | `lesson_progress` | Unique (enrollment FK, lesson FK), completion/pass flags and timestamp |
 | `notifications` | Owner FK, title/message/type, reference, read flag and timestamp |
-| `knowledge_documents` | Title/version/category, monotonic revision, active/approved/synthetic flags, approver FK and timestamps |
-| `knowledge_chunks` | Document FK, section, exact source text, tags and allowed role |
+| `knowledge_documents` | Title/version/category, primary language, stored translation metadata (JSON), monotonic revision, active/approved/synthetic flags, approver FK and timestamps |
+| `knowledge_chunks` | Document FK, section, exact source text, stored translated sections/content (JSON), tags and allowed role |
 | `audit_events` | Actor FK, action, target, minimal structured metadata and timestamp |
 
 Only profile read endpoints exist. Local provisioning is an operator operation. Employees see their own requests and notifications. Managers may read/review direct reports and read their own requests, but cannot review their own request. HR has deployment-wide scope and still cannot self-review. There is one organization per deployment.
@@ -49,3 +49,5 @@ Migrations are explicit and forward-only. Startup verifies the current revision.
 The two integration classes are extension boundaries with UNCONNECTED status, zero synced records and no last-sync claim. Neither credentials nor a guessed external API specification is supplied. Optional Documentolog reference generation is a local MOCK simulation only. Real connections require approved documentation, credentials, mapping, error/retry design and separate integration tests.
 
 See `docs/API_CONTRACT.md` for HTTP schemas and `docs/IMPLEMENTATION_REPORT.md` for validation and remaining limitations. Alembic’s connection-sharing approach follows its [official cookbook](https://alembic.sqlalchemy.org/en/latest/cookbook.html).
+
+Localization uses one RU/KK presentation catalog shared by the browser and backend. Each API route negotiates `Accept-Language` in a request-local context and translates allowlisted presentation fields; identity, authorization, IDs and enum codes remain stable. AI retrieves stored, approved source text in the requested language and returns its actual language/revision with every citation. Editing source text without replacement translations clears stale translations and invalidates approval. Additive migration `0004_source_translations` creates the columns without translating or changing existing policies. Explicit demo seeding installs only known synthetic translations. See `docs/LOCALIZATION_AND_DEMO.md` for provisioning and verification.

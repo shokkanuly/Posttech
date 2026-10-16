@@ -5,6 +5,7 @@ from fastapi import Request as FastAPIRequest
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.localization import LocalizedRoute
 from app.models.enums import RequestStatus, RequestType
 from app.models.user import User
 from app.pagination import Page
@@ -18,7 +19,7 @@ from app.schemas.request import (
 from app.services.auth_service import get_current_user
 from app.services.request_service import request_service
 
-router = APIRouter(prefix="/requests", tags=["Employee Requests"])
+router = APIRouter(route_class=LocalizedRoute, prefix="/requests", tags=["Employee Requests"])
 
 
 @router.get("", response_model=List[RequestResponse])

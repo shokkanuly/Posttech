@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.localization import LocalizedRoute
 from app.models.user import User
 from app.pagination import Page
 from app.schemas.common import DatabaseID, NotificationCountResponse, ReadAllResponse
@@ -11,7 +12,7 @@ from app.schemas.notification import NotificationResponse, NotificationUpdate
 from app.services.auth_service import get_current_user
 from app.services.notification_service import notification_service
 
-router = APIRouter(prefix="/notifications", tags=["Notifications"])
+router = APIRouter(route_class=LocalizedRoute, prefix="/notifications", tags=["Notifications"])
 
 
 @router.get("", response_model=List[NotificationResponse])

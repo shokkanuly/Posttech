@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, contains_eager
 from app.database import get_db
 from app.integrations.documentolog import documentolog_adapter
 from app.integrations.one_c_zup import one_c_adapter
+from app.localization import LocalizedRoute
 from app.models.audit import AuditEvent
 from app.models.enums import RequestStatus, UserRole
 from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
@@ -25,7 +26,7 @@ from app.services.academy_service import academy_service
 from app.services.auth_service import require_role
 from app.services.knowledge_service import knowledge_service
 
-router = APIRouter(prefix="/admin", tags=["HR Administration"])
+router = APIRouter(route_class=LocalizedRoute, prefix="/admin", tags=["HR Administration"])
 admin = require_role(UserRole.HR_ADMIN)
 
 

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
+from app.localization import LocalizedRoute
 from app.models.session import AuthSession
 from app.models.user import User
 from app.schemas.auth import LoginRequest, TokenResponse, UserResponse
@@ -18,7 +19,7 @@ from app.services.auth_service import (
     security,
 )
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(route_class=LocalizedRoute, prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=TokenResponse)

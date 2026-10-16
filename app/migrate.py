@@ -7,7 +7,7 @@ from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from sqlalchemy.engine import Engine
 
-HEAD = "0003_knowledge_revisions"
+HEAD = "0004_source_translations"
 
 
 class SchemaNotCurrentError(RuntimeError):

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.localization import LocalizedRoute
 from app.models.enums import RequestStatus, UserRole
 from app.models.profile import EmployeeProfile
 from app.models.user import User
@@ -13,7 +14,7 @@ from app.schemas.request import RequestResponse
 from app.services.auth_service import require_role
 from app.services.request_service import request_service
 
-router = APIRouter(prefix="/manager", tags=["Manager Portal"])
+router = APIRouter(route_class=LocalizedRoute, prefix="/manager", tags=["Manager Portal"])
 
 
 @router.get("/requests", response_model=List[RequestResponse])

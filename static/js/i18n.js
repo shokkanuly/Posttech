@@ -1,158 +1,95 @@
-const I18N = {
-  en: {
-    workspace: "Workspace",
-    workspaceTools: "Workspace tools",
-    overview: "Overview",
-    myProfile: "My profile",
-    myRequests: "My requests",
-    janaAcademy: "Jana Academy",
-    aiJana: "AI Jana",
-    notifications: "Notifications",
-    teamApprovals: "Team & approvals",
-    hrAdmin: "HR administration",
-    needAHand: "Need a hand?",
-    needAHandDesc: "Find answers in the verified HR knowledge base.",
-    askAiJana: "Ask AI Jana ↗",
-    officialHrData: "Local HR fields · Read-only",
-    verifiedDemoData: "Verified demo data",
-    annualLeaveBalance: "Annual leave balance",
-    daysAvailable: "days available",
-    learningProgress: "Learning progress",
-    coursesAssigned: "Courses assigned",
-    openRequests: "Open requests",
-    recentRequests: "Recent requests",
-    viewAll: "View all ↗",
-    pickUpWhereYouLeftOff: "Pick up where you left off",
-    continueLearning: "Continue learning →",
-    newRequest: "＋ New request",
-    requestTimeOff: "Request time off ↗",
-    requestType: "Request type",
-    vacation: "Vacation",
-    advancePayment: "Advance payment",
-    startDate: "Start date / requested date",
-    endDate: "End date",
-    amount: "Amount (₸)",
-    reason: "Reason / comment",
-    submitRequest: "Submit request ↗",
-    cancel: "Cancel",
-    pendingApprovals: "Pending approvals",
-    approve: "Approve",
-    reject: "Decline",
-    allStatuses: "All statuses",
-    allTypes: "All types",
-    askQuestionPlaceholder: "Ask an HR question…",
-    send: "Send ↗",
-    newChat: "New chat",
-    sourcesIncluded: "Sources included",
-    sourcesIncludedDesc: "Every supported answer points to a verified knowledge source.",
-    noGuesswork: "No guesswork",
-    noGuessworkDesc: "If the knowledge base is silent, AI Jana says so safely.",
-    privacyAware: "Privacy-aware",
-    privacyAwareDesc: "Personal HR records are protected and never disclosed in public Q&A.",
-    markAllRead: "Mark all as read",
-  },
-  ru: {
-    workspace: "Рабочее пространство",
-    workspaceTools: "Инструменты",
-    overview: "Главная",
-    myProfile: "Мой профиль",
-    myRequests: "Мои заявки",
-    janaAcademy: "Jana Академия",
-    aiJana: "AI Jana",
-    notifications: "Уведомления",
-    teamApprovals: "Команда и согласования",
-    hrAdmin: "HR-администрирование",
-    needAHand: "Нужна помощь?",
-    needAHandDesc: "Найдите ответ в подтвержденной базе знаний HR.",
-    askAiJana: "Спросить AI Jana ↗",
-    officialHrData: "Локальные HR-данные · Только чтение",
-    verifiedDemoData: "Подтвержденные данные",
-    annualLeaveBalance: "Баланс дней отпуска",
-    daysAvailable: "дней доступно",
-    learningProgress: "Прогресс обучения",
-    coursesAssigned: "Назначено курсов",
-    openRequests: "Активные заявки",
-    recentRequests: "Последние заявки",
-    viewAll: "Все заявки ↗",
-    pickUpWhereYouLeftOff: "Продолжить обучение",
-    continueLearning: "Продолжить курс →",
-    newRequest: "＋ Создать заявку",
-    requestTimeOff: "Подать заявку на отпуск ↗",
-    requestType: "Тип заявки",
-    vacation: "Отпуск",
-    advancePayment: "Аванс",
-    startDate: "Дата начала / дата выплаты",
-    endDate: "Дата окончания",
-    amount: "Сумма (₸)",
-    reason: "Причина / комментарий",
-    submitRequest: "Отправить заявку ↗",
-    cancel: "Отмена",
-    pendingApprovals: "Заявки на согласовании",
-    approve: "Одобрить",
-    reject: "Отклонить",
-    allStatuses: "Все статусы",
-    allTypes: "Все типы",
-    askQuestionPlaceholder: "Задайте вопрос по кадровым правилам…",
-    send: "Отправить ↗",
-    newChat: "Новый диалог",
-    sourcesIncluded: "Ответы с источниками",
-    sourcesIncludedDesc: "Каждый подтвержденный ответ ссылается на пункт регламента.",
-    noGuesswork: "Без выдумок",
-    noGuessworkDesc: "Если данных в базе знаний нет, AI Jana честно сообщает об этом.",
-    privacyAware: "Защита данных",
-    privacyAwareDesc: "Персональные данные коллег защищены и не разглашаются в поиске.",
-    markAllRead: "Прочитать все",
-  },
-  kz: {
-    workspace: "Жұмыс кеңістігі",
-    workspaceTools: "Құралдар",
-    overview: "Басты бет",
-    myProfile: "Менің профилім",
-    myRequests: "Менің өтініштерім",
-    janaAcademy: "Jana Академиясы",
-    aiJana: "AI Jana",
-    notifications: "Хабарландырулар",
-    teamApprovals: "Команда және мақұлдау",
-    hrAdmin: "HR-әкімшілік",
-    needAHand: "Көмек керек пе?",
-    needAHandDesc: "Тексерілген HR білім қорынан жауап табыңыз.",
-    askAiJana: "AI Jana-дан сұрау ↗",
-    officialHrData: "Жергілікті HR деректері · Тек оқу үшін",
-    verifiedDemoData: "Тексерілген деректер",
-    annualLeaveBalance: "Еңбек демалысының қалдығы",
-    daysAvailable: "күн қолжетімді",
-    learningProgress: "Оқу барысы",
-    coursesAssigned: "Тағайындалған курстар",
-    openRequests: "Ашық өтініштер",
-    recentRequests: "Соңғы өтініштер",
-    viewAll: "Барлығын көру ↗",
-    pickUpWhereYouLeftOff: "Оқуды жалғастыру",
-    continueLearning: "Курсты жалғастыру →",
-    newRequest: "＋ Жаңа өтініш",
-    requestTimeOff: "Демалысқа өтініш беру ↗",
-    requestType: "Өтініш түрі",
-    vacation: "Еңбек демалысы",
-    advancePayment: "Жалақы авансы",
-    startDate: "Басталу күні / сұралған күн",
-    endDate: "Аяқталу күні",
-    amount: "Сомасы (₸)",
-    reason: "Себебі / пікір",
-    submitRequest: "Өтінішті жіберу ↗",
-    cancel: "Болдырмау",
-    pendingApprovals: "Мақұлдауды күтудегі өтініштер",
-    approve: "Мақұлдау",
-    reject: "Қабылдамау",
-    allStatuses: "Барлық мәртебелер",
-    allTypes: "Барлық түрлері",
-    askQuestionPlaceholder: "HR ережелері бойынша сұрақ қойыңыз…",
-    send: "Жіберу ↗",
-    newChat: "Жаңа сұхбат",
-    sourcesIncluded: "Дереккөздермен жауап",
-    sourcesIncludedDesc: "Әрбір жауап нақты бекітілген құжатқа сүйенеді.",
-    noGuesswork: "Жалған дерексіз",
-    noGuessworkDesc: "Егер білім базасында ақпарат болмаса, AI Jana оны ашық айтады.",
-    privacyAware: "Құпиялылықты қорғау",
-    privacyAwareDesc: "Қызметкерлердің жеке деректері қорғалған.",
-    markAllRead: "Барлығын оқылды деп белгілеу",
+/** Complete presentation localization. API enums, IDs and authored source text are preserved. */
+const I18n = (() => {
+  let catalog = {messages: {}, rules: []};
+  let language = "ru";
+  let reverse = new Map();
+  const originals = new WeakMap();
+  const attributes = new WeakMap();
+  const excluded = "script,style,code,[data-verbatim],#citationSnippet,#citationDocTitle,#citationSecTitle";
+  const normalize = value => String(value).replace(/\s+/g, " ").trim();
+  function savedLanguage() {
+    try { return ["kk", "kz"].includes(localStorage.getItem("janamen-language")) ? "kz" : "ru"; }
+    catch { return "ru"; }
   }
-};
+  function t(value, selected = language, depth = 0) {
+    const raw = String(value ?? "");
+    if (depth > 5) return raw;
+    const locale = selected === "kz" ? "kk" : selected;
+    const key = reverse.get(normalize(raw)) || normalize(raw);
+    const exact = catalog.messages[key]?.[locale];
+    if (exact !== undefined) return exact;
+    for (const rule of catalog.rules) {
+      const match = new RegExp(`^(?:${rule.pattern})$`, "u").exec(key);
+      if (match) return rule[locale].replace(/\{(\d+)\}/g, (_, index) => t(match[Number(index) + 1] || "", selected, depth + 1));
+    }
+    if (key.includes(" · ")) return key.split(" · ").map(part => t(part, selected, depth + 1)).join(" · ");
+    return raw;
+  }
+  function textNode(node) {
+    if (!node.parentElement || node.parentElement.closest(excluded) || !node.nodeValue.trim()) return;
+    const previous = originals.get(node);
+    const source = previous && node.nodeValue === previous.rendered ? previous.source : node.nodeValue;
+    const whitespace = source.match(/^(\s*)([\s\S]*?)(\s*)$/);
+    const rendered = whitespace[1] + t(whitespace[2]) + whitespace[3];
+    originals.set(node, {source, rendered});
+    if (node.nodeValue !== rendered) node.nodeValue = rendered;
+  }
+  function elementAttributes(element) {
+    if (element.closest(excluded)) return;
+    const saved = attributes.get(element) || {};
+    for (const name of ["placeholder", "aria-label", "title", "data-question"]) {
+      const value = element.getAttribute(name);
+      if (value === null) continue;
+      const previous = saved[name];
+      const source = previous && value === previous.rendered ? previous.source : value;
+      const rendered = t(source);
+      saved[name] = {source, rendered};
+      if (value !== rendered) element.setAttribute(name, rendered);
+    }
+    attributes.set(element, saved);
+  }
+  function render(root = document.body) {
+    if (root.nodeType === Node.TEXT_NODE) { textNode(root); return; }
+    if (root.nodeType !== Node.ELEMENT_NODE) return;
+    elementAttributes(root);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeType === Node.TEXT_NODE) textNode(node);
+      else elementAttributes(node);
+    }
+  }
+  async function load() {
+    const response = await fetch("/static/locales/catalog.json", {cache: "no-cache"});
+    if (!response.ok) throw new Error("Не удалось загрузить переводы. Обновите страницу.");
+    catalog = await response.json();
+    for (const [source, translations] of Object.entries(catalog.messages)) {
+      for (const value of Object.values(translations)) if (!reverse.has(normalize(value))) reverse.set(normalize(value), source);
+    }
+    language = savedLanguage();
+    apply(language);
+    new MutationObserver(records => {
+      for (const record of records) {
+        if (record.type === "characterData") textNode(record.target);
+        else if (record.type === "attributes") elementAttributes(record.target);
+        else for (const node of record.addedNodes) render(node);
+      }
+    }).observe(document.body, {subtree: true, childList: true, characterData: true, attributes: true,
+      attributeFilter: ["placeholder", "aria-label", "title", "data-question"]});
+    document.querySelectorAll("input,textarea,select").forEach(input => {
+      input.addEventListener("invalid", () => input.setCustomValidity(t(input.validity.valueMissing ? "Please fill out this field." : "Please enter a valid value.")));
+      input.addEventListener("input", () => input.setCustomValidity(""));
+      input.addEventListener("change", () => input.setCustomValidity(""));
+    });
+  }
+  function apply(value) {
+    language = value === "kz" || value === "kk" ? "kz" : "ru";
+    document.documentElement.lang = language === "kz" ? "kk" : "ru";
+    document.title = t("JanaМен · People Workspace | Jana Post");
+    document.querySelectorAll("[data-language-select]").forEach(select => { select.value = language; });
+    document.querySelectorAll("input,textarea,select").forEach(input => input.setCustomValidity(""));
+    render();
+    try { localStorage.setItem("janamen-language", language); } catch { /* preference storage may be disabled */ }
+  }
+  return {load, apply, t, render, savedLanguage};
+})();

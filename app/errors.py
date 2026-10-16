@@ -9,11 +9,29 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError, OperationalError
 from starlette.exceptions import HTTPException
 
+from app.localization import language_for, translate
+
 logger = logging.getLogger("janamen")
 
 
 def error_response(request: Request, status: int, message: str, fields=None, headers=None):
     request_id = getattr(request.state, "request_id", uuid4().hex)
+    language = language_for(request)
+    original_message = message
+    message = translate(message, language)
+    if language != "en" and message == original_message:
+        message = translate(
+            "Invalid input" if status < 500 else "An unexpected error occurred", language
+        )
+    localized_fields = [
+        {
+            **field,
+            "message": translate(field["message"], language)
+            if translate(field["message"], language) != field["message"] or language == "en"
+            else translate("Please check this field", language),
+        }
+        for field in (fields or [])
+    ]
     codes = {
         401: "unauthenticated",
         403: "forbidden",
@@ -31,7 +49,7 @@ def error_response(request: Request, status: int, message: str, fields=None, hea
             "error": {
                 "code": codes.get(status, "request_error" if status < 500 else "internal_error"),
                 "message": message,
-                "fields": fields or [],
+                "fields": localized_fields,
             },
             "request_id": request_id,
         },
@@ -41,6 +59,8 @@ def error_response(request: Request, status: int, message: str, fields=None, hea
             "Cache-Control": "no-store",
             "X-Content-Type-Options": "nosniff",
             "Referrer-Policy": "same-origin",
+            "Content-Language": language,
+            "Vary": "Accept-Language",
         },
     )
 

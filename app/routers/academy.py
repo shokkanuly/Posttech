@@ -5,6 +5,7 @@ from fastapi import Request as FastAPIRequest
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.localization import LocalizedRoute
 from app.models.user import User
 from app.pagination import Page
 from app.schemas.academy import (
@@ -18,7 +19,7 @@ from app.schemas.common import DatabaseID
 from app.services.academy_service import academy_service
 from app.services.auth_service import get_current_user
 
-router = APIRouter(prefix="/courses", tags=["Jana Academy"])
+router = APIRouter(route_class=LocalizedRoute, prefix="/courses", tags=["Jana Academy"])
 
 
 @router.get("", response_model=List[CourseResponse])

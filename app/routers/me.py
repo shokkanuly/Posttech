@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.localization import LocalizedRoute
 from app.models.academy import Enrollment
 from app.models.enums import RequestStatus, UserRole
 from app.models.profile import EmployeeProfile
@@ -13,7 +14,7 @@ from app.services.academy_service import academy_service
 from app.services.auth_service import get_current_user
 from app.services.notification_service import notification_service
 
-router = APIRouter(prefix="/me", tags=["Current User & Profile"])
+router = APIRouter(route_class=LocalizedRoute, prefix="/me", tags=["Current User & Profile"])
 
 
 @router.get("", response_model=MeResponse)

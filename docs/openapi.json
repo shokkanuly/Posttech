@@ -3125,6 +3125,27 @@
               ],
               "title": "Revision"
             }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "en",
+                    "ru",
+                    "kk"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Language"
+            }
           }
         ],
         "responses": {
@@ -5936,6 +5957,30 @@
             "type": "boolean",
             "title": "Is Synthetic",
             "default": false
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "ru",
+              "kk"
+            ],
+            "title": "Language",
+            "default": "en"
+          },
+          "translations": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DocumentTranslation"
+            },
+            "propertyNames": {
+              "enum": [
+                "en",
+                "ru",
+                "kk"
+              ]
+            },
+            "type": "object",
+            "title": "Translations"
           }
         },
         "additionalProperties": false,
@@ -6032,11 +6077,83 @@
               }
             ],
             "title": "Expected Revision"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "en",
+                  "ru",
+                  "kk"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "translations": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/DocumentTranslation"
+                },
+                "propertyNames": {
+                  "enum": [
+                    "en",
+                    "ru",
+                    "kk"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Translations"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "DocumentPatch"
+      },
+      "DocumentTranslation": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Category",
+            "default": "HR Policy"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "DocumentTranslation"
       },
       "EmployeeProfileResponse": {
         "properties": {
@@ -6341,6 +6458,20 @@
             ],
             "title": "Access Level",
             "default": "all"
+          },
+          "translations": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SourceTranslation"
+            },
+            "propertyNames": {
+              "enum": [
+                "en",
+                "ru",
+                "kk"
+              ]
+            },
+            "type": "object",
+            "title": "Translations"
           }
         },
         "additionalProperties": false,
@@ -6421,6 +6552,27 @@
               }
             ],
             "title": "Expected Revision"
+          },
+          "translations": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/SourceTranslation"
+                },
+                "propertyNames": {
+                  "enum": [
+                    "en",
+                    "ru",
+                    "kk"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Translations"
           }
         },
         "additionalProperties": false,
@@ -6481,6 +6633,24 @@
           "document_revision": {
             "type": "integer",
             "title": "Document Revision"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
+          "translations": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SourceTranslation"
+            },
+            "propertyNames": {
+              "enum": [
+                "en",
+                "ru",
+                "kk"
+              ]
+            },
+            "type": "object",
+            "title": "Translations"
           }
         },
         "type": "object",
@@ -6493,7 +6663,9 @@
           "access_level",
           "is_approved",
           "is_synthetic",
-          "document_revision"
+          "document_revision",
+          "language",
+          "translations"
         ],
         "title": "KnowledgeChunkResponse"
       },
@@ -6569,6 +6741,24 @@
             "type": "string",
             "format": "date-time",
             "title": "Updated At"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
+          "translations": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DocumentTranslation"
+            },
+            "propertyNames": {
+              "enum": [
+                "en",
+                "ru",
+                "kk"
+              ]
+            },
+            "type": "object",
+            "title": "Translations"
           }
         },
         "type": "object",
@@ -6584,7 +6774,9 @@
           "is_synthetic",
           "approved_by_id",
           "approved_at",
-          "updated_at"
+          "updated_at",
+          "language",
+          "translations"
         ],
         "title": "KnowledgeDocumentResponse"
       },
@@ -6646,6 +6838,10 @@
             "type": "integer",
             "title": "Document Revision"
           },
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
           "is_synthetic": {
             "type": "boolean",
             "title": "Is Synthetic"
@@ -6660,6 +6856,7 @@
           "content",
           "version",
           "document_revision",
+          "language",
           "is_synthetic"
         ],
         "title": "KnowledgeSourceResponse"
@@ -7555,6 +7752,10 @@
             "type": "integer",
             "title": "Document Revision"
           },
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
           "is_synthetic": {
             "type": "boolean",
             "title": "Is Synthetic"
@@ -7569,9 +7770,33 @@
           "snippet",
           "version",
           "document_revision",
+          "language",
           "is_synthetic"
         ],
         "title": "SourceCitation"
+      },
+      "SourceTranslation": {
+        "properties": {
+          "section_title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Section Title"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "section_title",
+          "content"
+        ],
+        "title": "SourceTranslation"
       },
       "TeamMemberResponse": {
         "properties": {

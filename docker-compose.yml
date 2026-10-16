@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  web:
+    build: .
+    container_name: janamen_digital_hr
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=sqlite:///./janamen.db
+      - SECRET_KEY=synthetic-demo-secret-key-change-in-production-never-commit-secrets
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - AI_PROVIDER=grounded_knowledge
+      - AI_CONFIDENCE_THRESHOLD=0.50
+      - HR_SUPPORT_EMAIL=hr-support@janapost.kz
+      - ENABLE_MOCK_INTEGRATIONS=true
+    volumes:
+      - janamen_data:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  janamen_data:

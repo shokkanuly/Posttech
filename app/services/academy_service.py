@@ -65,7 +65,7 @@ class AcademyService:
                 target_id=str(enrollment.id),
                 details={"user_id": user_id, "course_id": course_id},
             )
-            db.commit()
+        db.commit()
         return cls.get_course_detail(db, course_id, user)
 
     @classmethod

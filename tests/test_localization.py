@@ -8,6 +8,8 @@ from starlette.requests import Request
 from app.localization import current_language, language_for
 from app.models.audit import AuditEvent
 from app.models.knowledge import KnowledgeChunk
+from app.models.user import User
+from app.provision_demo import DEMO_ACCOUNTS, provision_accounts
 
 
 @pytest.mark.parametrize(
@@ -129,6 +131,38 @@ def test_source_edit_removes_stale_translations(client, employee_headers, hr_adm
     assert (
         client.get("/api/v1/ai/sources/1?language=en", headers=employee_headers).status_code == 200
     )
+
+
+def test_demo_accounts_are_created_sequentially_and_repeatably(client, db_session):
+    accounts = provision_accounts(db_session)
+    assert accounts["hr_admin"] < accounts["manager"] < accounts["employee"]
+    employee = db_session.get(User, accounts["employee"])
+    assert employee.profile.manager_id == accounts["manager"]
+    original_hashes = {user.id: user.password_hash for user in db_session.query(User).all()}
+    assert provision_accounts(db_session) == accounts
+    assert {user.id: user.password_hash for user in db_session.query(User).all()} == original_hashes
+    assert client.get("/api/v1/config").json()["demo_accounts"] == DEMO_ACCOUNTS
+    headers = {}
+    for role in ("hr_admin", "manager", "employee"):
+        login = client.post(
+            "/api/v1/auth/login", json={"email": DEMO_ACCOUNTS[role], "password": "Password123!"}
+        )
+        assert login.status_code == 200
+        assert login.json()["user"]["role"] == role
+        headers[role] = {"Authorization": "Bearer " + login.json()["access_token"]}
+    assert client.get("/api/v1/admin/summary", headers=headers["employee"]).status_code == 403
+    assert client.get("/api/v1/admin/summary", headers=headers["manager"]).status_code == 403
+    assert client.get("/api/v1/admin/summary", headers=headers["hr_admin"]).status_code == 200
+    team = client.get("/api/v1/manager/team", headers=headers["manager"]).json()
+    assert [member["user_id"] for member in team] == [accounts["employee"]]
+
+
+def test_demo_provisioning_is_forbidden_in_production(db_session, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    with pytest.raises(RuntimeError, match="non-production"):
+        provision_accounts(db_session)
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,7 @@
 # Backend upgrade and API verification
 
+Latest follow-up: [RU/KK localization and three role demo accounts](LOCALIZATION_AND_DEMO.md), including the current **266 backend + 5 frontend tests**. The 244-test results below describe this earlier backend pass.
+
 Completed 16 October 2026. The existing FastAPI / SQLAlchemy / SQLite modular monolith and HTML/CSS/JavaScript frontend were retained. This pass started from the previously implemented MVP with 81 passing tests. Existing Git changes were preserved; no commit, deployment, destructive database operation, or paid service was performed.
 
 ## Result

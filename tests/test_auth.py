@@ -1,5 +1,7 @@
 def test_login_successful(client):
-    res = client.post("/api/v1/auth/login", json={"email": "aruzhan@janapost.kz", "password": "Password123!"})
+    res = client.post(
+        "/api/v1/auth/login", json={"email": "aruzhan@janapost.kz", "password": "Password123!"}
+    )
     assert res.status_code == 200
     data = res.json()
     assert "access_token" in data
@@ -9,13 +11,17 @@ def test_login_successful(client):
 
 
 def test_login_invalid_password(client):
-    res = client.post("/api/v1/auth/login", json={"email": "aruzhan@janapost.kz", "password": "WrongPassword"})
+    res = client.post(
+        "/api/v1/auth/login", json={"email": "aruzhan@janapost.kz", "password": "WrongPassword"}
+    )
     assert res.status_code == 401
     assert "Incorrect email or password" in res.json()["detail"]
 
 
 def test_login_nonexistent_user(client):
-    res = client.post("/api/v1/auth/login", json={"email": "unknown@janapost.kz", "password": "Password123!"})
+    res = client.post(
+        "/api/v1/auth/login", json={"email": "unknown@janapost.kz", "password": "Password123!"}
+    )
     assert res.status_code == 401
 
 
@@ -39,7 +45,7 @@ def test_get_my_profile(client, employee_headers):
     data = res.json()
     assert data["employee_code"] == "JP-10428"
     assert data["manager_name"] == "Timur Kasymov"
-    assert data["is_official_hr_data"] is True
+    assert data["is_official_hr_data"] is False  # No external 1C verification.
     assert data["read_only"] is True
 
 

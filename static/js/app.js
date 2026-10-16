@@ -17,12 +17,7 @@ const state = {
   currentLesson: null,
 };
 
-// Preset demo accounts with real backend passwords
-const DEMO_ACCOUNTS = {
-  employee: { email: "aruzhan@janapost.kz", password: "Password123!" },
-  manager: { email: "timur@janapost.kz", password: "Password123!" },
-  hr_admin: { email: "aigerim@janapost.kz", password: "Password123!" },
-};
+let demoAccounts = {};
 
 // --- HTTP CLIENT HELPERS ---
 async function api(path, options = {}) {
@@ -31,22 +26,16 @@ async function api(path, options = {}) {
     headers["Authorization"] = `Bearer ${state.token}`;
   }
 
-  try {
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-    if (res.status === 401 && !path.includes("/auth/login")) {
-      // Token expired, log in as default employee
-      await switchRole("employee");
-      return;
-    }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.detail || `Request failed (${res.status})`);
-    }
-    return data;
-  } catch (err) {
-    console.error("API error on", path, err);
-    throw err;
+  const tokenAtStart = state.token;
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const data = await res.json().catch(() => ({}));
+  if (tokenAtStart !== state.token) throw new Error("Session changed; please retry.");
+  if (res.status === 401 && !path.includes("/auth/login")) showLogin();
+  if (!res.ok) {
+    const fields = data.error?.fields?.map(f => `${f.location.slice(1).join(".")}: ${f.message}`).join("; ");
+    throw new Error(fields || data.error?.message || data.detail || `Request failed (${res.status})`);
   }
+  return data;
 }
 
 function toast(msg) {
@@ -71,33 +60,87 @@ async function initApp() {
   setupModals();
   setupAIChat();
 
-  // Initial login with employee persona
-  await switchRole("employee");
+  document.getElementById("logoutBtn").onclick = () => logout();
+  document.getElementById("loginForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = document.getElementById("loginSubmit");
+    button.disabled = true;
+    document.getElementById("loginError").textContent = "";
+    try {
+      const result = await api("/auth/login", {method:"POST", body:JSON.stringify({
+        email:document.getElementById("loginEmail").value,
+        password:document.getElementById("loginPassword").value,
+      })});
+      state.token = result.access_token;
+      state.user = result.user;
+      const me = await api("/me");
+      state.profile = me.profile;
+      document.getElementById("loginPassword").value = "";
+      document.getElementById("loginGate").hidden = true;
+      document.getElementById("app").hidden = false;
+      updateUserUI();
+      await go("home");
+    } catch (error) {
+      showLogin();
+      document.getElementById("loginError").textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+  setupKnowledgeForm();
+  try {
+    const config = await api("/config");
+    demoAccounts = config.demo_accounts;
+    document.getElementById("roleSwitch").hidden = !config.demo_mode;
+    document.getElementById("loginHint").textContent = config.demo_mode
+      ? "Synthetic demo. Use a test account and the demo password configured by the operator."
+      : "Use your account email and password.";
+    showLogin(demoAccounts.employee || "");
+  } catch (error) {
+    document.getElementById("loginError").textContent = error.message;
+  }
+}
+
+function showLogin(email = "") {
+  state.token = null;
+  state.user = null;
+  state.profile = null;
+  state.currentCourse = null;
+  state.currentLesson = null;
+  state.courses = [];
+  state.notifications = [];
+  state.pendingReview = null;
+  document.getElementById("app").hidden = true;
+  document.querySelectorAll(".modal-backdrop").forEach(el => el.classList.remove("open"));
+  ["homeRequests", "academyGrid", "notificationsList", "teamTable", "requestTable", "knowledgeList",
+   "knowledgeDocuments", "approvedKnowledgeList", "adminAuditTable", "chatMessages", "playerLessonsList", "playerQuizOptions", "detailModalTimeline"]
+    .forEach(id => document.getElementById(id)?.replaceChildren());
+  document.querySelectorAll('[id^="prof"], #userName, #userRole, #greeting, #citationSnippet, #playerLessonContent')
+    .forEach(el => { if (el.childElementCount === 0) el.textContent = "—"; });
+  ["detailModalTitle", "detailModalCode", "detailModalRequester", "detailModalDept", "detailModalDates",
+   "detailModalSync", "playerCourseTitle", "playerLessonTitle", "playerQuizQuestion", "playerQuizFeedback",
+   "citationDocTitle", "citationSecTitle", "homeCourseCard", "homeActivity"]
+    .forEach(id => document.getElementById(id)?.replaceChildren());
+  document.querySelectorAll("#app form").forEach(form => form.reset());
+  document.getElementById("loginEmail").value = email;
+  document.getElementById("loginPassword").value = "";
+  document.getElementById("loginGate").hidden = false;
+}
+
+async function logout(email = "") {
+  try {
+    if (state.token) await api("/auth/logout", {method:"POST"});
+    showLogin(email);
+  } catch (error) {
+    // Local data is cleared even if the network is unavailable; server token expires.
+    showLogin(email);
+    document.getElementById("loginError").textContent = `Local sign-out complete. ${error.message}`;
+  }
 }
 
 async function switchRole(roleKey) {
-  const account = DEMO_ACCOUNTS[roleKey];
-  if (!account) return;
-
-  try {
-    const loginData = await api("/auth/login", {
-      method: "POST",
-      body: JSON.stringify(account),
-    });
-
-    state.token = loginData.access_token;
-    state.user = loginData.user;
-
-    // Fetch full profile and dashboard
-    const meData = await api("/me");
-    state.profile = meData.profile;
-
-    updateUserUI();
-    await refreshCurrentPage();
-    toast(`Authenticated as ${state.user.full_name} (${state.user.role})`);
-  } catch (err) {
-    toast(`Login error: ${err.message}`);
-  }
+  const email = demoAccounts[roleKey];
+  if (email) await logout(email);
 }
 
 function updateUserUI() {
@@ -129,9 +172,8 @@ function updateUserUI() {
 
 // --- NAVIGATION ---
 function setupNavigation() {
-  document.getElementById("nav").addEventListener("click", e => {
-    const btn = e.target.closest("[data-page]");
-    if (btn) go(btn.dataset.page);
+  document.querySelectorAll("[data-page]").forEach(button => {
+    button.addEventListener("click", () => go(button.dataset.page));
   });
 
   document.querySelectorAll("[data-goto]").forEach(el => {
@@ -158,6 +200,7 @@ const pageTitles = {
 };
 
 async function go(page) {
+  if (!state.token) { showLogin(); return; }
   // Check permission
   if (page === "team" && state.user?.role === "employee") {
     toast("Access denied: Team workspace requires a manager or HR admin role.");
@@ -205,6 +248,9 @@ async function refreshCurrentPage() {
     case "academy":
       await loadAcademyPage();
       break;
+    case "assistant":
+      await loadKnowledgeSummary();
+      break;
     case "notifications":
       await loadNotificationsPage();
       break;
@@ -225,12 +271,23 @@ async function loadDashboard() {
   try {
     const data = await api("/me/dashboard");
 
-    document.getElementById("greeting").innerHTML = `${data.greeting} <span>✳</span>`;
+    document.getElementById("greeting").textContent = `${data.greeting} ✳`;
     document.getElementById("leaveDays").textContent = data.leave_balance_days.toFixed(1);
     document.getElementById("statRequests").textContent = data.open_requests_count;
     document.getElementById("statLearning").textContent = `${data.learning_progress_percent}%`;
     document.getElementById("statCourses").textContent = data.assigned_courses_count;
     document.getElementById("statNotifications").textContent = data.unread_notifications_count;
+
+    const courses = (await api("/courses")).filter(c => c.assigned);
+    const nextCourse = courses.find(c => c.status !== "COMPLETED") || courses[0];
+    const homeCourse = document.getElementById("homeCourseCard");
+    homeCourse.innerHTML = nextCourse ? `<div style="width:100%"><h4>${esc(nextCourse.title)}</h4>
+      <p>${nextCourse.status === "COMPLETED" ? "Completed" : `${nextCourse.total_lessons} lessons`} · ${nextCourse.progress_percent}% complete</p>
+      <div class="progress"><span style="width:${nextCourse.progress_percent}%"></span></div>
+      <button class="text-link" onclick="openCoursePlayer(${nextCourse.id})">${nextCourse.status === "COMPLETED" ? "Review course" : "Continue learning"} →</button></div>`
+      : `<p>No courses assigned. Explore Jana Academy to enroll.</p>`;
+    const notifications = await api("/notifications?limit=1");
+    document.getElementById("homeActivity").textContent = notifications[0]?.title || "No updates yet.";
 
     // Load recent requests for the quick list
     const requests = await api("/requests");
@@ -269,9 +326,7 @@ async function loadProfilePage() {
     document.getElementById("profLeaveBalance").textContent = `${p.leave_balance_days.toFixed(1)} days`;
 
     // Fetch learning summary
-    const courses = await api("/courses");
-    const avg = courses.length ? (courses.reduce((a, b) => a + b.progress_percent, 0) / courses.length).toFixed(0) : 0;
-    document.getElementById("profLearningPct").textContent = `${avg}%`;
+    document.getElementById("profLearningPct").textContent = `${p.learning_progress_percent}%`;
   } catch (err) {
     toast(`Error loading profile: ${err.message}`);
   }
@@ -332,7 +387,7 @@ async function loadAcademyPage() {
         <div class="progress"><span style="width:${c.progress_percent}%"></span></div>
         <div class="progress-label">
           <span>${c.progress_percent.toFixed(0)}% complete</span>
-          <span>${c.status === "COMPLETED" ? "Completed ✓" : (c.due_date ? `Due ${c.due_date}` : "Self-paced")}</span>
+          <span>${c.status === "COMPLETED" ? `Passed ${c.score}% ✓` : (c.assigned ? (c.due_date ? `Due ${c.due_date}` : "Assigned") : "Available to enroll")}</span>
         </div>
         <button class="${c.progress_percent === 100 ? 'small-btn' : 'primary'}" style="margin-top:16px" onclick="openCoursePlayer(${c.id})">
           ${c.progress_percent === 100 ? "Review course →" : (c.progress_percent > 0 ? "Continue course →" : "Start course →")}
@@ -394,8 +449,8 @@ async function markAllNotificationsRead() {
 
 async function updateNotificationBadge() {
   try {
-    const notifs = await api("/notifications");
-    const unread = notifs.filter(n => !n.is_read).length;
+    const counts = await api("/notifications/unread-count");
+    const unread = counts.unread;
     const dot = document.getElementById("notifDot");
     if (dot) dot.style.display = unread > 0 ? "block" : "none";
     const navBadge = document.getElementById("navNotifCount");
@@ -413,6 +468,10 @@ async function loadTeamPage() {
   try {
     const requests = await api("/manager/requests?status=Pending");
     const teamTable = document.getElementById("teamTable");
+    document.getElementById("teamScope").textContent = state.user.role === "hr_admin" ? "Company" : "Direct reports";
+    const members = await api("/manager/team");
+    document.getElementById("teamCount").textContent = members.length;
+    document.getElementById("teamPendingStat").textContent = requests.length;
 
     if (!requests || requests.length === 0) {
       teamTable.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:25px;color:var(--muted)">No pending requests from your team.</td></tr>`;
@@ -450,26 +509,19 @@ async function loadTeamPage() {
   }
 }
 
-async function reviewRequestPrompt(requestId, action) {
-  const comment = prompt(`Add a comment for this ${action.toUpperCase()} action (optional):`, action === "approve" ? "Approved by direct manager." : "Please reschedule with team.");
-  if (comment === null) return; // user cancelled
-
-  try {
-    const res = await api(`/requests/${requestId}/${action}`, {
-      method: "POST",
-      body: JSON.stringify({ action, comment: comment.trim() }),
-    });
-
-    toast(`Request ${res.request_code} successfully ${res.status.toLowerCase()}!`);
-    await loadTeamPage();
-  } catch (err) {
-    toast(`Review failed: ${err.message}`);
-  }
+function reviewRequestPrompt(requestId, action) {
+  state.pendingReview = {requestId, action};
+  document.getElementById("reviewTitle").textContent = action === "approve" ? "Approve request" : "Decline request";
+  document.getElementById("reviewComment").value = "";
+  document.getElementById("submitReview").textContent = action === "approve" ? "Confirm approval" : "Confirm rejection";
+  document.getElementById("reviewModal").classList.add("open");
 }
 
 // 7. HR ADMIN PORTAL
 async function loadAdminPage() {
   try {
+    const summary = await api("/admin/summary");
+    document.getElementById("adminEmployeeCount").textContent = summary.active_accounts;
     // Load Knowledge Sources
     const chunks = await api("/admin/knowledge");
     document.getElementById("adminKnowledgeCount").textContent = chunks.length;
@@ -478,11 +530,30 @@ async function loadAdminPage() {
       <div class="notice">
         <div class="notice-icon">▤</div>
         <div style="flex:1">
-          <b>${esc(c.document_title)} · ${esc(c.section_title)}</b>
+          <b>${esc(c.document_title)} · ${esc(c.section_title)}</b><p>${c.is_approved ? "Approved" : "Draft"}${c.is_synthetic ? " · Synthetic example" : ""}</p>
           <p>${esc(c.content.substring(0, 140))}...</p>
         </div>
       </div>
     `).join("");
+
+    const documents = await api("/admin/knowledge/documents");
+    const documentList = document.getElementById("knowledgeDocuments");
+    documentList.innerHTML = documents.map(doc => `<div class="notice"><div style="flex:1">
+      <b>${esc(doc.title)} · v${esc(doc.version)}</b>
+      <p>${doc.is_synthetic ? "Synthetic example · " : ""}${doc.is_approved ? "Approved" : "Draft"} · ${doc.is_active ? "Active" : "Inactive"}</p>
+      ${!doc.is_approved && doc.is_active ? `<button class="small-btn" data-approve-document="${doc.id}">Approve reviewed source</button>` : ""}
+      ${doc.is_active ? `<button class="small-btn" data-deactivate-document="${doc.id}">Deactivate</button>` : ""}
+    </div></div>`).join("");
+    documentList.querySelectorAll("[data-approve-document], [data-deactivate-document]").forEach(button => {
+      button.addEventListener("click", async () => {
+        try {
+          const id = button.dataset.approveDocument || button.dataset.deactivateDocument;
+          await api(`/admin/knowledge/documents/${id}`, {method:"PATCH", body:JSON.stringify(
+            button.dataset.approveDocument ? {is_approved:true} : {is_active:false})});
+          await loadAdminPage();
+        } catch (error) { toast(error.message); }
+      });
+    });
 
     // Load Integrations Telemetry
     const adapters = await api("/admin/integrations");
@@ -517,8 +588,49 @@ async function loadAdminPage() {
   }
 }
 
+function setupKnowledgeForm() {
+  document.getElementById("knowledgeForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.target;
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    try {
+      const doc = await api("/admin/knowledge/documents", {method:"POST", body:JSON.stringify({
+        title:form.elements.title.value, is_synthetic:form.elements.synthetic.checked,
+      })});
+      await api("/admin/knowledge", {method:"POST", body:JSON.stringify({document_id:doc.id,
+        section_title:form.elements.section.value, content:form.elements.content.value,
+        access_level:form.elements.access.value})});
+      form.reset();
+      toast("Draft saved. Review its text, then approve it for AI retrieval.");
+      await loadAdminPage();
+    } catch (error) { toast(error.message); }
+    finally { submit.disabled = false; }
+  });
+}
+
 // --- MODALS & WORKFLOWS ---
 function setupModals() {
+  document.getElementById("cancelReview").onclick = () => document.getElementById("reviewModal").classList.remove("open");
+  document.getElementById("reviewForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!state.pendingReview) return;
+    const {requestId, action} = state.pendingReview;
+    const button = document.getElementById("submitReview");
+    button.disabled = true;
+    try {
+      const result = await api(`/requests/${requestId}/${action}`, {method:"POST", body:JSON.stringify({
+        action, comment:document.getElementById("reviewComment").value.trim() || null,
+      })});
+      document.getElementById("reviewModal").classList.remove("open");
+      state.pendingReview = null;
+      toast(`${result.request_code} ${result.status.toLowerCase()}`);
+      await loadTeamPage();
+      await updateNotificationBadge();
+    } catch (error) { toast(error.message); }
+    finally { button.disabled = false; }
+  });
+
   // New Request Modal
   document.querySelectorAll('[data-action="new-request"]').forEach(b => {
     b.addEventListener("click", () => {
@@ -535,6 +647,7 @@ function setupModals() {
     const isAdv = e.target.value === "Advance payment";
     document.getElementById("reqAmountGroup").style.display = isAdv ? "grid" : "none";
     document.getElementById("reqEndGroup").style.display = isAdv ? "none" : "grid";
+    document.getElementById("reqAmount").required = isAdv;
   });
 
   // Submit request form
@@ -563,6 +676,7 @@ function setupModals() {
       toast(`Request ${res.request_code} successfully created!`);
       closeModal();
       e.target.reset();
+      document.getElementById("reqType").dispatchEvent(new Event("change"));
       await loadDashboard();
       if (state.page === "requests") await loadRequestsPage();
     } catch (err) {
@@ -596,7 +710,7 @@ async function openRequestDetailModal(id) {
     document.getElementById("detailModalRequester").textContent = r.user_name;
     document.getElementById("detailModalDept").textContent = r.department;
     document.getElementById("detailModalDates").textContent = r.period_or_details;
-    document.getElementById("detailModalSync").textContent = r.external_sync_id || "Documentolog integration pending";
+    document.getElementById("detailModalSync").textContent = r.external_sync_id || "Documentolog is unconnected; no external registration";
 
     // Build timeline of events
     const timeline = document.getElementById("detailModalTimeline");
@@ -619,7 +733,8 @@ async function openRequestDetailModal(id) {
 // Course Player Modal with interactive quiz
 async function openCoursePlayer(courseId) {
   try {
-    const course = await api(`/courses/${courseId}`);
+    let course = await api(`/courses/${courseId}`);
+    if (!course.assigned) course = await api(`/courses/${courseId}/enroll`, {method:"POST"});
     state.currentCourse = course;
 
     document.getElementById("playerCourseTitle").textContent = course.title;
@@ -710,6 +825,15 @@ async function submitLessonQuiz() {
   }
 }
 
+async function loadKnowledgeSummary() {
+  try {
+    const documents = await api("/ai/documents");
+    document.getElementById("approvedKnowledgeList").innerHTML = documents.length
+      ? documents.map(doc => `<div class="notice"><div><b>${esc(doc.title)}</b><p>v${esc(doc.version)} · ${doc.is_synthetic ? "Synthetic example" : "Approved source"}</p></div></div>`).join("")
+      : "<p>No approved sources are available for your account.</p>";
+  } catch (error) { toast(error.message); }
+}
+
 // --- AI JANA CHAT ---
 function setupAIChat() {
   const form = document.getElementById("chatForm");
@@ -764,13 +888,10 @@ async function sendAIQuery(question) {
 
     let html = `<div style="white-space:pre-wrap">${esc(res.answer)}</div>`;
 
-    // Render citations pills
-    if (res.sources && res.sources.length > 0) {
-      html += `<div style="margin-top:10px">`;
-      res.sources.forEach(s => {
-        html += `<span class="source-pill" onclick="showCitationModal('${esc(s.document_title)}', '${esc(s.section_title)}', '${esc(s.snippet)}')">📖 ${esc(s.document_title)} · ${esc(s.section_title)}</span>`;
-      });
-      html += `</div>`;
+    if (res.sources?.length) {
+      html += '<div class="citation-buttons">' + res.sources.map((source, index) =>
+        `<button class="source-pill" type="button" data-source-index="${index}">📖 ${esc(source.document_title)} · ${esc(source.section_title)}</button>`
+      ).join("") + '</div>';
     }
 
     // Fallback guidance badge
@@ -785,6 +906,16 @@ async function sendAIQuery(question) {
 
     html += `<small>AI Jana · Status: ${res.answer_status} · Response time: ${res.processing_time_ms} ms</small>`;
     botBubble.innerHTML = html;
+    botBubble.querySelectorAll("[data-source-index]").forEach(button => {
+      const source = res.sources[Number(button.dataset.sourceIndex)];
+      button.addEventListener("click", async () => {
+        try {
+          const full = await api(`/ai/sources/${source.chunk_id}`);
+          showCitationModal(`${full.document_title} · v${full.version}`, full.section_title,
+            `${full.is_synthetic ? "Synthetic example; not official HR policy.\n\n" : ""}${full.content}`);
+        } catch (error) { toast(error.message); }
+      });
+    });
   } catch (err) {
     botBubble.innerHTML = `<span style="color:var(--red)">Error: ${esc(err.message)}</span>`;
   }
@@ -821,9 +952,11 @@ function applyLanguage(lang) {
   document.querySelectorAll("[data-i18n]").forEach(el => {
     const key = el.dataset.i18n;
     if (dict[key]) {
-      el.textContent = dict[key];
+      if (el.hasAttribute("placeholder")) el.placeholder = dict[key];
+      else el.textContent = dict[key];
     }
   });
+  document.documentElement.lang = lang === "kz" ? "kk" : lang;
   toast(`Language changed to ${lang.toUpperCase()}`);
 }
 

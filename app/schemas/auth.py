@@ -1,11 +1,14 @@
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, EmailStr
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
 from app.models.enums import UserRole
 
 
 class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=256, repr=False)
 
 
 class UserResponse(BaseModel):
@@ -22,6 +25,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+    expires_in: int
 
 
 class ProfileBrief(BaseModel):

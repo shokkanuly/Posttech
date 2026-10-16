@@ -1,32 +1,41 @@
 import json
 from datetime import date, datetime, timedelta, timezone
-from app.database import Base, SessionLocal, engine
+
+from app.database import SessionLocal, engine
 from app.models import (
-    User,
-    EmployeeProfile,
-    Request,
-    RequestEvent,
+    AuditEvent,
     Course,
-    Lesson,
+    EmployeeProfile,
     Enrollment,
+    EnrollmentStatus,
+    KnowledgeChunk,
+    KnowledgeDocument,
+    Lesson,
     LessonProgress,
     Notification,
-    KnowledgeDocument,
-    KnowledgeChunk,
-    AuditEvent,
-    UserRole,
-    RequestType,
-    RequestStatus,
-    RequestEventType,
-    EnrollmentStatus,
     NotificationType,
+    Request,
+    RequestEvent,
+    RequestEventType,
+    RequestStatus,
+    RequestType,
+    User,
+    UserRole,
 )
 from app.services.auth_service import auth_service
 
 
-def seed_database():
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
+def seed_database(session=None):
+    from app.config import settings
+    from app.migrate import require_current_schema
+
+    if not settings.DEMO_MODE or settings.ENVIRONMENT == "production":
+        raise RuntimeError("Seeding is restricted to explicit non-production DEMO_MODE")
+    if len(settings.DEMO_PASSWORD) < 12:
+        raise RuntimeError("Set a synthetic DEMO_PASSWORD of at least 12 characters")
+    if session is None:
+        require_current_schema(engine)
+    db = session or SessionLocal()
 
     try:
         # Check if already seeded
@@ -39,7 +48,7 @@ def seed_database():
         # ----------------------------------------------------
         # 1. USERS & PROFILES
         # ----------------------------------------------------
-        pwd_hash = auth_service.hash_password("Password123!")
+        pwd_hash = auth_service.hash_password(settings.DEMO_PASSWORD)
 
         # Manager: Timur Kasymov
         timur = User(
@@ -177,20 +186,22 @@ def seed_database():
             status=RequestStatus.PENDING,
             reviewer_id=None,
             review_comment=None,
-            external_sync_id="DOCLOG-PENDING-1042",
+            external_sync_id=None,
             created_at=datetime.now(timezone.utc) - timedelta(minutes=45),
             updated_at=datetime.now(timezone.utc) - timedelta(minutes=45),
         )
         db.add(req_1042)
         db.flush()
 
-        db.add(RequestEvent(
-            request_id=req_1042.id,
-            actor_id=aruzhan.id,
-            event_type=RequestEventType.SUBMITTED,
-            comment="Submitted Vacation request for 26-30 Oct 2026 (5 days).",
-            created_at=datetime.now(timezone.utc) - timedelta(minutes=45),
-        ))
+        db.add(
+            RequestEvent(
+                request_id=req_1042.id,
+                actor_id=aruzhan.id,
+                event_type=RequestEventType.SUBMITTED,
+                comment="Submitted Vacation request for 26-30 Oct 2026 (5 days).",
+                created_at=datetime.now(timezone.utc) - timedelta(minutes=45),
+            )
+        )
 
         # REQ-1036: Aruzhan Advance Payment (Approved)
         req_1036 = Request(
@@ -204,27 +215,31 @@ def seed_database():
             status=RequestStatus.APPROVED,
             reviewer_id=timur.id,
             review_comment="Approved within monthly standard limit.",
-            external_sync_id="DOCLOG-2026-1036",
+            external_sync_id=None,
             created_at=datetime.now(timezone.utc) - timedelta(days=4),
             updated_at=datetime.now(timezone.utc) - timedelta(days=2),
         )
         db.add(req_1036)
         db.flush()
 
-        db.add(RequestEvent(
-            request_id=req_1036.id,
-            actor_id=aruzhan.id,
-            event_type=RequestEventType.SUBMITTED,
-            comment="Submitted Advance payment request for 150,000 ₸.",
-            created_at=datetime.now(timezone.utc) - timedelta(days=4),
-        ))
-        db.add(RequestEvent(
-            request_id=req_1036.id,
-            actor_id=timur.id,
-            event_type=RequestEventType.APPROVED,
-            comment="Approved within monthly standard limit. Registered in Documentolog.",
-            created_at=datetime.now(timezone.utc) - timedelta(days=2),
-        ))
+        db.add(
+            RequestEvent(
+                request_id=req_1036.id,
+                actor_id=aruzhan.id,
+                event_type=RequestEventType.SUBMITTED,
+                comment="Submitted Advance payment request for 150,000 ₸.",
+                created_at=datetime.now(timezone.utc) - timedelta(days=4),
+            )
+        )
+        db.add(
+            RequestEvent(
+                request_id=req_1036.id,
+                actor_id=timur.id,
+                event_type=RequestEventType.APPROVED,
+                comment="Approved within monthly standard limit. Registered in Documentolog.",
+                created_at=datetime.now(timezone.utc) - timedelta(days=2),
+            )
+        )
 
         # REQ-1024: Aruzhan Vacation (Approved)
         req_1024 = Request(
@@ -238,27 +253,31 @@ def seed_database():
             status=RequestStatus.APPROVED,
             reviewer_id=timur.id,
             review_comment="Approved. Handover arranged with Dana M.",
-            external_sync_id="DOCLOG-2026-1024",
+            external_sync_id=None,
             created_at=datetime.now(timezone.utc) - timedelta(days=8),
             updated_at=datetime.now(timezone.utc) - timedelta(days=7),
         )
         db.add(req_1024)
         db.flush()
 
-        db.add(RequestEvent(
-            request_id=req_1024.id,
-            actor_id=aruzhan.id,
-            event_type=RequestEventType.SUBMITTED,
-            comment="Submitted Vacation request for 12-13 Oct 2026 (2 days).",
-            created_at=datetime.now(timezone.utc) - timedelta(days=8),
-        ))
-        db.add(RequestEvent(
-            request_id=req_1024.id,
-            actor_id=timur.id,
-            event_type=RequestEventType.APPROVED,
-            comment="Approved. Handover arranged with Dana M.",
-            created_at=datetime.now(timezone.utc) - timedelta(days=7),
-        ))
+        db.add(
+            RequestEvent(
+                request_id=req_1024.id,
+                actor_id=aruzhan.id,
+                event_type=RequestEventType.SUBMITTED,
+                comment="Submitted Vacation request for 12-13 Oct 2026 (2 days).",
+                created_at=datetime.now(timezone.utc) - timedelta(days=8),
+            )
+        )
+        db.add(
+            RequestEvent(
+                request_id=req_1024.id,
+                actor_id=timur.id,
+                event_type=RequestEventType.APPROVED,
+                comment="Approved. Handover arranged with Dana M.",
+                created_at=datetime.now(timezone.utc) - timedelta(days=7),
+            )
+        )
 
         # REQ-1044: Dana Maratova Vacation (Pending in Timur's team)
         req_1044 = Request(
@@ -272,20 +291,22 @@ def seed_database():
             status=RequestStatus.PENDING,
             reviewer_id=None,
             review_comment=None,
-            external_sync_id="DOCLOG-PENDING-1044",
+            external_sync_id=None,
             created_at=datetime.now(timezone.utc) - timedelta(hours=3),
             updated_at=datetime.now(timezone.utc) - timedelta(hours=3),
         )
         db.add(req_1044)
         db.flush()
 
-        db.add(RequestEvent(
-            request_id=req_1044.id,
-            actor_id=dana.id,
-            event_type=RequestEventType.SUBMITTED,
-            comment="Submitted Vacation request for 26-27 Oct 2026.",
-            created_at=datetime.now(timezone.utc) - timedelta(hours=3),
-        ))
+        db.add(
+            RequestEvent(
+                request_id=req_1044.id,
+                actor_id=dana.id,
+                event_type=RequestEventType.SUBMITTED,
+                comment="Submitted Vacation request for 26-27 Oct 2026.",
+                created_at=datetime.now(timezone.utc) - timedelta(hours=3),
+            )
+        )
 
         # ----------------------------------------------------
         # 3. JANA ACADEMY (COURSES, LESSONS & PROGRESS)
@@ -310,11 +331,13 @@ def seed_database():
             title="1. Introduction to Postal Confidentiality",
             content_markdown="Postal communication and client personal data (full name, phone, delivery address, parcel contents) are protected under the Law on Postal Communications and Law on Personal Data in the Republic of Kazakhstan. Never disclose parcel recipient details to third parties.",
             quiz_question="Can you share a customer's delivery phone number with an unauthorized caller who claims to be a relative?",
-            quiz_options_json=json.dumps([
-                "Yes, if they state they are an immediate relative",
-                "No, customer contact details must remain strictly confidential unless authorized in official dispatch systems",
-                "Yes, as long as you do not disclose the parcel value",
-            ]),
+            quiz_options_json=json.dumps(
+                [
+                    "Yes, if they state they are an immediate relative",
+                    "No, customer contact details must remain strictly confidential unless authorized in official dispatch systems",
+                    "Yes, as long as you do not disclose the parcel value",
+                ]
+            ),
             quiz_correct_answer=1,
         )
         l2 = Lesson(
@@ -323,11 +346,13 @@ def seed_database():
             title="2. Secure Handling of Delivery Addresses",
             content_markdown="Physical waybills, barcode stickers, and digital handheld terminals contain sensitive PII. Unused documents must be placed in designated shredding bins, and terminals must be locked when not in direct physical possession.",
             quiz_question="What is the proper procedure for disposing of misprinted address labels?",
-            quiz_options_json=json.dumps([
-                "Toss them in the general waste basket beside the counter",
-                "Place them into the secure locked shredder bin for document destruction",
-                "Take them home to recycle",
-            ]),
+            quiz_options_json=json.dumps(
+                [
+                    "Toss them in the general waste basket beside the counter",
+                    "Place them into the secure locked shredder bin for document destruction",
+                    "Take them home to recycle",
+                ]
+            ),
             quiz_correct_answer=1,
         )
         l3 = Lesson(
@@ -336,11 +361,13 @@ def seed_database():
             title="3. Recognizing Phishing & Social Engineering",
             content_markdown="Attackers frequently pose as IT support, HR, or postal clients asking for verification codes or credentials. Always verify IT requests through official internal channels and never share your system password or two-factor SMS codes.",
             quiz_question="You receive an email claiming to be from 'Jana Post IT' asking you to reply with your login password. What should you do?",
-            quiz_options_json=json.dumps([
-                "Reply promptly with your password so your account isn't locked",
-                "Forward it to your colleagues to see if they got it too",
-                "Report it immediately to cybersecurity support and do not reply or click links",
-            ]),
+            quiz_options_json=json.dumps(
+                [
+                    "Reply promptly with your password so your account isn't locked",
+                    "Forward it to your colleagues to see if they got it too",
+                    "Report it immediately to cybersecurity support and do not reply or click links",
+                ]
+            ),
             quiz_correct_answer=2,
         )
         l4 = Lesson(
@@ -349,11 +376,13 @@ def seed_database():
             title="4. Incident Reporting & Escalation",
             content_markdown="If you suspect a data breach, lost terminal, or unauthorized access to an employee workstation, you must report it within 30 minutes to the Security Operations Center (SOC) and your direct manager.",
             quiz_question="Within what timeframe should a suspected data security incident be escalated to the SOC?",
-            quiz_options_json=json.dumps([
-                "Within 30 minutes",
-                "Within 7 business days",
-                "Only if customer complaints are received",
-            ]),
+            quiz_options_json=json.dumps(
+                [
+                    "Within 30 minutes",
+                    "Within 7 business days",
+                    "Only if customer complaints are received",
+                ]
+            ),
             quiz_correct_answer=0,
         )
         db.add_all([l1, l2, l3, l4])
@@ -365,17 +394,43 @@ def seed_database():
             course_id=course1.id,
             status=EnrollmentStatus.IN_PROGRESS,
             progress_percent=75.0,
-            score=100.0,
+            score=75.0,
         )
         db.add(enrollment1)
         db.flush()
 
-        db.add_all([
-            LessonProgress(enrollment_id=enrollment1.id, lesson_id=l1.id, is_completed=True, quiz_passed=True, completed_at=datetime.now(timezone.utc) - timedelta(days=2)),
-            LessonProgress(enrollment_id=enrollment1.id, lesson_id=l2.id, is_completed=True, quiz_passed=True, completed_at=datetime.now(timezone.utc) - timedelta(days=1)),
-            LessonProgress(enrollment_id=enrollment1.id, lesson_id=l3.id, is_completed=True, quiz_passed=True, completed_at=datetime.now(timezone.utc) - timedelta(hours=4)),
-            LessonProgress(enrollment_id=enrollment1.id, lesson_id=l4.id, is_completed=False, quiz_passed=False, completed_at=None),
-        ])
+        db.add_all(
+            [
+                LessonProgress(
+                    enrollment_id=enrollment1.id,
+                    lesson_id=l1.id,
+                    is_completed=True,
+                    quiz_passed=True,
+                    completed_at=datetime.now(timezone.utc) - timedelta(days=2),
+                ),
+                LessonProgress(
+                    enrollment_id=enrollment1.id,
+                    lesson_id=l2.id,
+                    is_completed=True,
+                    quiz_passed=True,
+                    completed_at=datetime.now(timezone.utc) - timedelta(days=1),
+                ),
+                LessonProgress(
+                    enrollment_id=enrollment1.id,
+                    lesson_id=l3.id,
+                    is_completed=True,
+                    quiz_passed=True,
+                    completed_at=datetime.now(timezone.utc) - timedelta(hours=4),
+                ),
+                LessonProgress(
+                    enrollment_id=enrollment1.id,
+                    lesson_id=l4.id,
+                    is_completed=False,
+                    quiz_passed=False,
+                    completed_at=None,
+                ),
+            ]
+        )
 
         # Course 2: Working safely with customer data in postal logistics
         course2 = Course(
@@ -386,7 +441,7 @@ def seed_database():
             duration_minutes=25,
             is_mandatory=False,
             due_date=date(2026, 11, 15),
-            total_lessons=3,
+            total_lessons=1,
             cover_gradient="linear-gradient(145deg, #d8e5ff, #9baeea)",
         )
         db.add(course2)
@@ -421,6 +476,10 @@ def seed_database():
             description="Standard operating procedures for leave requests, advance payments, and time off workflows.",
             version="1.4",
             is_active=True,
+            is_approved=True,
+            is_synthetic=True,
+            approved_by_id=aigerim.id,
+            approved_at=datetime.now(timezone.utc),
         )
         db.add(doc1)
         db.flush()
@@ -428,14 +487,14 @@ def seed_database():
         chunk1 = KnowledgeChunk(
             document_id=doc1.id,
             section_title="Vacation Request Workflow",
-            content="To request vacation, navigate to 'My requests' -> 'New request' -> select 'Vacation'. Enter your start and end dates and provide a brief handover note. Your direct manager will review the request. Once approved, the leave days are deducted from your balance and an official electronic order is submitted to Documentolog.",
+            content="To request vacation, navigate to 'My requests' -> 'New request' -> select 'Vacation'. Enter your start and end dates and provide a brief handover note. Your direct manager will review the request. Once approved, the leave days are deducted from your balance in this local demonstration. Documentolog is unconnected and no official order is submitted.",
             tags="vacation, leave, time off, отпуск, демалыс, submission, dates, request, how to request",
             access_level="all",
         )
         chunk2 = KnowledgeChunk(
             document_id=doc1.id,
             section_title="Leave Balance & Accrual Rules",
-            content="Full-time employees at Jana Post accrue 24 calendar days of paid vacation per completed year of service. Your available balance is displayed on your Overview and My Profile screens. Leave balances are synchronized read-only from the official 1C:ZUP system.",
+            content="Full-time employees at Jana Post accrue 24 calendar days of paid vacation per completed year of service. Your available balance is displayed on your Overview and My Profile screens. These are synthetic sample balances; 1C:ZUP is unconnected.",
             tags="balance, days, leave days, сколько дней, баланс, қалдық, vacation balance, 1c",
             access_level="all",
         )
@@ -461,6 +520,10 @@ def seed_database():
             description="Contacts and escalation paths for specialized HR assistance.",
             version="1.1",
             is_active=True,
+            is_approved=True,
+            is_synthetic=True,
+            approved_by_id=aigerim.id,
+            approved_at=datetime.now(timezone.utc),
         )
         db.add(doc2)
         db.flush()
@@ -519,32 +582,37 @@ def seed_database():
         # ----------------------------------------------------
         # 6. INITIAL AUDIT LOGS
         # ----------------------------------------------------
-        db.add(AuditEvent(
-            actor_id=aruzhan.id,
-            action="REQUEST_SUBMITTED",
-            target_type="request",
-            target_id="REQ-1042",
-            details_json=json.dumps({"type": "Vacation", "days": 5, "start": "2026-10-26"}),
-            created_at=datetime.now(timezone.utc) - timedelta(minutes=45),
-        ))
-        db.add(AuditEvent(
-            actor_id=timur.id,
-            action="REQUEST_APPROVED",
-            target_type="request",
-            target_id="REQ-1036",
-            details_json=json.dumps({"type": "Advance payment", "amount": 150000}),
-            created_at=datetime.now(timezone.utc) - timedelta(days=2),
-        ))
+        db.add(
+            AuditEvent(
+                actor_id=aruzhan.id,
+                action="REQUEST_SUBMITTED",
+                target_type="request",
+                target_id="REQ-1042",
+                details_json=json.dumps({"type": "Vacation", "days": 5, "start": "2026-10-26"}),
+                created_at=datetime.now(timezone.utc) - timedelta(minutes=45),
+            )
+        )
+        db.add(
+            AuditEvent(
+                actor_id=timur.id,
+                action="REQUEST_APPROVED",
+                target_type="request",
+                target_id="REQ-1036",
+                details_json=json.dumps({"type": "Advance payment", "amount": 150000}),
+                created_at=datetime.now(timezone.utc) - timedelta(days=2),
+            )
+        )
 
         db.commit()
         print("Database seeded successfully with deterministic accounts and scenario data!")
 
     except Exception as e:
         db.rollback()
-        print(f"Error seeding database: {e}")
-        raise e
+        print(f"Seeding failed: {type(e).__name__}")
+        raise
     finally:
-        db.close()
+        if session is None:
+            db.close()
 
 
 if __name__ == "__main__":

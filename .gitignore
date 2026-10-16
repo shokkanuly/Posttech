@@ -24,3 +24,8 @@ htmlcov/
 # Operating System
 .DS_Store
 Thumbs.db
+
+# Tool caches and SQLite sidecars
+.ruff_cache/
+.mypy_cache/
+*.db-*

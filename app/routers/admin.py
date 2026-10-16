@@ -1,105 +1,110 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Query
+from pydantic import PositiveInt
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 
 from app.database import get_db
-from app.models.enums import UserRole
-from app.models.user import User
-from app.models.knowledge import KnowledgeDocument, KnowledgeChunk
-from app.models.audit import AuditEvent
-from app.schemas.integration import AdapterTelemetry
-from app.services.auth_service import require_role
-from app.integrations.one_c_zup import one_c_adapter
 from app.integrations.documentolog import documentolog_adapter
+from app.integrations.one_c_zup import one_c_adapter
+from app.models.audit import AuditEvent
+from app.models.enums import RequestStatus, UserRole
+from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
+from app.models.request import Request
+from app.models.user import User
+from app.schemas.academy import CourseDetailResponse, EnrollmentCreate
+from app.schemas.common import AdminSummaryResponse, AuditResponse
+from app.schemas.integration import AdapterTelemetry
+from app.schemas.knowledge import (
+    DocumentCreate,
+    DocumentPatch,
+    KnowledgeChunkCreate,
+    KnowledgeChunkPatch,
+    KnowledgeChunkResponse,
+    KnowledgeDocumentResponse,
+)
+from app.services.academy_service import academy_service
+from app.services.auth_service import require_role
+from app.services.knowledge_service import knowledge_service
 
 router = APIRouter(prefix="/admin", tags=["HR Administration"])
+admin = require_role(UserRole.HR_ADMIN)
 
 
-class KnowledgeChunkCreate(BaseModel):
-    document_id: int
-    section_title: str
-    content: str
-    tags: Optional[str] = None
-    access_level: str = "all"
+@router.get("/knowledge/documents", response_model=list[KnowledgeDocumentResponse])
+def list_documents(current_user: User = Depends(admin), db: Session = Depends(get_db)):
+    return [
+        knowledge_service.serialize_document(d)
+        for d in db.query(KnowledgeDocument).order_by(KnowledgeDocument.id).all()
+    ]
 
 
-class KnowledgeChunkResponse(BaseModel):
-    id: int
-    document_title: str
-    section_title: str
-    content: str
-    tags: Optional[str] = None
-    access_level: str
+@router.post("/knowledge/documents", status_code=201, response_model=KnowledgeDocumentResponse)
+def create_document(
+    payload: DocumentCreate, current_user: User = Depends(admin), db: Session = Depends(get_db)
+):
+    return knowledge_service.create_document(db, payload, current_user)
 
 
-@router.get("/knowledge", response_model=List[KnowledgeChunkResponse])
-def get_admin_knowledge(
-    current_user: User = Depends(require_role(UserRole.HR_ADMIN)),
+@router.patch("/knowledge/documents/{document_id}", response_model=KnowledgeDocumentResponse)
+def update_document(
+    document_id: PositiveInt,
+    payload: DocumentPatch,
+    current_user: User = Depends(admin),
     db: Session = Depends(get_db),
 ):
-    chunks = db.query(KnowledgeChunk).join(KnowledgeDocument).all()
+    return knowledge_service.update_document(db, document_id, payload, current_user)
+
+
+@router.get("/knowledge", response_model=list[KnowledgeChunkResponse])
+def get_admin_knowledge(current_user: User = Depends(admin), db: Session = Depends(get_db)):
     return [
-        KnowledgeChunkResponse(
-            id=c.id,
-            document_title=c.document.title,
-            section_title=c.section_title,
-            content=c.content,
-            tags=c.tags,
-            access_level=c.access_level,
-        )
-        for c in chunks
+        knowledge_service.serialize_chunk(c)
+        for c in db.query(KnowledgeChunk).join(KnowledgeDocument).all()
     ]
 
 
 @router.post("/knowledge", response_model=KnowledgeChunkResponse, status_code=201)
 def add_admin_knowledge_chunk(
     payload: KnowledgeChunkCreate,
-    current_user: User = Depends(require_role(UserRole.HR_ADMIN)),
+    current_user: User = Depends(admin),
     db: Session = Depends(get_db),
 ):
-    doc = db.query(KnowledgeDocument).filter(KnowledgeDocument.id == payload.document_id).first()
-    if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge document not found")
-
-    chunk = KnowledgeChunk(
-        document_id=payload.document_id,
-        section_title=payload.section_title,
-        content=payload.content,
-        tags=payload.tags,
-        access_level=payload.access_level,
-    )
-    db.add(chunk)
-    db.commit()
-    db.refresh(chunk)
-
-    return KnowledgeChunkResponse(
-        id=chunk.id,
-        document_title=doc.title,
-        section_title=chunk.section_title,
-        content=chunk.content,
-        tags=chunk.tags,
-        access_level=chunk.access_level,
-    )
+    return knowledge_service.create_chunk(db, payload, current_user)
 
 
-@router.get("/integrations", response_model=List[AdapterTelemetry])
-def get_admin_integrations(
-    current_user: User = Depends(require_role(UserRole.HR_ADMIN)),
+@router.patch("/knowledge/{chunk_id}", response_model=KnowledgeChunkResponse)
+def update_chunk(
+    chunk_id: PositiveInt,
+    payload: KnowledgeChunkPatch,
+    current_user: User = Depends(admin),
+    db: Session = Depends(get_db),
 ):
-    return [
-        one_c_adapter.get_telemetry(),
-        documentolog_adapter.get_telemetry(),
-    ]
+    return knowledge_service.update_chunk(db, chunk_id, payload, current_user)
 
 
-@router.get("/audit")
+@router.post("/enrollments", response_model=CourseDetailResponse)
+def assign_course(
+    payload: EnrollmentCreate, current_user: User = Depends(admin), db: Session = Depends(get_db)
+):
+    return academy_service.enroll(db, payload.user_id, payload.course_id, current_user.id)
+
+
+@router.get("/integrations", response_model=list[AdapterTelemetry])
+def get_admin_integrations(current_user: User = Depends(admin)):
+    return [one_c_adapter.get_telemetry(), documentolog_adapter.get_telemetry()]
+
+
+@router.get("/audit", response_model=list[AuditResponse])
 def get_audit_trail(
-    limit: int = 50,
-    current_user: User = Depends(require_role(UserRole.HR_ADMIN)),
+    limit: int = Query(50, ge=1, le=100),
+    current_user: User = Depends(admin),
     db: Session = Depends(get_db),
 ):
-    events = db.query(AuditEvent).order_by(AuditEvent.created_at.desc()).limit(limit).all()
+    events = (
+        db.query(AuditEvent)
+        .order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc())
+        .limit(limit)
+        .all()
+    )
     return [
         {
             "id": e.id,
@@ -109,8 +114,16 @@ def get_audit_trail(
             "target_type": e.target_type,
             "target_id": e.target_id,
             "details": e.details_json,
-            "ip_address": e.ip_address,
             "timestamp": e.created_at.isoformat(),
         }
         for e in events
     ]
+
+
+@router.get("/summary", response_model=AdminSummaryResponse)
+def admin_summary(current_user: User = Depends(admin), db: Session = Depends(get_db)):
+    return AdminSummaryResponse(
+        active_accounts=db.query(User).filter(User.is_active.is_(True)).count(),
+        pending_requests=db.query(Request).filter(Request.status == RequestStatus.PENDING).count(),
+        knowledge_chunks=db.query(KnowledgeChunk).count(),
+    )

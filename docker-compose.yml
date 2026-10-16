@@ -1,24 +1,21 @@
-version: "3.8"
-
 services:
   web:
     build: .
-    container_name: janamen_digital_hr
-    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
-      - ENVIRONMENT=production
-      - DATABASE_URL=sqlite:///./janamen.db
-      - SECRET_KEY=synthetic-demo-secret-key-change-in-production-never-commit-secrets
-      - ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
-      - AI_PROVIDER=grounded_knowledge
-      - AI_CONFIDENCE_THRESHOLD=0.50
-      - HR_SUPPORT_EMAIL=hr-support@janapost.kz
-      - ENABLE_MOCK_INTEGRATIONS=true
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+      SECRET_KEY: ${SECRET_KEY:-}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      DATABASE_URL: sqlite:////data/janamen.db
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-[]}
+      AI_CONFIDENCE_THRESHOLD: ${AI_CONFIDENCE_THRESHOLD:-0.8}
+      ENABLE_MOCK_INTEGRATIONS: "false"
     volumes:
-      - janamen_data:/app
+      - janamen_data:/data
+    command: ["sh", "-c", "python -m app.migrate && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 15s

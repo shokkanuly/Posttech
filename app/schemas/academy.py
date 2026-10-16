@@ -1,7 +1,9 @@
-from datetime import date, datetime
-from typing import Optional, List
-from pydantic import BaseModel, ConfigDict
+from datetime import date
+
+from pydantic import BaseModel, ConfigDict, Field
+
 from app.models.enums import EnrollmentStatus
+from app.schemas.common import UTCDateTime
 
 
 class LessonBrief(BaseModel):
@@ -19,18 +21,21 @@ class CourseResponse(BaseModel):
     description: str
     duration_minutes: int
     is_mandatory: bool
-    due_date: Optional[date] = None
+    due_date: date | None = None
     total_lessons: int
     cover_gradient: str
+    assigned: bool
     status: EnrollmentStatus
     progress_percent: float
+    score: float | None = None
+    completed_at: UTCDateTime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class CourseDetailResponse(CourseResponse):
-    lessons: List[LessonBrief] = []
-    current_lesson_id: Optional[int] = None
+    lessons: list[LessonBrief] = Field(default_factory=list)
+    current_lesson_id: int | None = None
 
 
 class LessonDetailResponse(BaseModel):
@@ -39,13 +44,14 @@ class LessonDetailResponse(BaseModel):
     order_index: int
     title: str
     content_markdown: str
-    quiz_question: Optional[str] = None
-    quiz_options: List[str] = []
+    quiz_question: str | None = None
+    quiz_options: list[str] = Field(default_factory=list)
     is_completed: bool
 
 
 class QuizSubmitRequest(BaseModel):
-    answer_index: int
+    model_config = ConfigDict(extra="forbid")
+    answer_index: int = Field(ge=0, strict=True)
 
 
 class QuizSubmitResponse(BaseModel):
@@ -54,3 +60,10 @@ class QuizSubmitResponse(BaseModel):
     explanation: str
     new_progress_percent: float
     course_completed: bool
+    score: float
+
+
+class EnrollmentCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    user_id: int = Field(gt=0)
+    course_id: int = Field(gt=0)

@@ -1,6 +1,8 @@
 def test_full_hackathon_demo_journey(client):
     # Step 1: Employee login and dashboard
-    login_res = client.post("/api/v1/auth/login", json={"email": "aruzhan@janapost.kz", "password": "Password123!"})
+    login_res = client.post(
+        "/api/v1/auth/login", json={"email": "aruzhan@janapost.kz", "password": "Password123!"}
+    )
     assert login_res.status_code == 200
     emp_token = login_res.json()["access_token"]
     emp_headers = {"Authorization": f"Bearer {emp_token}"}
@@ -31,7 +33,9 @@ def test_full_hackathon_demo_journey(client):
     assert req_data["status"] == "Pending"
 
     # Step 4: Manager login and review & approval
-    mgr_login = client.post("/api/v1/auth/login", json={"email": "timur@janapost.kz", "password": "Password123!"})
+    mgr_login = client.post(
+        "/api/v1/auth/login", json={"email": "timur@janapost.kz", "password": "Password123!"}
+    )
     assert mgr_login.status_code == 200
     mgr_token = mgr_login.json()["access_token"]
     mgr_headers = {"Authorization": f"Bearer {mgr_token}"}
@@ -71,13 +75,19 @@ def test_full_hackathon_demo_journey(client):
     assert quiz_res.json()["course_completed"] is True
 
     # Step 7: AI Jana answer with verifiable source
-    ai_res = client.post("/api/v1/ai/chat", json={"question": "How do I request vacation?"}, headers=emp_headers)
+    ai_res = client.post(
+        "/api/v1/ai/chat", json={"question": "How do I request vacation?"}, headers=emp_headers
+    )
     assert ai_res.status_code == 200
     assert ai_res.json()["answer_status"] == "grounded"
     assert len(ai_res.json()["sources"]) > 0
 
     # Step 8: AI Jana safe fallback for unsupported question
-    ai_fall = client.post("/api/v1/ai/chat", json={"question": "What is the policy for airline frequent flyer miles?"}, headers=emp_headers)
+    ai_fall = client.post(
+        "/api/v1/ai/chat",
+        json={"question": "What is the policy for airline frequent flyer miles?"},
+        headers=emp_headers,
+    )
     assert ai_fall.status_code == 200
     assert ai_fall.json()["answer_status"] == "fallback"
     assert len(ai_fall.json()["sources"]) == 0
@@ -87,7 +97,9 @@ def test_full_hackathon_demo_journey(client):
     assert denied_res.status_code == 403
 
     # Step 10: Enterprise integration boundaries telemetry
-    admin_login = client.post("/api/v1/auth/login", json={"email": "aigerim@janapost.kz", "password": "Password123!"})
+    admin_login = client.post(
+        "/api/v1/auth/login", json={"email": "aigerim@janapost.kz", "password": "Password123!"}
+    )
     assert admin_login.status_code == 200
     admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
 

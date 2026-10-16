@@ -1,0 +1,1 @@
+"""JanaMen application package."""

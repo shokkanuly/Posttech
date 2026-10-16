@@ -1,18 +1,19 @@
+from app.models.academy import Course, Enrollment, Lesson, LessonProgress
+from app.models.audit import AuditEvent
 from app.models.enums import (
-    UserRole,
-    RequestType,
-    RequestStatus,
-    RequestEventType,
     EnrollmentStatus,
     NotificationType,
+    RequestEventType,
+    RequestStatus,
+    RequestType,
+    UserRole,
 )
-from app.models.user import User
+from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
+from app.models.notification import Notification
 from app.models.profile import EmployeeProfile
 from app.models.request import Request, RequestEvent
-from app.models.academy import Course, Lesson, Enrollment, LessonProgress
-from app.models.notification import Notification
-from app.models.knowledge import KnowledgeDocument, KnowledgeChunk
-from app.models.audit import AuditEvent
+from app.models.session import AuthSession
+from app.models.user import User
 
 __all__ = [
     "UserRole",
@@ -33,4 +34,5 @@ __all__ = [
     "KnowledgeDocument",
     "KnowledgeChunk",
     "AuditEvent",
+    "AuthSession",
 ]

@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
+
 from pydantic import BaseModel
 
 
@@ -9,7 +10,7 @@ class AdapterTelemetry(BaseModel):
     mode: str = "Mock Adapter (Synthetic Architecture Boundary)"
     endpoint_template: str
     synced_records_count: int
-    last_sync: datetime
+    last_sync: Optional[datetime] = None
     supported_operations: List[str]
     notes: str
 

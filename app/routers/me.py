@@ -1,15 +1,15 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.user import User
+from app.models.enums import RequestStatus, UserRole
 from app.models.profile import EmployeeProfile
 from app.models.request import Request
-from app.models.enums import RequestStatus, UserRole
-from app.schemas.auth import MeResponse, UserResponse, ProfileBrief
-from app.schemas.profile import EmployeeProfileResponse, DashboardStatsResponse
-from app.services.auth_service import get_current_user
+from app.models.user import User
+from app.schemas.auth import MeResponse, ProfileBrief, UserResponse
+from app.schemas.profile import DashboardStatsResponse, EmployeeProfileResponse
 from app.services.academy_service import academy_service
+from app.services.auth_service import get_current_user
 from app.services.notification_service import notification_service
 
 router = APIRouter(prefix="/me", tags=["Current User & Profile"])
@@ -43,6 +43,8 @@ def get_my_profile(current_user: User = Depends(get_current_user), db: Session =
     profile = db.query(EmployeeProfile).filter(EmployeeProfile.user_id == current_user.id).first()
     manager_name = profile.manager.full_name if (profile and profile.manager) else None
 
+    if not profile:
+        raise HTTPException(404, "HR profile is not available")
     return EmployeeProfileResponse(
         id=profile.id if profile else 0,
         user_id=current_user.id,
@@ -57,7 +59,11 @@ def get_my_profile(current_user: User = Depends(get_current_user), db: Session =
         hire_date=profile.hire_date if profile else current_user.created_at.date(),
         leave_balance_days=profile.leave_balance_days if profile else 0.0,
         location=profile.location if profile else "Almaty, Kazakhstan",
-        is_official_hr_data=True,
+        is_official_hr_data=False,
+        learning_progress_percent=academy_service.get_user_overall_learning_progress(
+            db, current_user.id
+        ),
+        courses=[c for c in academy_service.get_user_courses(db, current_user) if c.assigned],
         read_only=True,
     )
 
@@ -77,7 +83,9 @@ def get_my_dashboard(current_user: User = Depends(get_current_user), db: Session
     if current_user.role == UserRole.MANAGER:
         report_ids = [
             p.user_id
-            for p in db.query(EmployeeProfile).filter(EmployeeProfile.manager_id == current_user.id).all()
+            for p in db.query(EmployeeProfile)
+            .filter(EmployeeProfile.manager_id == current_user.id)
+            .all()
         ]
         pending_attention = (
             db.query(Request)
@@ -87,13 +95,15 @@ def get_my_dashboard(current_user: User = Depends(get_current_user), db: Session
             else 0
         )
     elif current_user.role == UserRole.HR_ADMIN:
-        pending_attention = db.query(Request).filter(Request.status == RequestStatus.PENDING).count()
+        pending_attention = (
+            db.query(Request).filter(Request.status == RequestStatus.PENDING).count()
+        )
     else:
         pending_attention = open_requests
 
     # Real persisted learning progress
     overall_learning = academy_service.get_user_overall_learning_progress(db, current_user.id)
-    assigned_courses = len(academy_service.get_user_courses(db, current_user))
+    assigned_courses = sum(c.assigned for c in academy_service.get_user_courses(db, current_user))
     unread_notifs = notification_service.get_unread_count(db, current_user.id)
 
     # Avatar initials

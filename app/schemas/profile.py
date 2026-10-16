@@ -1,6 +1,9 @@
 from datetime import date
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.academy import CourseResponse
 
 
 class EmployeeProfileResponse(BaseModel):
@@ -17,7 +20,10 @@ class EmployeeProfileResponse(BaseModel):
     hire_date: date
     leave_balance_days: float
     location: str
-    is_official_hr_data: bool = True
+    data_source: str = "Local HR records; 1C is unconnected"
+    learning_progress_percent: float = 0
+    courses: list[CourseResponse] = Field(default_factory=list)
+    is_official_hr_data: bool = False
     read_only: bool = True
 
     model_config = ConfigDict(from_attributes=True)

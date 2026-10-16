@@ -758,3 +758,32 @@ button { cursor: pointer; }
   .date-pill { display: none; }
   .profile-grid, .detail-grid, .course-grid, .form-grid { grid-template-columns: 1fr; }
 }
+
+/* Authentication and narrow-screen refinements preserve the existing layout. */
+[hidden], .app[hidden], .auth-gate[hidden] { display: none !important; }
+.auth-gate { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 20px; background: var(--bg, #f1f3ec); }
+.auth-gate h1 { font-size: 24px; margin: 24px 0 12px; }
+#loginError { color: var(--red); }
+.auth-gate label { font-weight: 650; }
+.citation-buttons { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.topbar > div, .top-actions { min-width: 0; }
+@media (max-width: 768px) {
+  .topbar { gap: 8px; }
+  .topbar > div:first-child { flex: 0 0 auto; }
+  .crumb { display: none; }
+  .top-actions { gap: 6px; flex: 1; justify-content: flex-end; }
+  .user-chip { padding-left: 6px; gap: 4px; flex-shrink: 0; }
+  .user-chip > div:last-child { display: none; }
+  .role-switcher-select { width: 104px; min-width: 0; font-size: 11px; padding: 6px; }
+  .lang-switcher-select { width: 46px; padding: 6px 2px; }
+  #logoutBtn { padding: 7px; font-size: 11px; }
+  .top-actions .icon-btn { width: 30px; flex-shrink: 0; }
+  .top-actions .avatar { height: 28px; width: 28px; }
+}
+@media (max-width: 375px) {
+  .topbar { padding: 0 8px; gap: 4px; }
+  .role-switcher-select { width: 86px; }
+  .top-actions { gap: 4px; }
+}
+
+.auth-gate .form-grid { grid-template-columns: 1fr; }

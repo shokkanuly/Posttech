@@ -1,93 +1,111 @@
+"""Every test owns its database, startup engine and real revocable sessions."""
+
 import os
+import tempfile
+from pathlib import Path
+
+os.environ.update(
+    ENVIRONMENT="test",
+    DEMO_MODE="true",
+    DEMO_PASSWORD="Password123!",
+    SECRET_KEY="test-only-key-not-for-deployment-" + "x" * 32,
+    DATABASE_URL="sqlite:///"
+    + str(Path(tempfile.gettempdir()) / "janamen-unused-test-bootstrap.db"),
+    ENABLE_MOCK_INTEGRATIONS="false",
+    AI_CONFIDENCE_THRESHOLD="0.8",
+)
+
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from app.database import Base, get_db
+import app.main as main_module
+from app.database import get_db
 from app.main import app
-from app.models.user import User
-from app.services.auth_service import auth_service
-from app import seed
-
-# Use in-memory SQLite with StaticPool so all connections share the same memory database
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def setup_test_db():
-    Base.metadata.create_all(bind=engine)
-    # Patch seed engine/session to test engine
-    old_engine = seed.engine
-    old_session = seed.SessionLocal
-    seed.engine = engine
-    seed.SessionLocal = TestingSessionLocal
-    seed.seed_database()
-    seed.engine = old_engine
-    seed.SessionLocal = old_session
-    yield
-    Base.metadata.drop_all(bind=engine)
+from app.migrate import upgrade_database
+from app.seed import seed_database
+from app.services.auth_service import login_limiter
 
 
 @pytest.fixture
-def db_session():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def db_engine(tmp_path):
+    engine = create_engine(
+        "sqlite:///" + str(tmp_path / "test.db"),
+        connect_args={"check_same_thread": False, "timeout": 15},
+    )
+
+    @event.listens_for(engine, "connect")
+    def pragmas(connection, _record):
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.execute("PRAGMA busy_timeout=15000")
+
+    upgrade_database(engine)
+    with sessionmaker(bind=engine)() as session:
+        seed_database(session)
+    yield engine
+    engine.dispose()
 
 
 @pytest.fixture
-def client(db_session):
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
+def db_session(db_engine):
+    with sessionmaker(bind=db_engine)() as session:
+        yield session
 
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as test_client:
-        yield test_client
+
+@pytest.fixture
+def client(db_engine, monkeypatch):
+    factory = sessionmaker(bind=db_engine)
+
+    def override_db():
+        with factory() as session:
+            try:
+                yield session
+            except Exception:
+                session.rollback()
+                raise
+
+    app.dependency_overrides[get_db] = override_db
+    monkeypatch.setattr(main_module, "engine", db_engine)
+    # The fixture already seeded its own database. Never run startup against user storage.
+    monkeypatch.setattr(main_module, "seed_database", lambda: None)
+    login_limiter.failures.clear()
+    with TestClient(app, raise_server_exceptions=False) as result:
+        yield result
     app.dependency_overrides.clear()
 
 
+def login(client, email):
+    result = client.post("/api/v1/auth/login", json={"email": email, "password": "Password123!"})
+    assert result.status_code == 200, result.text
+    return result.json()["access_token"]
+
+
 @pytest.fixture
-def employee_token(db_session):
-    user = db_session.query(User).filter(User.email == "aruzhan@janapost.kz").first()
-    return auth_service.create_access_token(user_id=user.id, role=user.role.value)
+def employee_token(client):
+    return login(client, "aruzhan@janapost.kz")
 
 
 @pytest.fixture
 def employee_headers(employee_token):
-    return {"Authorization": f"Bearer {employee_token}"}
+    return {"Authorization": "Bearer " + employee_token}
 
 
 @pytest.fixture
-def manager_token(db_session):
-    user = db_session.query(User).filter(User.email == "timur@janapost.kz").first()
-    return auth_service.create_access_token(user_id=user.id, role=user.role.value)
+def manager_token(client):
+    return login(client, "timur@janapost.kz")
 
 
 @pytest.fixture
 def manager_headers(manager_token):
-    return {"Authorization": f"Bearer {manager_token}"}
+    return {"Authorization": "Bearer " + manager_token}
 
 
 @pytest.fixture
-def hr_admin_token(db_session):
-    user = db_session.query(User).filter(User.email == "aigerim@janapost.kz").first()
-    return auth_service.create_access_token(user_id=user.id, role=user.role.value)
+def hr_admin_token(client):
+    return login(client, "aigerim@janapost.kz")
 
 
 @pytest.fixture
 def hr_admin_headers(hr_admin_token):
-    return {"Authorization": f"Bearer {hr_admin_token}"}
+    return {"Authorization": "Bearer " + hr_admin_token}

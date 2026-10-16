@@ -10,7 +10,7 @@
   <script src="/static/js/app.js" defer></script>
 </head>
 <body>
-<div class="app" id="app">
+<div class="app" id="app" hidden>
   <div class="shell">
     <!-- Sidebar Navigation -->
     <aside class="sidebar" id="sidebar">
@@ -83,6 +83,8 @@
             <option value="hr_admin">Persona: HR Admin (Aigerim N.)</option>
           </select>
 
+          <button class="small-btn" id="logoutBtn">Sign out</button>
+
           <!-- Notifications Bell -->
           <button class="icon-btn" data-goto="notifications" aria-label="Notifications" title="Notifications">
             ♧<span class="dot" id="notifDot" style="display:none"></span>
@@ -108,7 +110,7 @@
               <h1 id="greeting">Good afternoon, Aruzhan <span>✳</span></h1>
               <p>Your work life, in one place. Here's your unified snapshot for today.</p>
             </div>
-            <div class="date-pill">◷ &nbsp; Official HR data synchronized from 1C:ZUP</div>
+            <div class="date-pill">◷ &nbsp; Local HR records · 1C:ZUP unconnected</div>
           </div>
 
           <!-- Hero Leave Balance Banner -->
@@ -137,7 +139,7 @@
                 <span class="stat-icon">▤</span>
               </div>
               <div class="stat-num" id="statRequests">1</div>
-              <div class="stat-foot">Tracked via <em>Documentolog</em></div>
+              <div class="stat-foot">Documentolog · unconnected</div>
             </div>
 
             <div class="card">
@@ -164,7 +166,7 @@
                 <span class="stat-icon">♧</span>
               </div>
               <div class="stat-num" id="statNotifications">2</div>
-              <div class="stat-foot">Real-time alerts active</div>
+              <div class="stat-foot">Persistent notifications</div>
             </div>
           </div>
 
@@ -183,7 +185,7 @@
                 <h3 data-i18n="pickUpWhereYouLeftOff">Pick up where you left off</h3>
                 <button class="text-link" data-goto="academy">All courses ↗</button>
               </div>
-              <div class="course-card" style="display:flex;gap:14px;align-items:flex-start">
+              <div id="homeCourseCard" class="course-card" style="display:flex;gap:14px;align-items:flex-start">
                 <div class="tile-art" style="width:70px;height:75px;border-radius:12px;background:linear-gradient(145deg,#d9f27a,#84c99a);display:grid;place-items:center;font-size:24px;color:#173e2b;flex:0 0 auto">▤</div>
                 <div style="min-width:0;flex:1">
                   <h4 style="font-size:13.5px;font-weight:750;margin-bottom:4px">Data protection essentials</h4>
@@ -194,13 +196,7 @@
                 </div>
               </div>
               <div class="mini-divider"></div>
-              <div class="activity">
-                <span class="activity-dot"></span>
-                <div>
-                  <b>Leave request updated</b>
-                  <p>Manager is reviewing your October request</p>
-                </div>
-              </div>
+              <div class="activity" id="homeActivity">Your latest notification will appear here.</div>
             </div>
           </div>
         </section>
@@ -211,9 +207,9 @@
             <div>
               <div class="eyebrow">YOUR DETAILS</div>
               <h1 data-i18n="myProfile">My profile</h1>
-              <p>Your official employment records and workplace information.</p>
+              <p>Your read-only local HR profile. External systems are unconnected.</p>
             </div>
-            <button class="small-btn" data-i18n="officialHrData">Official HR data · Read-only</button>
+            <button class="small-btn" data-i18n="officialHrData">HR fields · Read-only</button>
           </div>
 
           <div class="grid profile-grid">
@@ -358,9 +354,9 @@
             <div>
               <div class="eyebrow">YOUR HR KNOWLEDGE COMPANION</div>
               <h1>AI Jana <span style="color:var(--green)">✳</span></h1>
-              <p>Evidence-grounded answers from approved HR policies, with verifiable source citations.</p>
+              <p>Answers from approved documents. Demo sources are synthetic examples, not official HR policy.</p>
             </div>
-            <span class="status approved">RAG Grounded · No Hallucinations</span>
+            <span class="status approved">Approved-source retrieval</span>
           </div>
 
           <div class="chat-layout">
@@ -370,7 +366,7 @@
                   <div class="logo" style="width:34px;height:34px;border-radius:10px">✳</div>
                   <div>
                     <h3>Ask AI Jana</h3>
-                    <div class="stat-foot">Grounded on verified Jana Post policies · RU / KZ ready</div>
+                    <div class="stat-foot">Approved document retrieval · partial RU / KZ interface</div>
                   </div>
                 </div>
                 <button class="small-btn" id="clearChat" data-i18n="newChat">New chat</button>
@@ -431,21 +427,8 @@
 
               <div class="card" style="margin-top:16px">
                 <h3 style="margin:0 0 8px;font-size:14px">Approved Knowledge Base</h3>
-                <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Synthetic demo documents verified by People Operations.</p>
-                <div class="notice">
-                  <div class="notice-icon">▤</div>
-                  <div>
-                    <b style="font-size:12.5px">Employee Request Guide</b>
-                    <p>Vacation & advance rules · v1.4</p>
-                  </div>
-                </div>
-                <div class="notice">
-                  <div class="notice-icon">▤</div>
-                  <div>
-                    <b style="font-size:12.5px">HR Support Directory</b>
-                    <p>Escalation channels · v1.1</p>
-                  </div>
-                </div>
+                <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Synthetic sample documents approved for demonstration.</p>
+                <div id="approvedKnowledgeList"></div>
               </div>
             </aside>
           </div>
@@ -479,7 +462,7 @@
           <div class="card">
             <div class="section-head">
               <h3 data-i18n="pendingApprovals">Pending approvals</h3>
-              <span class="stat-foot">Strictly scoped to your direct reports</span>
+              <span class="stat-foot">Scoped to direct reports; HR has company-wide access</span>
             </div>
             <div class="table-wrap">
               <table class="table">
@@ -509,8 +492,8 @@
                 <div class="stat-num" id="teamPendingStat">1</div>
               </div>
               <div>
-                <div class="stat-foot">Compliance rate</div>
-                <div class="stat-num">88%</div>
+                <div class="stat-foot">Review scope</div>
+                <div class="stat-num" id="teamScope" style="font-size:18px">Direct reports</div>
               </div>
             </div>
           </div>
@@ -524,14 +507,14 @@
               <h1 data-i18n="hrAdmin">HR administration</h1>
               <p>Platform controls for knowledge sources, integration adapters, and audit trails.</p>
             </div>
-            <span class="status approved">Admin Preview</span>
+            <span class="status approved">HR access</span>
           </div>
 
           <div class="grid stats" style="grid-template-columns:repeat(3, minmax(0, 1fr))">
             <div class="card">
-              <div class="stat-top">Active employees <span class="stat-icon">♙</span></div>
-              <div class="stat-num">128</div>
-              <div class="stat-foot">Synthetic demo workforce</div>
+              <div class="stat-top">Active accounts <span class="stat-icon">♙</span></div>
+              <div class="stat-num" id="adminEmployeeCount">—</div>
+              <div class="stat-foot">Database-backed account count</div>
             </div>
             <div class="card">
               <div class="stat-top">Knowledge chunks <span class="stat-icon">▤</span></div>
@@ -549,7 +532,7 @@
           <div class="card" style="margin-top:20px">
             <div class="section-head">
               <h3>Enterprise Integration Boundaries</h3>
-              <span class="status pending">Mocked Architecture Boundary</span>
+              <span class="status pending">Unconnected</span>
             </div>
             <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px">
               Demonstrates where and how external corporate systems integrate with JanaMen. Official HR data remains read-only.
@@ -561,16 +544,29 @@
           <div class="grid lower" style="margin-top:20px">
             <div class="card">
               <div class="section-head">
-                <h3>Approved AI Knowledge Chunks</h3>
+                <h3>Knowledge Sources</h3>
                 <span class="stat-foot">Indexed passages</span>
               </div>
+              <details style="margin-bottom:16px">
+                <summary>Create a knowledge document</summary>
+                <form id="knowledgeForm" class="form-grid" style="margin-top:12px">
+                  <label>Document title<input class="field" name="title" required maxlength="255"></label>
+                  <label>Section title<input class="field" name="section" required maxlength="255"></label>
+                  <label>Source text<textarea class="field" name="content" required maxlength="20000"></textarea></label>
+                  <label>Access<select class="field" name="access"><option value="all">All roles</option><option value="employee">Employees</option><option value="manager">Managers</option><option value="hr_admin">HR only</option></select></label>
+                  <label><input type="checkbox" name="synthetic" checked> Synthetic example</label>
+                  <button class="primary" type="submit">Save draft</button>
+                </form>
+              </details>
+              <p>Review source text before approval. Draft or inactive documents are excluded from AI Jana.</p>
+              <div id="knowledgeDocuments"></div>
               <div id="knowledgeList" style="max-height:360px;overflow-y:auto"></div>
             </div>
 
             <div class="card">
               <div class="section-head">
                 <h3>System Audit Trail</h3>
-                <span class="status approved">Immutable</span>
+                <span class="status approved">Application audit trail</span>
               </div>
               <div class="table-wrap" style="max-height:360px;overflow-y:auto">
                 <table class="table">
@@ -732,13 +728,40 @@
         <span class="eyebrow" id="citationDocTitle">Employee Request Guide</span>
         <h4 id="citationSecTitle" style="font-size:15px;margin:6px 0 10px">Section Title</h4>
         <p id="citationSnippet" style="font-size:13px;line-height:1.55;color:var(--ink)">Source content snippet...</p>
-        <span class="status approved" style="margin-top:10px;font-size:10px">✓ Approved Corporate Policy</span>
+        <span class="status approved" style="margin-top:10px;font-size:10px">Approved source · check document version</span>
       </div>
+    </div>
+  </div>
+
+
+  <div class="modal-backdrop" id="reviewModal" role="dialog" aria-labelledby="reviewTitle" aria-modal="true">
+    <div class="modal">
+      <h3 id="reviewTitle">Review request</h3>
+      <form id="reviewForm" class="form-grid">
+        <label for="reviewComment">Review comment (optional)</label>
+        <textarea id="reviewComment" class="field" maxlength="2000"></textarea>
+        <button class="small-btn" id="cancelReview" type="button">Cancel</button>
+        <button class="primary" id="submitReview" type="submit">Confirm review</button>
+      </form>
     </div>
   </div>
 
   <!-- Global Toast Notification -->
   <div class="toast" id="toast" role="status"></div>
+</div>
+
+<div class="auth-gate" id="loginGate" role="dialog" aria-labelledby="loginTitle" aria-modal="true">
+  <div class="modal">
+    <div class="brand"><div class="logo">J</div><strong>JanaМен</strong></div>
+    <h1 id="loginTitle">Sign in to your workspace</h1>
+    <p id="loginHint">Use your account email and password.</p>
+    <form id="loginForm" class="form-grid">
+      <label for="loginEmail">Email</label><input id="loginEmail" class="field" type="email" autocomplete="username" required maxlength="255">
+      <label for="loginPassword">Password</label><input id="loginPassword" class="field" type="password" autocomplete="current-password" required maxlength="256">
+      <p id="loginError" role="alert"></p>
+      <button class="primary" id="loginSubmit" type="submit">Sign in</button>
+    </form>
+  </div>
 </div>
 </body>
 </html>

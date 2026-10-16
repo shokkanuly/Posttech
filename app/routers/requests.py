@@ -1,5 +1,8 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, Request as FastAPIRequest
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import Request as FastAPIRequest
+from pydantic import PositiveInt
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -7,9 +10,9 @@ from app.models.enums import RequestStatus, RequestType
 from app.models.user import User
 from app.schemas.request import (
     RequestCreate,
-    RequestReview,
-    RequestResponse,
     RequestDetailResponse,
+    RequestResponse,
+    RequestReview,
 )
 from app.services.auth_service import get_current_user
 from app.services.request_service import request_service
@@ -19,12 +22,18 @@ router = APIRouter(prefix="/requests", tags=["Employee Requests"])
 
 @router.get("", response_model=List[RequestResponse])
 def list_requests(
-    status: Optional[RequestStatus] = Query(None, description="Filter by status (Pending, Approved, Rejected)"),
-    type: Optional[RequestType] = Query(None, description="Filter by type (Vacation, Advance payment)"),
+    status: Optional[RequestStatus] = Query(
+        None, description="Filter by status (Pending, Approved, Rejected)"
+    ),
+    type: Optional[RequestType] = Query(
+        None, description="Filter by type (Vacation, Advance payment)"
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    requests = request_service.get_user_requests(db, current_user, status_filter=status, type_filter=type)
+    requests = request_service.get_user_requests(
+        db, current_user, status_filter=status, type_filter=type
+    )
     return [request_service.to_response(r) for r in requests]
 
 
@@ -42,7 +51,7 @@ def create_request(
 
 @router.get("/{request_id}", response_model=RequestDetailResponse)
 def get_request_detail(
-    request_id: int,
+    request_id: PositiveInt,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -52,12 +61,14 @@ def get_request_detail(
 
 @router.post("/{request_id}/approve", response_model=RequestDetailResponse)
 def approve_request(
-    request_id: int,
+    request_id: PositiveInt,
+    request: FastAPIRequest,
     payload: Optional[RequestReview] = None,
-    request: FastAPIRequest = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if payload and payload.action and payload.action != "approve":
+        raise HTTPException(422, "Action must agree with the approval route")
     comment = payload.comment if payload else None
     ip_addr = request.client.host if (request and request.client) else None
     req = request_service.review_request(
@@ -73,12 +84,14 @@ def approve_request(
 
 @router.post("/{request_id}/reject", response_model=RequestDetailResponse)
 def reject_request(
-    request_id: int,
+    request_id: PositiveInt,
+    request: FastAPIRequest,
     payload: Optional[RequestReview] = None,
-    request: FastAPIRequest = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if payload and payload.action and payload.action != "reject":
+        raise HTTPException(422, "Action must agree with the rejection route")
     comment = payload.comment if payload else None
     ip_addr = request.client.host if (request and request.client) else None
     req = request_service.review_request(

@@ -1,203 +1,162 @@
-# JanaMen (JanaМен) — Digital HR Workspace
+# JanaМен — employee HR workspace
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.136.1-009688.svg?style=flat&logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)
-[![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.14-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/)
-[![Docker](https://img.shields.io/badge/Docker-Compose%20Ready-2496ED.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/Hackathon-PostTech%20%C3%97%20Terricon%20Valley%202026-forestgreen.svg)]()
+A modular FastAPI/SQLAlchemy MVP with the original HTML/CSS/JavaScript frontend. It supports real credential login, revocable bearer sessions, employee/manager/HR scopes, read-only profiles, transactional requests and history, notifications, courses and persisted results, and approved-document HR assistance.
 
-> **PostTech × Terricon Valley Hackathon 2026 — Challenge 02: Digital HR**  
-> A unified, role-based self-service HR platform for Jana Post employees, managers, and HR administrators.
+The demo uses synthetic users and sample documents. **1C:ZUP and Documentolog are unconnected.** AI Jana returns exact approved source text using conservative keyword retrieval; no external model or paid service is required.
 
----
+## Local setup
 
-## 1. Executive Summary
-
-JanaMen replaces fragmented enterprise spreadsheets, messengers, and disconnected HR portals with a unified employee workspace:
-
-1. **Personalized Dashboard & Profile**: Read-only official HR data, live leave balance ring, and daily task snapshots.
-2. **End-to-End Request Workflow**: Vacation and advance payment submissions with backend balance validation, manager review queues, approval event history, and mock Documentolog registration.
-3. **Server-Enforced RBAC**: Real backend authorization ensuring employees cannot approve requests or view team scopes, and managers only access direct reports.
-4. **Jana Academy (LMS)**: Persistent course progression, interactive compliance quizzes, instant score calculation, and completion certificates.
-5. **AI Jana (Evidence-Grounded RAG Assistant)**: Corporate HR policy Q&A grounded strictly in approved documentation with verifiable citations, zero-hallucination safe fallbacks, and privacy protection guardrails.
-6. **Persistent Notifications & Auditability**: Real-time alerts on request updates and course milestones, backed by an immutable system audit log.
-7. **Documented Enterprise Boundaries**: Clear architectural adapters for future live integrations with **1C:ZUP 3.1** and **Documentolog (ЭДО)**.
-
----
-
-## 2. Quick Start & Setup
-
-The platform can be run locally using Python or via Docker Compose.
-
-### Option A: Local Run (Zero-Config SQLite)
+Tested with Python 3.14. Direct dependencies are pinned in `requirements.txt`; development checks are in `requirements-dev.txt`. Run commands from the repository root.
 
 ```bash
-# 1. Clone repository and navigate to workspace
-cd "/Users/aibek/post tech "
-
-# 2. (Optional) Create and activate a virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install -r requirements-dev.txt
 
-# 3. Install dependencies
-pip install -r requirements.txt
+# Explicit local demo configuration; this preserves an existing .env and database.
+export ENVIRONMENT=development
+export DEMO_MODE=true
+export DEMO_PASSWORD='Password123!'
+export DATABASE_URL=sqlite:///./janamen-demo.db
+export ACCESS_TOKEN_EXPIRE_MINUTES=60
+export AI_CONFIDENCE_THRESHOLD=0.8
+export ENABLE_MOCK_INTEGRATIONS=false
 
-# 4. Copy configuration template
-cp .env.example .env
-
-# 5. Seed the database with synthetic demo data
-python3 -m app.seed
-
-# 6. Start the server
-python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+python -m app.migrate
+python -m app.seed
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open **`http://127.0.0.1:8000`** in your browser.  
-Interactive Swagger API documentation is available at **`http://127.0.0.1:8000/docs`**.
+Open [the workspace](http://127.0.0.1:8000), [interactive API docs](http://127.0.0.1:8000/docs), or [OpenAPI JSON](http://127.0.0.1:8000/openapi.json). An empty/known unsafe development signing key is replaced by a process-local random key; restarting the server requires signing in again.
 
----
+Alternatively, create `.env` from `.env.example` **only if `.env` does not already exist**. Merge the relevant settings into an existing file rather than replacing it. Environment variables override file settings. The implementation work does not alter the existing private `.env` or `janamen.db`.
 
-### Option B: Docker Compose
+| Synthetic demo account | Email | Password |
+|---|---|---|
+| Employee | aruzhan@janapost.kz | Value of `DEMO_PASSWORD` above |
+| Manager | timur@janapost.kz | Same demo password |
+| HR administrator | aigerim@janapost.kz | Same demo password |
+
+The role selector only pre-fills a demo email and signs out the current session. A password is still required. The server ignores client-selected roles and loads permissions from the authenticated database user. There is no automatic login on an expired or revoked token. Tokens are held in browser memory, not local storage.
+
+Seeding is allowed only in explicit non-production demo mode, requires a 12+ character synthetic password, and skips databases containing users. For a fresh rehearsal, choose a **new database filename**, then run migrate and seed. There is no automatic destructive reset.
+
+## Existing databases and migrations
+
+`python -m app.migrate` and `alembic upgrade head` apply forward-only migrations:
+
+- `0001_baseline`: creates the original schema for new databases or adopts a complete legacy schema without changing its existing rows.
+- `0002_sessions_and_approvals`: adds revocable sessions, explicit knowledge approval metadata, and unique enrollment/progress indexes.
+
+Startup checks the revision and stops with the migration command if it is missing. A partial legacy schema or duplicate enrollment/progress records stops the migration for operator review; records are never silently deleted or merged. Existing knowledge documents become drafts until HR reviews and approves them. Existing password hashes remain valid and are upgraded after successful login. Old bearer tokens have no persisted session and must be replaced through login.
+
+Before migrating valuable data, make an operator-controlled backup. Migration rehearsal was performed on a copy of the existing database; the original file was not migrated or reset. See `docs/IMPLEMENTATION_REPORT.md` for actual validation results.
+
+## Frontend integration and demonstration
+
+The API and assets share one origin; no frontend build step is needed. `static/js/app.js` uses `/api/v1`. For a separate development frontend, configure an explicit `ALLOWED_ORIGINS` JSON list and proxy `/api/v1` to this backend. Wildcard origins are rejected. The supported frontend is served at `/`; the old `janamen_preview.html` is an unused static design reference.
+
+1. Sign in as the employee. Open Profile and check the local read-only fields, leave balance, and learning summary.
+2. Open My requests → New request. Submit vacation dates and a handover note. Open Details to see the Pending status and submission event.
+3. Sign out, then sign in as the manager. Open Team & approvals, approve the in-scope request through the review modal, and add an optional comment. Repeated or conflicting reviews return 409. Requests outside the manager’s team return 403.
+4. Sign back in as the employee. Open Notifications and the request history. Approval deducts leave atomically and persists the approval event and notification. External registration remains unconnected.
+5. Open Jana Academy, finish the final security lesson, and submit its quiz. Check course completion, result, notification, profile progress and the refreshed dashboard card. Catalog courses can be explicitly enrolled in; viewing them never creates assignments.
+6. Ask AI Jana “How do I request vacation?” and click the source button. The modal fetches the exact approved section and version, including apostrophes safely.
+7. Ask “What is the pet insurance policy?” or “How many unused vacation days can I carry over into next year?” Both should fall back. Asking for another employee’s salary should be refused.
+8. Sign in as HR. Open HR administration, save a draft document and section, review its text, then approve it. Draft/inactive documents are excluded from AI. Editing source content requires reapproval. HR-only sources are unavailable to employee accounts.
+
+## API contracts
+
+See `docs/API_CONTRACT.md` for the complete endpoint list, permission matrix, validation rules, schemas and error format. The generated OpenAPI document is the machine-readable reference.
+
+Example local demo login:
 
 ```bash
-# Start containerized application
+curl -sS http://127.0.0.1:8000/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"aruzhan@janapost.kz","password":"Password123!"}'
+```
+
+Use the returned token as `Authorization: Bearer <token>` for these examples:
+
+```http
+POST /api/v1/requests
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{"type":"Vacation","start_date":"2026-11-23","end_date":"2026-11-25","reason":"Synthetic demo request"}
+```
+
+```http
+POST /api/v1/ai/chat
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{"question":"How do I request vacation?"}
+```
+
+A validation error has this stable shape, without raw request input:
+
+```json
+{"detail":"Invalid input","error":{"code":"validation_error","message":"Invalid input","fields":[{"location":["body","amount"],"message":"Input should be greater than 0"}]},"request_id":"..."}
+```
+
+## Checks
+
+```bash
+python -m pytest -q
+ruff check app tests migrations smoke_test.py
+ruff format --check app tests migrations smoke_test.py
+python -m mypy app
+node --check static/js/app.js
+node --check static/js/i18n.js
+
+# Mutates only the server/database selected by the operator; use a disposable demo.
+JANAMEN_BASE_URL=http://127.0.0.1:8000 DEMO_PASSWORD='Password123!' python smoke_test.py
+```
+
+Tests use their own SQLite files, migrations, startup engines and real authenticated sessions. They cover role/record scope, validation, revocation, conflicting approvals, balance integrity, transaction rollback, migration preservation/failures, notification ownership, enrollment concurrency, progress, knowledge approval, sources/fallback and the critical API journey. Browser interaction evidence is separate from API tests.
+
+## Configuration and non-demo accounts
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | SQLite URL; tested database for this MVP |
+| `ENVIRONMENT` | `development`, `test`, or `production` |
+| `SECRET_KEY` | Production: independently generated random environment secret, at least 32 characters; never use published demo/test values |
+| `DEMO_MODE` | Defaults false; rejected in production; controls synthetic seeding and account hints |
+| `DEMO_PASSWORD` | Required only when seeding a local demo; never a production password |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | 1–1440, defaults 60 |
+| `ALLOWED_ORIGINS` | Optional explicit JSON list; empty means same-origin only |
+| `AI_CONFIDENCE_THRESHOLD` | Normalized coverage threshold; minimum safety floor 0.75, defaults 0.8 |
+| `AI_PROVIDER` | Only `grounded_knowledge` is supported |
+| `HR_SUPPORT_EMAIL` | Escalation contact; configure the real approved helpdesk before deployment |
+| `ENABLE_MOCK_INTEGRATIONS` | Defaults false; optional local mock references are explicitly prefixed MOCK and never connect externally |
+
+Production rejects an empty/known demo signing key and demo mode. Put it behind HTTPS before using authenticated accounts remotely. Provision non-demo users through the trusted local command, which prompts for the password without placing it in command history:
+
+```bash
+python -m app.create_user --email admin@example.test --name 'Synthetic HR Admin' \
+  --role hr_admin --employee-code SAMPLE-ADMIN --company 'Sample company' \
+  --department 'HR' --position 'Administrator' --location 'Sample office' \
+  --hire-date 2026-10-16 --leave-balance 0
+```
+
+Use operator-supplied profile values. `--manager-email` can link an employee to an existing active manager. This command creates local records; it does not verify them with 1C.
+
+## Docker
+
+```bash
 docker compose up --build -d
-
-# Check health status
-curl http://localhost:8000/health
+curl http://127.0.0.1:8000/health
 ```
 
----
+Compose reads explicit demo/environment settings from `.env` or the shell, binds localhost, runs migrations, and persists only `/data`. Source and assets remain in the image so rebuilds take effect. The container runs as a non-root user. Docker execution was not validated in this environment because its daemon was unavailable. An old volume previously mounted over `/app` needs an operator-managed migration/ownership check; do not delete it to force an update.
 
-## 3. Demo Test Accounts
+## Boundaries and limitations
 
-Deterministic synthetic accounts with real backend passwords (no actual personal employee data):
+This is a single-organization hackathon MVP, not a production HR system. No real 1C, Documentolog, payroll disbursement, electronic signatures, SSO, password reset, refresh tokens, certificate files, or external AI provider are connected. Audit is append-only through application endpoints, not a tamper-proof database. The login limiter is process-local; multiple workers need a shared gateway/rate limiter. Session and audit retention cleanup is an operator concern. SQLite concurrency correctness is tested at small scale, not load-tested for enterprise use.
 
-| Role | Persona Name | Email | Password | Scope & Key Data |
-| :--- | :--- | :--- | :--- | :--- |
-| **Employee** | Aruzhan Sadykova | `aruzhan@janapost.kz` | `Password123!` | Product Operations · 18.5 leave days · Reports to Timur K. |
-| **Manager** | Timur Kasymov | `timur@janapost.kz` | `Password123!` | Operations Team Lead · Manages Aruzhan S., Dana M., Ruslan A. |
-| **HR Admin** | Aigerim Nurlanova | `aigerim@janapost.kz` | `Password123!` | People Operations Director · Access to knowledge base & audit logs |
+AI uses lexical coverage rather than semantic understanding; unfamiliar paraphrases may safely fall back. HR must review source accuracy, authorization and personal-data content before approval. Document versions are edited in place, not retained as an immutable revision archive. RU/KZ localization remains partial scaffolding. UI notifications refresh on relevant page actions rather than a push connection.
 
-> **Convenience Feature**: The topbar includes an instant **Persona Switcher** that performs a real login (`POST /api/v1/auth/login`), obtains a signed JWT token, and refreshes the view without manual logout/login steps.
-
----
-
-## 4. 10-Step Demonstration Script (Judging Walkthrough)
-
-Follow this step-by-step path to evaluate all hackathon criteria:
-
-### Step 1: Employee Login & Dashboard
-- Open `http://127.0.0.1:8000`.
-- Verify the active persona is **Aruzhan Sadykova** (Employee).
-- Note the leave balance ring showing **18.5 days available**, current open requests, and learning progress.
-
-### Step 2: Employee Profile & 1C:ZUP Master Data
-- Click **My profile** in the sidebar.
-- Observe official HR fields: Employee Code `JP-10428`, Company `Jana Post Kazakhstan`, Department `Product Operations`, Manager `Timur Kasymov`.
-- Notice the **"Official HR data · Read-only"** badge; profile data is authoritative and protected from tampering.
-
-### Step 3: Submit a Vacation Request
-- Click **My requests** -> click **＋ New request** (or click "Request time off ↗" on Overview).
-- Select **Vacation**, pick Start Date `2026-11-23` and End Date `2026-11-25` (3 days), enter reason `"Shymbulak family trip"`.
-- Click **Submit request ↗**.
-- A toast confirms submission, and a new request `REQ-1045` appears in **Pending** status.
-- Click **Details ↗** on the request to inspect the audit timeline (`SUBMITTED by Aruzhan Sadykova`).
-
-### Step 4: Manager Review & Approval
-- Switch the persona dropdown in the topbar to **Persona: Manager (Timur K.)**.
-- The navigation automatically reveals the **Team & approvals** workspace.
-- Navigate to **Team & approvals**; observe pending requests from direct reports.
-- Click **Approve** on Aruzhan's request, enter optional comment `"Approved. Enjoy your break."`.
-- The request transitions to **Approved**, and an external Documentolog tracking URN is assigned (`DOCLOG-2026-1045`).
-
-### Step 5: Employee Notification & Balance Synchronization
-- Switch persona back to **Persona: Employee (Aruzhan S.)**.
-- Check the notification bell in the topbar; click **Notifications**.
-- Observe the persistent notification: `"Request Approved: Your Vacation request was approved by Timur Kasymov"`.
-- Return to **Overview** or **My profile**; observe that the leave balance was automatically deducted by 3 days (from 18.5 to **15.5 days**).
-
-### Step 6: Jana Academy Course & Interactive Quiz
-- Click **Jana Academy** in the sidebar.
-- Open the mandatory course **"Data protection essentials"** (currently at 75% progress).
-- Read Lesson 4: *"Incident Reporting & Escalation"*.
-- In the quiz section, select the correct answer: `"Within 30 minutes"`, then click **Submit Answer**.
-- The quiz is evaluated in the backend, course progress updates to **100% (Completed)**, a completion certificate notification is created, and the dashboard reflects the achievement.
-
-### Step 7: AI Jana Grounded Q&A with Source Citation
-- Click **AI Jana** in the sidebar.
-- Click the suggestion chip: **"How do I request vacation in the system?"** (or type your own question).
-- AI Jana responds with a grounded answer citing **Employee Request Guide · Vacation Request Workflow**.
-- Click the clickable source pill to view the source modal displaying the exact verified policy snippet.
-
-### Step 8: AI Jana Safe Fallback (No Hallucinations)
-- In AI Jana, ask: **"What is the pet insurance reimbursement policy?"**.
-- Because this policy does not exist in the approved knowledge base, AI Jana **does not hallucinate or guess**.
-- It triggers a **Safe Fallback** with guidance to contact HR at `hr-support@janapost.kz`.
-
-### Step 9: Server-Enforced RBAC & Security Verification
-- As Employee Aruzhan, try directly visiting `/api/v1/manager/requests` or `/api/v1/admin/knowledge`.
-- The server responds with **HTTP 403 Forbidden: Access denied**.
-- Employees cannot approve requests, and managers cannot approve requests outside their reporting line.
-
-### Step 10: Enterprise Integration Telemetry & Audit Logs
-- Switch persona to **Persona: HR Admin (Aigerim N.)**.
-- Click **HR administration** in the sidebar.
-- View the **Enterprise Integration Boundaries** card showing telemetry for **1C:ZUP 3.1** and **Documentolog**.
-- Review the live **System Audit Trail** showing all timestamped logins, submissions, approvals, and AI queries.
-
----
-
-## 5. Automated Testing Suite
-
-Comprehensive automated test coverage with **28 tests**:
-
-```bash
-# Run backend pytest suite (unit, RBAC, workflows, AI RAG, LMS)
-python3 -m pytest -v
-
-# Run the live 10-step judging smoke test runner against the running server
-python3 smoke_test.py
-```
-
-### Test Suite Summary:
-- **`tests/test_auth.py`**: Authentication, incorrect passwords, token decoding, profile serialization.
-- **`tests/test_requests.py`**: Vacation & advance payment submissions, date range validation, leave balance checks, approval workflows, event histories.
-- **`tests/test_academy.py`**: Course catalog, lesson details, quiz grading, persistent completion.
-- **`tests/test_ai.py`**: Grounded answers, citation attribution, safe fallbacks, and privacy protection guardrails.
-- **`tests/test_security.py`**: Role-based access control (RBAC), manager scope enforcement, IDOR prevention, token tampering defense.
-- **`tests/test_e2e_journey.py`**: End-to-end integration test following the entire employee journey.
-
----
-
-## 6. Implementation Status Matrix
-
-| Component | Hackathon Prototype Status | Implementation Notes |
-| :--- | :---: | :--- |
-| **Authentication & RBAC** | **Fully Implemented** | PBKDF2-HMAC password hashing, JWT Bearer tokens, server-side role enforcement. |
-| **Employee Profile** | **Fully Implemented** | Read-only authoritative data, department, manager link, leave balance. |
-| **Request Workflows** | **Fully Implemented** | Vacation & advance payment forms, date validation, manager review, status lifecycle. |
-| **Request Event History** | **Fully Implemented** | Audit timeline tracking submissions, approvals, rejections, and reviewer comments. |
-| **Jana Academy (LMS)** | **Fully Implemented** | Course catalog, lesson markdown reader, interactive quiz, real progress calculation. |
-| **AI Jana Assistant** | **Fully Implemented** | Multi-token keyword & tag RAG retrieval, verifiable source citations, safe fallbacks. |
-| **Persistent Notifications** | **Fully Implemented** | DB-persisted alerts for requests and academy milestones, unread counters. |
-| **Audit Logging** | **Fully Implemented** | Immutable `audit_events` table recording actor, action, timestamp, and details. |
-| **Localization (RU / KZ / EN)** | **Fully Implemented** | Client-side i18n dictionary covering Russian, Kazakh, and English. |
-| **1C:ZUP Integration** | **Mocked Adapter** | Architecture boundary defined in `app/integrations/one_c_zup.py`. Ready for future OData. |
-| **Documentolog Integration** | **Mocked Adapter** | Architecture boundary defined in `app/integrations/documentolog.py`. Assigns tracking URNs. |
-| **Digital Signatures (EDS)** | *Planned Future Work* | Legal e-signature integration deferred to post-hackathon enterprise rollout. |
-| **Mobile App (iOS/Android)** | *Planned Future Work* | Current release provides a mobile-responsive web application. |
-
----
-
-## 7. Known Limitations & Architecture Boundaries
-
-1. **Integration Adapters**: Production connections to 1C:ZUP and Documentolog are modeled via mock adapters (`READY_MOCK`) returning synthetic payloads and external IDs. Live enterprise VPN/OData tunnels were not configured per hackathon rules.
-2. **AI Provider Fallback**: AI Jana currently operates an offline, deterministic vector/keyword retrieval engine over approved documents, ensuring reliable, verifiable citations and offline competition compliance without external cloud API dependencies.
-3. **Data Scope**: All employee records, departments, and policy documents are synthetic demo data created specifically for the Jana Post challenge.
-
----
-
-## 8. License & Acknowledgements
-
-Created for the **Jana Post × Terricon Valley Hackathon 2026 (Challenge 02: Digital HR)**.
-Designed with modern enterprise UX standards, accessible semantic HTML, and clean Python backend architecture.
+Architecture, database schema and remaining risks are documented in `ARCHITECTURE.md` and `docs/IMPLEMENTATION_REPORT.md`.

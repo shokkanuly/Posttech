@@ -28,7 +28,7 @@ def test_admin_integrations_telemetry(client, hr_admin_headers):
     adapters = res.json()
     assert len(adapters) == 2
     adapter_names = [a["adapter_name"] for a in adapters]
-    assert any("1C:Enterprise" in name for name in adapter_names)
+    assert any("1C:ZUP" in name for name in adapter_names)
     assert any("Documentolog" in name for name in adapter_names)
 
 

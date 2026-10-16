@@ -1,11 +1,13 @@
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.enums import UserRole, RequestStatus
-from app.models.user import User
+from app.models.enums import RequestStatus, UserRole
 from app.models.profile import EmployeeProfile
+from app.models.user import User
+from app.schemas.common import TeamMemberResponse
 from app.schemas.request import RequestResponse
 from app.services.auth_service import require_role
 from app.services.request_service import request_service
@@ -23,16 +25,15 @@ def get_manager_team_requests(
     return [request_service.to_response(r) for r in team_requests]
 
 
-@router.get("/team")
+@router.get("/team", response_model=list[TeamMemberResponse])
 def get_manager_team_members(
     current_user: User = Depends(require_role(UserRole.MANAGER, UserRole.HR_ADMIN)),
     db: Session = Depends(get_db),
 ):
-    profiles = (
-        db.query(EmployeeProfile)
-        .filter(EmployeeProfile.manager_id == current_user.id)
-        .all()
-    )
+    query = db.query(EmployeeProfile)
+    if current_user.role != UserRole.HR_ADMIN:
+        query = query.filter(EmployeeProfile.manager_id == current_user.id)
+    profiles = query.all()
     return [
         {
             "user_id": p.user_id,

@@ -1,6 +1,8 @@
 import json
-from typing import Optional, Any
+from typing import Any, Optional
+
 from sqlalchemy.orm import Session
+
 from app.models.audit import AuditEvent
 
 

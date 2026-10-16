@@ -1,100 +1,77 @@
 import json
 from datetime import datetime, timezone
-from typing import List, Optional, Tuple
-from fastapi import HTTPException, status
+
+from fastapi import HTTPException
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
+from app.models.academy import Course, Enrollment, Lesson, LessonProgress
 from app.models.enums import EnrollmentStatus, NotificationType
 from app.models.user import User
-from app.models.academy import Course, Lesson, Enrollment, LessonProgress
 from app.schemas.academy import (
-    CourseResponse,
     CourseDetailResponse,
+    CourseResponse,
     LessonBrief,
     LessonDetailResponse,
     QuizSubmitResponse,
 )
-from app.services.notification_service import notification_service
 from app.services.audit_service import audit_service
+from app.services.notification_service import notification_service
 
 
 class AcademyService:
     @staticmethod
-    def get_or_create_enrollment(db: Session, user_id: int, course_id: int) -> Enrollment:
-        enrollment = (
+    def get_enrollment(db: Session, user_id: int, course_id: int):
+        return (
             db.query(Enrollment)
             .filter(Enrollment.user_id == user_id, Enrollment.course_id == course_id)
             .first()
         )
+
+    @classmethod
+    def enroll(cls, db: Session, user_id: int, course_id: int, actor_id: int):
+        course = db.get(Course, course_id)
+        user = db.get(User, user_id)
+        if not course or not user or not user.is_active:
+            raise HTTPException(404, "Active user or course not found")
+        db.execute(
+            update(User).where(User.id == user_id).values(is_active=User.is_active),
+            execution_options={"synchronize_session": False},
+        )
+        enrollment = cls.get_enrollment(db, user_id, course_id)
         if not enrollment:
             enrollment = Enrollment(
                 user_id=user_id,
                 course_id=course_id,
                 status=EnrollmentStatus.NOT_STARTED,
-                progress_percent=0.0,
+                progress_percent=0,
             )
             db.add(enrollment)
             db.flush()
-        return enrollment
+            notification_service.create_notification(
+                db,
+                user_id,
+                "Course assigned",
+                course.title,
+                NotificationType.ACADEMY,
+                "course",
+                course.code,
+            )
+            audit_service.log_event(
+                db,
+                action="COURSE_ASSIGNED",
+                actor_id=actor_id,
+                target_type="enrollment",
+                target_id=str(enrollment.id),
+                details={"user_id": user_id, "course_id": course_id},
+            )
+            db.commit()
+        return cls.get_course_detail(db, course_id, user)
 
     @classmethod
-    def get_user_courses(cls, db: Session, user: User) -> List[CourseResponse]:
-        courses = db.query(Course).order_by(Course.id.asc()).all()
-        results = []
-        for course in courses:
-            enrollment = cls.get_or_create_enrollment(db, user.id, course.id)
-            results.append(
-                CourseResponse(
-                    id=course.id,
-                    code=course.code,
-                    title=course.title,
-                    category=course.category,
-                    description=course.description,
-                    duration_minutes=course.duration_minutes,
-                    is_mandatory=course.is_mandatory,
-                    due_date=course.due_date,
-                    total_lessons=course.total_lessons,
-                    cover_gradient=course.cover_gradient,
-                    status=enrollment.status,
-                    progress_percent=enrollment.progress_percent,
-                )
-            )
-        return results
-
-    @classmethod
-    def get_course_detail(cls, db: Session, course_id: int, user: User) -> CourseDetailResponse:
-        course = db.query(Course).filter(Course.id == course_id).first()
-        if not course:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
-
-        enrollment = cls.get_or_create_enrollment(db, user.id, course.id)
-
-        # Get all completed lesson IDs for this enrollment
-        completed_lesson_ids = {
-            lp.lesson_id
-            for lp in db.query(LessonProgress)
-            .filter(LessonProgress.enrollment_id == enrollment.id, LessonProgress.is_completed == True)
-            .all()
-        }
-
-        lessons_brief = []
-        first_incomplete_id = None
-        for lesson in course.lessons:
-            is_comp = lesson.id in completed_lesson_ids
-            lessons_brief.append(
-                LessonBrief(
-                    id=lesson.id,
-                    order_index=lesson.order_index,
-                    title=lesson.title,
-                    is_completed=is_comp,
-                )
-            )
-            if not is_comp and first_incomplete_id is None:
-                first_incomplete_id = lesson.id
-
-        current_id = first_incomplete_id or (course.lessons[0].id if course.lessons else None)
-
-        return CourseDetailResponse(
+    def course_response(cls, db, course, user):
+        enrollment = cls.get_enrollment(db, user.id, course.id)
+        return CourseResponse(
             id=course.id,
             code=course.code,
             title=course.title,
@@ -103,30 +80,62 @@ class AcademyService:
             duration_minutes=course.duration_minutes,
             is_mandatory=course.is_mandatory,
             due_date=course.due_date,
-            total_lessons=course.total_lessons,
+            total_lessons=len(course.lessons),
             cover_gradient=course.cover_gradient,
-            status=enrollment.status,
-            progress_percent=enrollment.progress_percent,
-            lessons=lessons_brief,
-            current_lesson_id=current_id,
+            assigned=enrollment is not None,
+            status=enrollment.status if enrollment else EnrollmentStatus.NOT_STARTED,
+            progress_percent=enrollment.progress_percent if enrollment else 0,
+            score=enrollment.score if enrollment else None,
+            completed_at=enrollment.completed_at if enrollment else None,
         )
 
     @classmethod
-    def get_lesson_detail(cls, db: Session, lesson_id: int, user: User) -> LessonDetailResponse:
-        lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
-        if not lesson:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
+    def get_user_courses(cls, db: Session, user: User):
+        return [
+            cls.course_response(db, c, user) for c in db.query(Course).order_by(Course.id).all()
+        ]
 
-        enrollment = cls.get_or_create_enrollment(db, user.id, lesson.course_id)
-        lp = (
-            db.query(LessonProgress)
-            .filter(LessonProgress.enrollment_id == enrollment.id, LessonProgress.lesson_id == lesson.id)
-            .first()
+    @classmethod
+    def get_course_detail(cls, db: Session, course_id: int, user: User):
+        course = db.get(Course, course_id)
+        if not course:
+            raise HTTPException(404, "Course not found")
+        enrollment = cls.get_enrollment(db, user.id, course_id)
+        completed = (
+            {p.lesson_id for p in enrollment.lesson_progress if p.is_completed}
+            if enrollment
+            else set()
         )
-        is_comp = lp.is_completed if lp else False
+        lessons = [
+            LessonBrief(
+                id=lesson.id,
+                order_index=lesson.order_index,
+                title=lesson.title,
+                is_completed=lesson.id in completed,
+            )
+            for lesson in course.lessons
+        ]
+        current = next(
+            (lesson.id for lesson in lessons if not lesson.is_completed),
+            lessons[0].id if lessons else None,
+        )
+        return CourseDetailResponse(
+            **cls.course_response(db, course, user).model_dump(),
+            lessons=lessons,
+            current_lesson_id=current,
+        )
 
-        options = json.loads(lesson.quiz_options_json) if lesson.quiz_options_json else []
-
+    @classmethod
+    def get_lesson_detail(cls, db: Session, lesson_id: int, user: User):
+        lesson = db.get(Lesson, lesson_id)
+        if not lesson:
+            raise HTTPException(404, "Lesson not found")
+        enrollment = cls.get_enrollment(db, user.id, lesson.course_id)
+        completed = (
+            any(p.lesson_id == lesson.id and p.is_completed for p in enrollment.lesson_progress)
+            if enrollment
+            else False
+        )
         return LessonDetailResponse(
             id=lesson.id,
             course_id=lesson.course_id,
@@ -134,106 +143,107 @@ class AcademyService:
             title=lesson.title,
             content_markdown=lesson.content_markdown,
             quiz_question=lesson.quiz_question,
-            quiz_options=options,
-            is_completed=is_comp,
+            quiz_options=json.loads(lesson.quiz_options_json or "[]"),
+            is_completed=completed,
         )
 
     @classmethod
     def submit_lesson_quiz(
-        cls,
-        db: Session,
-        lesson_id: int,
-        user: User,
-        answer_index: int,
-        ip_address: Optional[str] = None,
-    ) -> QuizSubmitResponse:
-        lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+        cls, db: Session, lesson_id: int, user: User, answer_index: int, ip_address=None
+    ):
+        lesson = db.get(Lesson, lesson_id)
         if not lesson:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
-
-        enrollment = cls.get_or_create_enrollment(db, user.id, lesson.course_id)
-        course = lesson.course
-
-        # Check if quiz is correct
-        passed = (lesson.quiz_correct_answer is None) or (answer_index == lesson.quiz_correct_answer)
-
-        # Retrieve or create LessonProgress
-        lp = (
-            db.query(LessonProgress)
-            .filter(LessonProgress.enrollment_id == enrollment.id, LessonProgress.lesson_id == lesson.id)
-            .first()
+            raise HTTPException(404, "Lesson not found")
+        options = json.loads(lesson.quiz_options_json or "[]")
+        if options and not 0 <= answer_index < len(options):
+            raise HTTPException(422, "Answer index is outside the available options")
+        if not options and answer_index != 0:
+            raise HTTPException(422, "Use answer_index 0 to acknowledge material without a quiz")
+        enrollment = cls.get_enrollment(db, user.id, lesson.course_id)
+        if not enrollment:
+            raise HTTPException(409, "Enroll in the course before submitting progress")
+        # Acquire an enrollment write lock before reading progress, also on SQLite.
+        db.execute(
+            update(Enrollment)
+            .where(Enrollment.id == enrollment.id)
+            .values(updated_at=datetime.now(timezone.utc)),
+            execution_options={"synchronize_session": False},
         )
-        if not lp:
-            lp = LessonProgress(
-                enrollment_id=enrollment.id,
-                lesson_id=lesson.id,
-                is_completed=passed,
-                quiz_passed=passed,
-                completed_at=datetime.now(timezone.utc) if passed else None,
-            )
-            db.add(lp)
-        else:
-            if passed:
-                lp.is_completed = True
-                lp.quiz_passed = True
-                lp.completed_at = datetime.now(timezone.utc)
-
-        db.flush()
-
-        # Recalculate enrollment progress
-        total_lessons = db.query(Lesson).filter(Lesson.course_id == course.id).count()
-        completed_lessons = (
+        db.refresh(enrollment)
+        passed = lesson.quiz_correct_answer is None or answer_index == lesson.quiz_correct_answer
+        progress = (
             db.query(LessonProgress)
             .filter(
-                LessonProgress.enrollment_id == enrollment.id,
-                LessonProgress.is_completed == True,
+                LessonProgress.enrollment_id == enrollment.id, LessonProgress.lesson_id == lesson.id
+            )
+            .first()
+        )
+        if not progress:
+            progress = LessonProgress(
+                enrollment_id=enrollment.id,
+                lesson_id=lesson.id,
+                is_completed=False,
+                quiz_passed=False,
+            )
+            db.add(progress)
+        if passed:
+            progress.is_completed = True
+            progress.quiz_passed = True
+            progress.completed_at = progress.completed_at or datetime.now(timezone.utc)
+        db.flush()
+        total = db.query(Lesson).filter(Lesson.course_id == lesson.course_id).count()
+        count = (
+            db.query(LessonProgress)
+            .filter(
+                LessonProgress.enrollment_id == enrollment.id, LessonProgress.is_completed.is_(True)
             )
             .count()
         )
-
-        progress_pct = round((completed_lessons / max(1, total_lessons)) * 100, 1)
-        enrollment.progress_percent = min(100.0, progress_pct)
+        percent = round(count / max(1, total) * 100, 1)
+        enrollment.progress_percent = percent
+        enrollment.score = percent
         enrollment.status = (
-            EnrollmentStatus.COMPLETED if progress_pct >= 100.0 else EnrollmentStatus.IN_PROGRESS
+            EnrollmentStatus.COMPLETED if count == total and total else EnrollmentStatus.IN_PROGRESS
         )
-        if progress_pct >= 100.0 and not enrollment.completed_at:
+        if enrollment.status == EnrollmentStatus.COMPLETED and enrollment.completed_at is None:
             enrollment.completed_at = datetime.now(timezone.utc)
-            # Create completion notification
             notification_service.create_notification(
-                db=db,
-                user_id=user.id,
-                title="Course completed! 🎓",
-                message=f"Congratulations! You completed '{course.title}' with 100% progress.",
-                type=NotificationType.ACADEMY,
-                reference_type="course",
-                reference_id=course.code,
+                db,
+                user.id,
+                "Course completed! 🎓",
+                f"You completed {lesson.course.title}. Result: {percent:.0f}% of lessons passed.",
+                NotificationType.ACADEMY,
+                "course",
+                lesson.course.code,
             )
-
-        db.commit()
-        db.refresh(enrollment)
-
-        explanation = (
-            "Correct! You identified the appropriate data protection practice."
-            if passed
-            else "That is not quite right. Review the policy points and try again."
+        audit_service.log_event(
+            db,
+            action="LESSON_QUIZ_SUBMITTED",
+            actor_id=user.id,
+            target_type="lesson",
+            target_id=str(lesson.id),
+            details={"passed": passed, "progress_percent": percent},
         )
-
+        db.commit()
         return QuizSubmitResponse(
             passed=passed,
             correct_index=lesson.quiz_correct_answer or 0,
-            explanation=explanation,
-            new_progress_percent=enrollment.progress_percent,
-            course_completed=(enrollment.status == EnrollmentStatus.COMPLETED),
+            explanation="Correct. Lesson completed."
+            if passed
+            else "Review the material and try again.",
+            new_progress_percent=percent,
+            course_completed=enrollment.status == EnrollmentStatus.COMPLETED,
+            score=percent,
         )
 
-    @classmethod
-    def get_user_overall_learning_progress(cls, db: Session, user_id: int) -> float:
-        """Returns the average progress across all assigned courses for dashboard display."""
+    @staticmethod
+    def get_user_overall_learning_progress(db: Session, user_id: int) -> float:
         enrollments = db.query(Enrollment).filter(Enrollment.user_id == user_id).all()
-        if not enrollments:
-            return 0.0
-        total = sum(e.progress_percent for e in enrollments)
-        return round(total / len(enrollments), 1)
+        return (
+            round(sum(e.progress_percent for e in enrollments) / len(enrollments), 1)
+            if enrollments
+            else 0.0
+        )
 
 
 academy_service = AcademyService()

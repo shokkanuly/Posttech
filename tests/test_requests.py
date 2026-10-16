@@ -1,7 +1,3 @@
-import pytest
-from app.models.enums import RequestStatus, RequestType
-
-
 def test_list_requests_employee(client, employee_headers):
     res = client.get("/api/v1/requests", headers=employee_headers)
     assert res.status_code == 200
@@ -81,12 +77,14 @@ def test_manager_review_direct_report_approval(client, manager_headers, employee
 
     # 2. Manager approves it
     review_payload = {"action": "approve", "comment": "Approved by manager Timur"}
-    res = client.post(f"/api/v1/requests/{req_id}/approve", json=review_payload, headers=manager_headers)
+    res = client.post(
+        f"/api/v1/requests/{req_id}/approve", json=review_payload, headers=manager_headers
+    )
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "Approved"
     assert data["reviewer_name"] == "Timur Kasymov"
-    assert data["external_sync_id"].startswith("DOCLOG-2026-")
+    assert data["external_sync_id"] is None  # Documentolog is unconnected.
 
     # Verify event history exists
     assert len(data["events"]) >= 2
@@ -107,6 +105,8 @@ def test_employee_cannot_approve_own_request(client, employee_headers):
     req_id = create_res.json()["id"]
 
     # Employee attempts to self-approve
-    res = client.post(f"/api/v1/requests/{req_id}/approve", json={"action": "approve"}, headers=employee_headers)
+    res = client.post(
+        f"/api/v1/requests/{req_id}/approve", json={"action": "approve"}, headers=employee_headers
+    )
     assert res.status_code == 403
     assert "Employees cannot approve or reject requests" in res.json()["detail"]

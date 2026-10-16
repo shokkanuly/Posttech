@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
 from typing import List, Optional
+
 from sqlalchemy.orm import Session
-from app.models.notification import Notification
+
 from app.models.enums import NotificationType
+from app.models.notification import Notification
 
 
 class NotificationService:
@@ -42,7 +44,7 @@ class NotificationService:
     def get_unread_count(db: Session, user_id: int) -> int:
         return (
             db.query(Notification)
-            .filter(Notification.user_id == user_id, Notification.is_read == False)
+            .filter(Notification.user_id == user_id, Notification.is_read.is_(False))
             .count()
         )
 
@@ -62,7 +64,7 @@ class NotificationService:
     def mark_all_as_read(db: Session, user_id: int) -> int:
         count = (
             db.query(Notification)
-            .filter(Notification.user_id == user_id, Notification.is_read == False)
+            .filter(Notification.user_id == user_id, Notification.is_read.is_(False))
             .update({"is_read": True})
         )
         db.flush()

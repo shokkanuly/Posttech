@@ -1,52 +1,52 @@
-# JanaMen — Digital HR Employee Workspace
+# JanaMen (JanaМен) — Цифровой HR-кабинет сотрудника
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.136.1-009688.svg?style=flat&logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)
 [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.14-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose%20Ready-2496ED.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/Hackathon-PostTech%20%C3%97%20Terricon%20Valley%202026-forestgreen.svg)]()
+[![License](https://img.shields.io/badge/Хакатон-Jana%20Post%20%C3%97%20Terricon%20Valley%202026-forestgreen.svg)]()
 
-> **Jana Post × Terricon Valley Hackathon 2026 — Challenge 02: Digital HR**  
-> A unified, role-based self-service HR platform for Jana Post employees, managers, and HR administrators.
-
----
-
-## 1. Overview
-
-**JanaMen** is a modular enterprise web application that brings together employee profiles, leave requests, mandatory learning, and evidence-grounded AI assistance into a single, cohesive workspace.
-
-- **Frontend**: Clean, responsive single-page architecture built with semantic HTML5, modern vanilla CSS design tokens, and vanilla JavaScript.
-- **Backend**: FastAPI modular monolith with SQLAlchemy 2.0 ORM, Alembic migrations, and role-based access control (RBAC).
-- **Security & Authorization**: Server-side enforced access control, PBKDF2-HMAC password hashing, and revocable JWT bearer sessions.
-- **Workflow State Machine**: Transactional request creation (vacation and advance payments), balance validations, manager approval queues, and complete audit history.
-- **Jana Academy (LMS)**: Course catalog, markdown lesson viewer, interactive quiz evaluation, and persisted progress tracking.
-- **AI Jana (Grounded Assistant)**: Question answering grounded strictly in approved corporate documents with precise source citations, privacy guardrails, and safe fallbacks for unverified inquiries.
-- **Integration Boundaries**: Documented mock adapter interfaces for future enterprise integrations with **1C:ZUP 3.1** and **Documentolog**.
+> **Jana Post × Terricon Valley Hackathon 2026 — Кейс 02: Digital HR**  
+> Единая ролевая платформа самообслуживания для сотрудников, руководителей и HR-администраторов Jana Post.
 
 ---
 
-## 2. Local Setup & Quick Start
+## 1. Обзор проекта
 
-Tested with Python 3.11 and 3.14 on macOS and Linux.
+**JanaMen** — это модульное веб-приложение корпоративного уровня, объединяющее личный профиль сотрудника, кадровые заявки, обязательное обучение и доказательный AI-ассистент в едином удобном рабочем пространстве.
 
-### Step 1: Virtual Environment & Dependencies
+- **Frontend**: Адаптивное Single Page Application (SPA), созданное на базе чистого HTML5, современной дизайн-системы Vanilla CSS (фирменные цвета Jana Post, темная/светлая тема) и Vanilla JavaScript. Без тяжелых сторонних UI-фреймворков.
+- **Backend**: Модульный монолит на FastAPI и SQLAlchemy 2.0 ORM с миграциями Alembic и строгим серверным контролем доступа (RBAC).
+- **Безопасность и авторизация**: Серверная валидация прав доступа, безопасное хеширование паролей PBKDF2-HMAC и отзывные сессии на базе JWT Bearer токенов.
+- **Движок кадровых заявок**: Транзакционное создание заявок (отпуск и аванс), проверка баланса дней, очередь согласования для руководителей и полный журнал истории изменений.
+- **Jana Academy (LMS)**: Каталог курсов, просмотр уроков с поддержкой Markdown, интерактивное тестирование с мгновенной проверкой ответов и сохранением прогресса в базе данных.
+- **AI Jana (Доказательный AI-ассистент)**: Ответы на кадровые вопросы строго на основе регламентов компании с точным указанием источников (пункт и статья), защитой персональных данных и безопасным фоллбэком при отсутствии информации (без выдумок и галлюцинаций).
+- **Границы интеграции**: Документированные адаптеры (Mocked Boundary) для будущей бесшовной интеграции с **1С:ЗУП 3.1** и **Documentolog (ЭДО)**.
+
+---
+
+## 2. Локальный запуск и быстрая настройка
+
+Протестировано на Python 3.11 и Python 3.14 (macOS / Linux).
+
+### Шаг 1: Виртуальное окружение и зависимости
 
 ```bash
-# Navigate to project root
+# Перейдите в корневую директорию проекта
 cd "/path/to/project"
 
-# Create and activate virtual environment
+# Создайте и активируйте виртуальное окружение
 python3 -m venv .venv
 source .venv/bin/activate
 
-# Install dependencies
+# Установите зависимости
 python -m pip install -r requirements.txt
 python -m pip install -r requirements-dev.txt
 ```
 
-### Step 2: Configuration & Database Initialization
+### Шаг 2: Настройка конфигурации и базы данных
 
 ```bash
-# Set environment variables for local demo
+# Переменные окружения для локальной демонстрации
 export ENVIRONMENT=development
 export DEMO_MODE=true
 export DEMO_PASSWORD='Password123!'
@@ -55,218 +55,218 @@ export ACCESS_TOKEN_EXPIRE_MINUTES=1440
 export AI_CONFIDENCE_THRESHOLD=0.50
 export ENABLE_MOCK_INTEGRATIONS=true
 
-# Run database migrations
+# Применение миграций схемы базы данных
 python -m app.migrate
 
-# Seed deterministic synthetic test data
+# Наполнение базы синтетическими демонстрационными данными
 python -m app.seed
 ```
 
-### Step 3: Start the Application Server
+### Шаг 3: Запуск сервера разработки
 
 ```bash
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-- **Web Application**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-- **Interactive Swagger API Docs**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-- **ReDoc Documentation**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
-- **Health Check Endpoint**: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+- **Веб-интерфейс платформы**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- **Интерактивная документация Swagger**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **Документация ReDoc**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+- **Проверка здоровья сервиса (Health Check)**: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
 
 ---
 
-## 3. Docker Deployment
+## 3. Запуск через Docker Compose
 
 ```bash
-# Build and run containerized services
+# Сборка и запуск контейнера в фоновом режиме
 docker compose up --build -d
 
-# Verify container health
+# Проверка статуса контейнера
 curl http://127.0.0.1:8000/health
 ```
 
-The container runs as an unprivileged user, binds port 8000, runs database migrations automatically on startup, and stores data in a persistent volume.
+Контейнер работает от непривилегированного пользователя, слушает порт 8000, автоматически применяет миграции при старте и сохраняет данные в постоянный том (volume).
 
 ---
 
-## 4. Test Accounts & Personas
+## 4. Демонстрационные учетные записи
 
-Deterministic synthetic demo accounts are provided for testing each role:
+Сгенерированы детерминированные синтетические учетные записи для проверки всех трех ролей (реальные персональные данные не используются):
 
-| Role | Persona Name | Email | Password | Scope & Key Details |
+| Роль | ФИО сотрудника | Email | Пароль | Описание и область доступа |
 | :--- | :--- | :--- | :--- | :--- |
-| **Employee** | Aruzhan Sadykova | `aruzhan@janapost.kz` | `Password123!` | Product Operations · 18.5 leave days · Reports to Timur K. |
-| **Manager** | Timur Kasymov | `timur@janapost.kz` | `Password123!` | Operations Team Lead · Manages Aruzhan S., Dana M., Ruslan A. |
-| **HR Admin** | Aigerim Nurlanova | `aigerim@janapost.kz` | `Password123!` | People Operations Director · Knowledge management & audit logs |
+| **Сотрудник** | Аружан Садыкова | `aruzhan@janapost.kz` | `Password123!` | Специалист Product Operations · 18.5 дней отпуска · Руководитель: Тимур К. |
+| **Руководитель** | Тимур Касымов | `timur@janapost.kz` | `Password123!` | Тимлид операций · Согласование заявок Аружан С., Даны М., Руслана А. |
+| **HR-администратор** | Айгерим Нурланова | `aigerim@janapost.kz` | `Password123!` | Директор People Operations · База знаний, аудит, интеграции |
 
-> **Convenience Feature**: The top navigation bar includes an interactive **Persona Switcher** dropdown. Selecting a persona executes a real authentication call (`POST /api/v1/auth/login`), obtains a signed JWT bearer token, and updates the view according to the user's role.
-
----
-
-## 5. Demonstration Walkthrough (10-Step Judging Journey)
-
-Follow this step-by-step path to verify all hackathon evaluation criteria:
-
-### Step 1: Employee Login & Dashboard
-1. Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
-2. The default active persona is **Aruzhan Sadykova** (Employee).
-3. Verify the personalized greeting, the annual leave balance ring showing **18.5 days available**, active requests, and learning progress.
-
-### Step 2: Employee Profile & 1C:ZUP Master Data
-1. Click **My profile** in the sidebar.
-2. View the authoritative employee fields: Employee ID `JP-10428`, Company `Jana Post Kazakhstan`, Department `Product Operations`, Manager `Timur Kasymov`.
-3. Note the **"Official HR data · Read-only"** badge. Profile fields are authoritative and cannot be modified by the user.
-
-### Step 3: Request Submission
-1. Click **My requests** -> click **＋ New request** (or click "Request time off ↗" on the Overview).
-2. Select **Vacation**, pick Start Date `2026-11-23` and End Date `2026-11-25` (3 days), enter reason `"Family holiday"`.
-3. Click **Submit request ↗**.
-4. The request is created in **Pending** status with request code `REQ-1045` and an initial audit event (`SUBMITTED`).
-
-### Step 4: Manager Review & Approval
-1. In the topbar persona switcher, switch to **Persona: Manager (Timur K.)**.
-2. Notice that the **Team & approvals** navigation item is now visible.
-3. Open **Team & approvals**; observe the pending request queue for direct reports.
-4. Click **Approve** on Aruzhan's request, enter an optional note `"Approved by manager Timur"`.
-5. The request status updates to **Approved**, and an external Documentolog tracking ID is assigned (`DOCLOG-2026-1045`).
-
-### Step 5: Employee Notification & Balance Synchronization
-1. Switch the persona back to **Persona: Employee (Aruzhan S.)**.
-2. Click the notification bell or navigate to **Notifications**.
-3. Observe the persistent notification: `"Request Approved: Your Vacation request was approved by Timur Kasymov"`.
-4. Return to **Overview** or **My profile**; observe that the annual leave balance was automatically deducted by 3 days (from 18.5 to **15.5 days**).
-
-### Step 6: Jana Academy Course & Interactive Quiz
-1. Click **Jana Academy** in the sidebar.
-2. Open the mandatory course **"Data protection essentials"** (currently at 75% progress).
-3. Read Lesson 4: *"Incident Reporting & Escalation"*.
-4. In the quiz section, select the correct answer: `"Within 30 minutes"`, then click **Submit Answer**.
-5. The quiz is validated by the backend, course progress updates to **100% (Completed)**, a completion notification is issued, and the dashboard reflects the achievement.
-
-### Step 7: AI Jana Grounded Q&A with Source Citation
-1. Click **AI Jana** in the sidebar.
-2. Click the prompt chip: **"How do I request vacation in the system?"** (or type your own question).
-3. AI Jana responds with a grounded answer citing **Employee Request Guide · Vacation Request Workflow**.
-4. Click the source pill to open the modal displaying the exact verified policy passage.
-
-### Step 8: AI Jana Safe Fallback (No Hallucinations)
-1. In AI Jana, ask: **"What is the reimbursement policy for pet insurance?"**.
-2. Because this policy is not present in the approved knowledge base, AI Jana **does not hallucinate or guess**.
-3. It triggers a **Safe Fallback** informing the employee that no reliable evidence was found and directs them to contact `hr-support@janapost.kz`.
-
-### Step 9: Server-Enforced RBAC & Security Verification
-1. As Employee Aruzhan, attempting to call `/api/v1/manager/requests` or `/api/v1/admin/knowledge` returns **HTTP 403 Forbidden**.
-2. Employees cannot approve requests, and managers cannot approve requests outside their reporting line.
-
-### Step 10: Enterprise Integration Telemetry & Audit Logs
-1. Switch the persona to **Persona: HR Admin (Aigerim N.)**.
-2. Click **HR administration** in the sidebar.
-3. View the **Enterprise Integration Boundaries** card showing telemetry for **1C:ZUP 3.1** and **Documentolog**.
-4. Review the live **System Audit Trail** showing all timestamped logins, submissions, approvals, and AI queries.
+> **Удобство для жюри**: В шапке сайта предусмотрен переключатель **Persona Switcher**, позволяющий в один клик переключиться между сотрудником, руководителем и HR-админом. При этом происходит реальный вход (`POST /api/v1/auth/login`), получение JWT-токена и обновление прав в интерфейсе.
 
 ---
 
-## 6. Automated Testing Suite
+## 5. Сквозной сценарий демонстрации (10 шагов для жюри)
 
-The repository contains an automated test suite with **76 passed tests**:
+Пошаговый пользовательский путь для проверки критериев оценки хакатона:
+
+### Шаг 1: Вход и главный дашборд сотрудника
+1. Откройте [http://127.0.0.1:8000](http://127.0.0.1:8000).
+2. По умолчанию активна персона **Аружан Садыкова** (Сотрудник).
+3. Обратите внимание на персональное приветствие, кольцевой индикатор баланса отпуска (**18.5 дней**), список открытых заявок и прогресс обучения.
+
+### Шаг 2: Профиль сотрудника и данные 1С:ЗУП (Read-Only)
+1. Перейдите в раздел **Мой профиль** (My profile).
+2. Отображаются официальные данные: табельный номер `JP-10428`, компания `Jana Post Kazakhstan`, департамент `Product Operations`, руководитель `Тимур Касымов`.
+3. Бейдж **"Официальные данные 1С · Только чтение"** подтверждает, что кадровые данные защищены от прямого редактирования пользователем.
+
+### Шаг 3: Подача заявки на отпуск
+1. Нажмите кнопку **＋ Создать заявку** (New request).
+2. Выберите тип **Отпуск** (Vacation), даты с `2026-11-23` по `2026-11-25` (3 дня), укажите причину: `"Семейный отдых"`.
+3. Нажмите **Отправить заявку ↗**.
+4. Заявка создана со статусом **Pending** (В ожидании) с номером `REQ-1045` и первой записью в истории аудита (`SUBMITTED`).
+
+### Шаг 4: Согласование руководителем
+1. В верхнем переключателе ролей выберите **Persona: Manager (Тимур К.)**.
+2. В боковом меню появится раздел **Команда и согласования** (Team & approvals).
+3. Перейдите в раздел; в списке ожидающих заявок отобразится запрос от Аружан.
+4. Нажмите **Одобрить** (Approve) и введите комментарий `"Одобрено, хорошего отдыха"`.
+5. Статус меняется на **Approved**, заявке присваивается номер внешней регистрации Documentolog (`DOCLOG-2026-1045`).
+
+### Шаг 5: Уведомление сотруднику и списание дней отпуска
+1. Переключитесь обратно на **Аружан С.**
+2. Нажмите на колокольчик уведомлений или откройте раздел **Уведомления**.
+3. Появилось уведомление: `"Заявка одобрена: Ваш запрос на отпуск был одобрен Тимуром Касымовым"`.
+4. Вернитесь на главную страницу или в профиль: баланс отпуска автоматически уменьшился на 3 дня (с 18.5 до **15.5 дней**).
+
+### Шаг 6: Прохождение курса и тест в Jana Academy
+1. Откройте раздел **Jana Academy**.
+2. Откройте обязательный курс **"Основы защиты данных"** (Data protection essentials, прогресс 75%).
+3. Прочитайте Урок 4: *"Реагирование на инциденты безопасности"*.
+4. В блоке теста выберите правильный ответ: `"В течение 30 минут"` и нажмите **Отправить ответ**.
+5. Ответ валидируется сервером, прогресс курса становится **100% (Завершен)**, генерируется уведомление об успешном завершении, на дашборде обновляется статистика.
+
+### Шаг 7: Вопрос к AI Jana с ссылкой на регламент
+1. Перейдите в раздел **AI Jana**.
+2. Нажмите на готовый вопрос: **"Как запросить отпуск в системе?"** (или напишите свой вопрос).
+3. AI Jana отвечает строго по регламенту с цитатой: **Руководство по заявкам · Процесс запроса отпуска**.
+4. Нажмите на плашку источника, чтобы открыть модальное окно с точной выдержкой из утвержденного документа.
+
+### Шаг 8: Безопасный фоллбэк AI Jana (без выдумок)
+1. В AI Jana задайте вопрос вне базы знаний: **"Каковы правила компенсации страховки домашних животных?"**.
+2. Поскольку этого регламента нет в утвержденной базе, AI Jana **не придумывает правила**.
+3. Срабатывает **Безопасный фоллбэк**: система сообщает об отсутствии подтвержденной информации и предлагает обратиться в HR: `hr-support@janapost.kz`.
+
+### Шаг 9: Серверный контроль доступа (RBAC)
+1. При попытке сотрудника Аружан обратиться напрямую к эндпоинтам руководителя `/api/v1/manager/requests` или администратора `/api/v1/admin/knowledge`, сервер возвращает **HTTP 403 Forbidden**.
+2. Сотрудник не может согласовать собственную заявку, а руководитель не имеет доступа к сотрудникам чужих отделов.
+
+### Шаг 10: Телеметрия интеграций и аудит-лог
+1. Переключитесь на роль **HR-администратора (Айгерим Н.)**.
+2. Откройте **HR-администрирование**.
+3. Ознакомьтесь с карточкой **Границы корпоративных интеграций**, отражающей статус подключения **1С:ЗУП 3.1** и **Documentolog**.
+4. Просмотрите **Системный журнал аудита**, фиксирующий все входы, подачу заявок, согласования и запросы к AI с точными таймстемпами.
+
+---
+
+## 6. Автоматизированное тестирование
+
+В репозитории реализован автоматизированный набор из **79 успешных тестов**:
 
 ```bash
-# Run the complete test suite
+# Быстрый запуск всех тестов
 python -m pytest -q
 
-# Run with verbose output
+# Запуск с подробным выводом
 python -m pytest -v
 
-# Run the live 10-step judging smoke test runner against the running server
+# Запуск сквозного сценария из 10 шагов на работающем сервере
 python smoke_test.py
 ```
 
-### Test Coverage Highlights:
-- **`tests/test_auth.py`**: User authentication, incorrect passwords, token decoding, session revocation.
-- **`tests/test_requests.py`**: Vacation & advance payment submissions, date range validation, leave balance checks, approval workflows, event history.
-- **`tests/test_academy.py`**: Course catalog, lesson details, quiz grading, persistent completion state.
-- **`tests/test_ai.py`**: Grounded answers, source citation attribution, safe fallbacks, privacy protection guardrails.
-- **`tests/test_security.py`**: Role-based access control (RBAC), manager scope enforcement, IDOR prevention, token tampering defense.
-- **`tests/test_migrations.py`**: Schema migration integrity and version checks.
-- **`tests/test_reliability.py`**: Concurrency, transaction rollbacks, and error boundary handling.
-- **`tests/test_e2e_journey.py`**: End-to-end integration test following the entire employee journey.
+### Покрытие тестами:
+- **`tests/test_auth.py`**: Аутентификация, валидация паролей, отзыв токенов, права доступа.
+- **`tests/test_requests.py`**: Подача заявок на отпуск и аванс, валидация дат, проверка баланса, переходы статусов, история событий.
+- **`tests/test_academy.py`**: Каталог курсов, просмотр уроков, расчет баллов в тестах, завершение обучения.
+- **`tests/test_ai.py`**: Поиск по базе знаний, ссылки на источники, безопасный фоллбэк, блокировка попыток узнать чужую зарплату (Privacy Guardrail).
+- **`tests/test_security.py`**: Контроль ролей (RBAC), изоляция команд менеджеров, защита от IDOR, проверка подписи JWT.
+- **`tests/test_migrations.py`**: Проверка целостности миграций Alembic.
+- **`tests/test_reliability.py`**: Устойчивость к сбоям, откат транзакций, параллельные запросы.
+- **`tests/test_e2e_journey.py`**: Полный интеграционный сценарий, имитирующий путь сотрудника от входа до согласования.
 
 ---
 
-## 7. Implementation Status Matrix
+## 7. Матрица реализации функционала
 
-| Component | Status | Implementation Details |
+| Модуль / Функция | Статус в прототипе | Описание реализации |
 | :--- | :---: | :--- |
-| **Authentication & RBAC** | **Fully Implemented** | PBKDF2-HMAC password hashing, JWT Bearer tokens, server-side role enforcement. |
-| **Employee Profile** | **Fully Implemented** | Read-only authoritative data, department, manager hierarchy, leave balance. |
-| **Request Workflows** | **Fully Implemented** | Vacation & advance payment forms, date validation, manager review, status lifecycle. |
-| **Request Event History** | **Fully Implemented** | Audit timeline tracking submissions, approvals, rejections, and reviewer comments. |
-| **Jana Academy (LMS)** | **Fully Implemented** | Course catalog, lesson markdown reader, interactive quiz, real progress calculation. |
-| **AI Jana Assistant** | **Fully Implemented** | Multi-token keyword & tag RAG retrieval, verifiable source citations, safe fallbacks. |
-| **Persistent Notifications** | **Fully Implemented** | DB-persisted alerts for requests and academy milestones, unread counters. |
-| **Audit Logging** | **Fully Implemented** | Immutable `audit_events` table recording actor, action, timestamp, and details. |
-| **Localization (RU / KZ / EN)** | **Fully Implemented** | Client-side i18n dictionary covering Russian, Kazakh, and English. |
-| **1C:ZUP Integration** | **Mocked Adapter** | Architecture boundary defined in `app/integrations/one_c_zup.py`. Ready for future OData. |
-| **Documentolog Integration** | **Mocked Adapter** | Architecture boundary defined in `app/integrations/documentolog.py`. Assigns tracking URNs. |
-| **Digital Signatures (EDS)** | *Planned Future Work* | Legal e-signature integration deferred to post-hackathon enterprise rollout. |
-| **Mobile App (iOS/Android)** | *Planned Future Work* | Current release provides a mobile-responsive web application. |
+| **Аутентификация и RBAC** | **Полностью реализовано** | PBKDF2-HMAC хеширование, JWT Bearer токены, серверные зависимости проверки ролей. |
+| **Профиль сотрудника** | **Полностью реализовано** | Авторитетные кадровые поля (Read-Only), департамент, руководитель, баланс отпуска. |
+| **Кадровые заявки** | **Полностью реализовано** | Формы на отпуск и аванс, проверка дат и остатка дней, согласование руководителем. |
+| **История и аудит заявок** | **Полностью реализовано** | Лента событий: кто подал, кто согласовал, комментарии, внешние ID. |
+| **Jana Academy (LMS)** | **Полностью реализовано** | Курсы, уроки в Markdown, интерактивные тесты с сохранением прогресса в БД. |
+| **AI Jana Ассистент** | **Полностью реализовано** | Поиск по ключевым словам и тегам, кликабельные источники, безопасный фоллбэк. |
+| **Уведомления** | **Полностью реализовано** | Сохранение в БД, счетчики непрочитанных, отметка о прочтении. |
+| **Журнал аудита** | **Полностью реализовано** | Неизменяемая таблица `audit_events` (действие, инициатор, объект, таймстемп). |
+| **Локализация (RU / KZ / EN)** | **Полностью реализовано** | Словарь переводов в интерфейсе на русский, казахский и английский языки. |
+| **Интеграция с 1С:ЗУП** | **Mocked Adapter** | Архитектурный адаптер `app/integrations/one_c_zup.py`. Готов к подключению OData. |
+| **Интеграция с Documentolog** | **Mocked Adapter** | Архитектурный адаптер `app/integrations/documentolog.py`. Формирует трекинг-URN. |
+| **Электронная подпись (ЭЦП)** | *Планы развития* | Юридически значимая подпись вынесена в промышленный этап развития платформы. |
+| **Мобильное приложение** | *Планы развития* | Текущая версия полностью адаптивна для мобильных браузеров. |
 
 ---
 
-## 8. Integration Architecture Boundaries
+## 8. Архитектурные границы интеграций
 
-### 1. 1C:ZUP (ЗУП 3.1)
-- **Role**: Authoritative master source for employee records, organizational structure, and annual leave balance accruals.
-- **Pattern**: Read-only consumption via secure OData or JSON HTTP services.
-- **Implementation**: Defined in `app/integrations/one_c_zup.py` with mock endpoints for `Catalog_Employees` and `InformationRegister_LeaveBalances`.
+### 1. 1С:ЗУП (ЗУП 3.1 — Зарплата и управление персоналом)
+- **Роль**: Мастер-система для учета кадров, оргструктуры и накопленного баланса отпусков.
+- **Модель взаимодействия**: Чтение данных (Read-Only) через защищенный OData или REST HTTP-сервис.
+- **Реализация**: Описана в `app/integrations/one_c_zup.py` с мок-эндпоинтами для `Catalog_Employees` и `InformationRegister_LeaveBalances`.
 
-### 2. Documentolog (Corporate Electronic Document Management)
-- **Role**: Formal document registration, official order generation, and corporate e-signature archival.
-- **Pattern**: Outbound REST registration upon request approval.
-- **Implementation**: Defined in `app/integrations/documentolog.py`, assigning unique tracking URNs (`urn:doclog:janapost:hr:2026:...`) and synchronization status.
-
----
-
-## 9. Known Boundaries & Limitations
-
-1. **Enterprise Integrations**: Connections to 1C:ZUP and Documentolog are modeled via mock adapters returning synthetic payloads and external identifiers, in accordance with hackathon competition rules.
-2. **AI Engine**: AI Jana utilizes deterministic keyword and token-based retrieval over approved corporate documents, ensuring zero hallucinations and offline competition compliance without external cloud dependencies.
-3. **Data Scope**: All employee records, departments, and policy documents are synthetic demo data created specifically for the Jana Post challenge.
+### 2. Documentolog (Система электронного документооборота)
+- **Роль**: Регистрация кадровых приказов, маршрутизация на подписание ЭЦП и архивное хранение.
+- **Модель взаимодействия**: Исходящий REST-вызов при окончательном одобрении заявки руководителем.
+- **Реализация**: Описана в `app/integrations/documentolog.py`, присваивает регистрационный URN (`urn:doclog:janapost:hr:2026:...`) и отслеживает статус.
 
 ---
 
-## 10. Repository Structure
+## 9. Границы и ограничения прототипа
+
+1. **Внешние интеграции**: В соответствии с регламентом хакатона интеграции с 1С:ЗУП и Documentolog смоделированы через адаптеры с реалистичными структурами данных и идентификаторами, без прямого VPN-соединения с закрытыми серверами.
+2. **AI-модель**: AI Jana использует детерминированный поиск по ключевым словам и тегам утвержденных документов, что гарантирует работу в закрытом контуре без обращения к платным облачным API.
+3. **Данные**: Все профили сотрудников, подразделения и документы являются синтетическими и созданы специально для демонстрации кейса Jana Post.
+
+---
+
+## 10. Структура репозитория
 
 ```
 .
-├── ARCHITECTURE.md            # Detailed architecture and enterprise integration design
-├── Dockerfile                 # Production container definition
-├── README.md                  # Project documentation and quick start guide
-├── alembic.ini                # Alembic database migration configuration
-├── app/                       # FastAPI backend modular monolith
-│   ├── config.py              # Configuration settings and environment variables
-│   ├── database.py            # SQLAlchemy engine and session factory
-│   ├── integrations/          # Enterprise adapters (1C:ZUP and Documentolog)
-│   ├── models/                # SQLAlchemy database models
-│   ├── routers/               # API endpoints (/auth, /me, /requests, /courses, /ai, etc.)
-│   ├── schemas/               # Pydantic input and response schemas
-│   ├── seed.py                # Deterministic synthetic data generator
-│   └── services/              # Business logic, state machines, RAG retrieval
-├── docker-compose.yml         # Multi-container orchestration definition
-├── migrations/                # Versioned database migrations
-├── requirements.txt           # Production dependencies
-├── requirements-dev.txt       # Development and testing dependencies
-├── smoke_test.py              # Automated 10-step judging demonstration test runner
-├── static/                    # Frontend client assets
-│   ├── css/style.css          # Modern enterprise styling and design tokens
-│   ├── index.html             # Responsive single-page application structure
-│   └── js/                    # Application controller and localization dictionary
-└── tests/                     # Automated pytest suite (76 tests)
+├── ARCHITECTURE.md            # Подробная архитектурная схема и описание интеграций
+├── Dockerfile                 # Описание контейнера приложения
+├── README.md                  # Документация и инструкция по запуску
+├── alembic.ini                # Конфигурация миграций базы данных Alembic
+├── app/                       # Исходный код бэкенда на FastAPI
+│   ├── config.py              # Конфигурация и переменные окружения
+│   ├── database.py            # Подключение к БД и фабрика сессий SQLAlchemy
+│   ├── integrations/          # Адаптеры внешних систем (1С:ЗУП и Documentolog)
+│   ├── models/                # Модели таблиц базы данных
+│   ├── routers/               # Эндпоинты API (/auth, /me, /requests, /courses, /ai и др.)
+│   ├── schemas/               # Схемы валидации Pydantic
+│   ├── seed.py                # Генератор синтетических тестовых данных
+│   └── services/              # Бизнес-логика, заявки, LMS, AI-поиск
+├── docker-compose.yml         # Манифест оркестрации Docker Compose
+├── migrations/                # Версионированные миграции схемы БД
+├── requirements.txt           # Основные зависимости Python
+├── requirements-dev.txt       # Зависимости для тестирования и линтинга
+├── smoke_test.py              # Скрипт автоматической проверки 10 шагов демонстрации
+├── static/                    # Статические файлы интерфейса
+│   ├── css/style.css          # Дизайн-система и стили
+│   ├── index.html             # Разметка Single Page Application
+│   └── js/                    # Логика клиента и словарь локализации
+└── tests/                     # Набор автоматических тестов (79 тестов)
 ```
 
 ---
 
-## 11. License & Acknowledgements
+## 11. Лицензия и авторство
 
-Created for the **Jana Post × Terricon Valley Hackathon 2026 (Challenge 02: Digital HR)**.
-Designed with modern enterprise UX standards, accessible semantic HTML, and clean Python backend architecture.
+Разработано в рамках **Jana Post × Terricon Valley Hackathon 2026 (Кейс 02: Digital HR)**.  
+Решение ориентировано на максимальное удобство пользователя, чистоту кода и готовность к корпоративной интеграции.

@@ -22,6 +22,10 @@ class EmployeeProfileResponse(BaseModel):
     hire_date: date
     leave_balance_days: float
     location: str
+    phone: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    # Changes awaiting manager/HR approval: {field: {"from": old, "to": new}}.
+    pending_profile_change: Optional[dict[str, dict[str, Optional[str]]]] = None
     data_source: str = "Local HR records; 1C is unconnected"
     learning_progress_percent: float = 0
     courses: list[CourseResponse] = Field(default_factory=list)
@@ -59,6 +63,14 @@ class EmployeeDetailResponse(TeamMemberResponse):
     """A team member's HR card for their manager or HR: profile, leave, requests, learning."""
 
     location: str
+    phone: Optional[str] = None
+    # HR only (None for managers): account and personal details.
+    email: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+    account_created_at: Optional[UTCDateTime] = None
+    last_sign_in_at: Optional[UTCDateTime] = None
+    emergency_contact: Optional[str] = None
     requests: list[RequestResponse] = Field(default_factory=list)
     courses: list[CourseResponse] = Field(default_factory=list)
     history: list[HistoryItem] = Field(default_factory=list)

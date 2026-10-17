@@ -11,6 +11,7 @@ from app.models.academy import Enrollment, LessonProgress
 from app.models.enums import RequestStatus, UserRole
 from app.models.profile import EmployeeProfile
 from app.models.request import Request, RequestEvent
+from app.models.session import AuthSession
 from app.models.user import User
 from app.pagination import Page
 from app.schemas.common import DatabaseID, TeamMemberResponse
@@ -178,6 +179,21 @@ def get_team_member(
         .limit(100)
         .all()
     )
+    person = profile.user
+    hr_only = (
+        {
+            "email": person.email,
+            "role": person.role.value,
+            "is_active": person.is_active,
+            "account_created_at": person.created_at,
+            "last_sign_in_at": db.query(func.max(AuthSession.created_at))
+            .filter(AuthSession.user_id == user_id)
+            .scalar(),
+            "emergency_contact": profile.emergency_contact,
+        }
+        if current_user.role == UserRole.HR_ADMIN
+        else {}
+    )
     return {
         **member_card(
             profile,
@@ -185,7 +201,9 @@ def get_team_member(
             learning_progress(db, [user_id]),
         ),
         "location": profile.location,
+        "phone": profile.phone,
+        **hr_only,
         "requests": [request_service.to_response(r) for r in requests],
-        "courses": [c for c in academy_service.get_user_courses(db, profile.user) if c.assigned],
+        "courses": [c for c in academy_service.get_user_courses(db, person) if c.assigned],
         "history": employee_history(db, user_id),
     }

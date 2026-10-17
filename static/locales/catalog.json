@@ -2795,6 +2795,238 @@
     "Integration delivery failed": {
       "ru": "Сбой передачи в интеграцию",
       "kk": "Интеграцияға жіберу сәтсіз аяқталды"
+    },
+    "Profile update": {
+      "ru": "Изменение профиля",
+      "kk": "Профильді өзгерту"
+    },
+    "Mon": {
+      "ru": "Пн",
+      "kk": "Дс"
+    },
+    "Tue": {
+      "ru": "Вт",
+      "kk": "Сс"
+    },
+    "Wed": {
+      "ru": "Ср",
+      "kk": "Ср"
+    },
+    "Thu": {
+      "ru": "Чт",
+      "kk": "Бс"
+    },
+    "Fri": {
+      "ru": "Пт",
+      "kk": "Жм"
+    },
+    "Sat": {
+      "ru": "Сб",
+      "kk": "Сб"
+    },
+    "Sun": {
+      "ru": "Вс",
+      "kk": "Жс"
+    },
+    "Working day": {
+      "ru": "Рабочий день",
+      "kk": "Жұмыс күні"
+    },
+    "Weekend": {
+      "ru": "Выходной",
+      "kk": "Демалыс күні"
+    },
+    "Public holiday": {
+      "ru": "Праздник",
+      "kk": "Мереке"
+    },
+    "Available days": {
+      "ru": "Доступно дней",
+      "kk": "Қолжетімді күндер"
+    },
+    "Not enough leave days for these dates": {
+      "ru": "Недостаточно дней отпуска на эти даты",
+      "kk": "Бұл күндерге демалыс күндері жеткіліксіз"
+    },
+    "Annual leave is counted in calendar days: weekends are charged, public holidays are not.": {
+      "ru": "Отпуск считается в календарных днях: выходные входят в отпуск, праздники — нет.",
+      "kk": "Демалыс күнтізбелік күнмен есептеледі: демалыс күндері кіреді, мерекелер кірмейді."
+    },
+    "Day breakdown": {
+      "ru": "Разбивка по дням",
+      "kk": "Күндер бойынша бөлу"
+    },
+    "New Year": {
+      "ru": "Новый год",
+      "kk": "Жаңа жыл"
+    },
+    "International Women's Day": {
+      "ru": "Международный женский день",
+      "kk": "Халықаралық әйелдер күні"
+    },
+    "Nauryz": {
+      "ru": "Наурыз мейрамы",
+      "kk": "Наурыз мейрамы"
+    },
+    "Kazakhstan People's Unity Day": {
+      "ru": "Праздник единства народа Казахстана",
+      "kk": "Қазақстан халқының бірлігі мерекесі"
+    },
+    "Defender of the Fatherland Day": {
+      "ru": "День защитника Отечества",
+      "kk": "Отан қорғаушы күні"
+    },
+    "Victory Day": {
+      "ru": "День Победы",
+      "kk": "Жеңіс күні"
+    },
+    "Capital Day": {
+      "ru": "День столицы",
+      "kk": "Астана күні"
+    },
+    "Constitution Day": {
+      "ru": "День Конституции",
+      "kk": "Конституция күні"
+    },
+    "Republic Day": {
+      "ru": "День Республики",
+      "kk": "Республика күні"
+    },
+    "Independence Day": {
+      "ru": "День Независимости",
+      "kk": "Тәуелсіздік күні"
+    },
+    "HR-approved non-working day": {
+      "ru": "Нерабочий день, утверждённый HR",
+      "kk": "HR бекіткен жұмыс емес күн"
+    },
+    "Phone": {
+      "ru": "Телефон",
+      "kk": "Телефон"
+    },
+    "Emergency contact": {
+      "ru": "Контакт на экстренный случай",
+      "kk": "Төтенше жағдайға байланыс"
+    },
+    "Edit contact details": {
+      "ru": "Изменить контактные данные",
+      "kk": "Байланыс деректерін өзгерту"
+    },
+    "Contact details can be changed; changes apply after approval by your manager or HR.": {
+      "ru": "Контактные данные можно изменить; изменения вступают в силу после согласования руководителем или HR.",
+      "kk": "Байланыс деректерін өзгертуге болады; өзгерістер басшы немесе HR келіскеннен кейін күшіне енеді."
+    },
+    "Contacts editable · changes need approval": {
+      "ru": "Контакты можно менять · нужно согласование",
+      "kk": "Байланыстарды өзгертуге болады · келісу қажет"
+    },
+    "Awaiting approval": {
+      "ru": "Ожидает согласования",
+      "kk": "Келісуді күтуде"
+    },
+    "Field": {
+      "ru": "Поле",
+      "kk": "Өріс"
+    },
+    "Current": {
+      "ru": "Сейчас",
+      "kk": "Қазір"
+    },
+    "New value": {
+      "ru": "Новое значение",
+      "kk": "Жаңа мән"
+    },
+    "Requested changes": {
+      "ru": "Запрошенные изменения",
+      "kk": "Сұралған өзгерістер"
+    },
+    "Send for approval": {
+      "ru": "Отправить на согласование",
+      "kk": "Келісуге жіберу"
+    },
+    "Profile changes were sent for approval": {
+      "ru": "Изменения профиля отправлены на согласование",
+      "kk": "Профиль өзгерістері келісуге жіберілді"
+    },
+    "Change at least one field": {
+      "ru": "Измените хотя бы одно поле",
+      "kk": "Кемінде бір өрісті өзгертіңіз"
+    },
+    "Your manager or HR approves the change; HR data such as position and department stays with HR.": {
+      "ru": "Изменение согласует руководитель или HR; кадровые данные (должность, отдел) меняет только HR.",
+      "kk": "Өзгерісті басшы немесе HR келіседі; лауазым мен бөлім сияқты кадр деректерін тек HR өзгертеді."
+    },
+    "Comment for the approver (optional)": {
+      "ru": "Комментарий для согласующего (необязательно)",
+      "kk": "Келісушіге пікір (міндетті емес)"
+    },
+    "Personal and account data": {
+      "ru": "Личные и учётные данные",
+      "kk": "Жеке және есептік деректер"
+    },
+    "Visible to HR only": {
+      "ru": "Видно только HR",
+      "kk": "Тек HR көреді"
+    },
+    "Role": {
+      "ru": "Роль",
+      "kk": "Рөл"
+    },
+    "Account status": {
+      "ru": "Статус учётной записи",
+      "kk": "Есептік жазба күйі"
+    },
+    "Disabled": {
+      "ru": "Отключена",
+      "kk": "Өшірілген"
+    },
+    "Account created": {
+      "ru": "Учётная запись создана",
+      "kk": "Есептік жазба жасалды"
+    },
+    "Last sign-in": {
+      "ru": "Последний вход",
+      "kk": "Соңғы кіру"
+    },
+    "Never": {
+      "ru": "Никогда",
+      "kk": "Ешқашан"
+    },
+    "The new values match your current profile": {
+      "ru": "Новые значения совпадают с текущим профилем",
+      "kk": "Жаңа мәндер қазіргі профильмен бірдей"
+    },
+    "A profile update is already awaiting approval": {
+      "ru": "Изменение профиля уже ожидает согласования",
+      "kk": "Профильді өзгерту келісуді күтуде"
+    },
+    "Choose an end date on or after the start date": {
+      "ru": "Выберите дату окончания не раньше даты начала",
+      "kk": "Аяқталу күнін басталу күнінен ерте емес таңдаңыз"
+    },
+    "Calendar days": {
+      "ru": "Календарных дней",
+      "kk": "Күнтізбелік күндер"
+    },
+    "Weekends (charged)": {
+      "ru": "Выходные (входят в отпуск)",
+      "kk": "Демалыс күндері (демалысқа кіреді)"
+    },
+    "Public holidays (not charged)": {
+      "ru": "Праздники (не списываются)",
+      "kk": "Мерекелер (есептен шығарылмайды)"
+    },
+    "Will be charged": {
+      "ru": "Будет списано",
+      "kk": "Есептен шығарылады"
+    },
+    "Weekends": {
+      "ru": "Выходные",
+      "kk": "Демалыс күндері"
+    },
+    "Holidays": {
+      "ru": "Праздники",
+      "kk": "Мерекелер"
     }
   },
   "rules": [
@@ -2914,27 +3146,27 @@
       "kk": "Демалыс күндері жеткіліксіз: сұралғаны {0}, қолжетімдісі {1}."
     },
     {
-      "pattern": "Your (Vacation|Advance payment) request \\((REQ-[A-Z0-9-]+)\\) was submitted and sent to (your manager|HR) for review\\.",
+      "pattern": "Your (Vacation|Advance payment|Profile update) request \\((REQ-[A-Z0-9-]+)\\) was submitted and sent to (your manager|HR) for review\\.",
       "ru": "Заявка «{0}» ({1}) направлена на рассмотрение: {2}.",
       "kk": "«{0}» өтініші ({1}) қарауға жіберілді: {2}."
     },
     {
-      "pattern": "Your (Vacation|Advance payment) request \\((REQ-[A-Z0-9-]+)\\) was submitted\\. An authorized reviewer must be configured; contact HR\\.",
+      "pattern": "Your (Vacation|Advance payment|Profile update) request \\((REQ-[A-Z0-9-]+)\\) was submitted\\. An authorized reviewer must be configured; contact HR\\.",
       "ru": "Заявка «{0}» ({1}) подана. Обратитесь в кадровую службу для назначения уполномоченного согласующего.",
       "kk": "«{0}» өтініші ({1}) берілді. Өкілетті келісушіні тағайындау үшін кадр қызметіне хабарласыңыз."
     },
     {
-      "pattern": "(.+) submitted a (Vacation|Advance payment) request \\((REQ-[A-Z0-9-]+)\\)\\.",
+      "pattern": "(.+) submitted a (Vacation|Advance payment|Profile update) request \\((REQ-[A-Z0-9-]+)\\)\\.",
       "ru": "{0}: новая заявка «{1}» ({2}).",
       "kk": "{0}: жаңа «{1}» өтініші ({2})."
     },
     {
-      "pattern": "Your (Vacation|Advance payment) request \\((REQ-[A-Z0-9-]+)\\) was (approved|rejected) by (.+?)\\. ?(.*)",
+      "pattern": "Your (Vacation|Advance payment|Profile update) request \\((REQ-[A-Z0-9-]+)\\) was (approved|rejected) by (.+?)\\. ?(.*)",
       "ru": "По заявке «{0}» ({1}) принято решение: {2}. Ответственный: {3}. {4}",
       "kk": "«{0}» өтініші ({1}) бойынша шешім: {2}. Жауапты: {3}. {4}"
     },
     {
-      "pattern": "Submitted (Vacation|Advance payment) request\\. (.*)",
+      "pattern": "Submitted (Vacation|Advance payment|Profile update) request\\. (.*)",
       "ru": "Подана заявка «{0}». {1}",
       "kk": "«{0}» өтініші берілді. {1}"
     },

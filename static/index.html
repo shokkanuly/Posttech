@@ -304,9 +304,9 @@
       <div class="page-head">
         <div>
           <h1 class="h2">Profile</h1>
-          <p class="muted">Official HR data is read-only. Changes go through HR.</p>
+          <p class="muted">Contact details can be changed; changes apply after approval by your manager or HR.</p>
         </div>
-        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg><span>Read-only · 1C:ZUP unconnected</span></span>
+        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg><span>Contacts editable · changes need approval</span></span>
       </div>
       <div class="grid profile-grid">
         <div class="card">
@@ -324,7 +324,13 @@
             <div class="detail"><dt>Manager</dt><dd id="profManager">—</dd></div>
             <div class="detail"><dt>Hire date</dt><dd id="profHireDate">—</dd></div>
             <div class="detail"><dt>Location</dt><dd id="profLocation">—</dd></div>
+            <div class="detail"><dt>Phone</dt><dd id="profPhone" data-verbatim>—</dd></div>
+            <div class="detail"><dt>Emergency contact</dt><dd id="profEmergency" data-verbatim>—</dd></div>
           </dl>
+          <div class="notice-box" id="profPending" hidden></div>
+          <div class="form-actions">
+            <button class="btn btn-light" type="button" id="editProfileBtn"><span>Edit contact details</span></button>
+          </div>
         </div>
         <div class="profile-side">
           <div class="stat-card green static">
@@ -375,6 +381,7 @@
               <option value="all">All types</option>
               <option value="Vacation">Vacation</option>
               <option value="Advance payment">Advance payment</option>
+              <option value="Profile update">Profile update</option>
             </select>
           </div>
         </div>
@@ -624,6 +631,7 @@
             <label for="reqEnd">End date</label>
             <input class="field" id="reqEnd" type="date">
           </div>
+          <div class="form-group full" id="reqCalendar" hidden></div>
           <div class="form-group full" id="reqAmountGroup" hidden>
             <label for="reqAmount">Amount (₸)</label>
             <input class="field" id="reqAmount" type="number" min="5000" step="5000" placeholder="100000">
@@ -656,6 +664,7 @@
         <div class="detail"><dt>Period / details</dt><dd id="detailModalDates">—</dd></div>
         <div class="detail"><dt>Documentolog</dt><dd><code id="detailModalSync">—</code></dd></div>
       </dl>
+      <div id="detailModalExtra"></div>
       <h4 class="sub-title">History</h4>
       <div class="timeline" id="detailModalTimeline"></div>
     </div>
@@ -709,6 +718,41 @@
         <button class="close" id="closeEmployeeModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
       </div>
       <div id="employeeModalBody"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONTACT DETAILS UPDATE (applied only after manager/HR approval) -->
+  <div class="modal-backdrop" id="contactModal" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 class="h4" id="contactModalTitle">Edit contact details</h3>
+        <button class="close" id="closeContactModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
+      </div>
+      <p class="muted small">Your manager or HR approves the change; HR data such as position and department stays with HR.</p>
+      <form id="contactForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="contactPhone">Phone</label>
+            <input class="field" id="contactPhone" type="tel" maxlength="32" placeholder="+7 700 000 00 00" autocomplete="tel">
+          </div>
+          <div class="form-group">
+            <label for="contactLocation">Location</label>
+            <input class="field" id="contactLocation" maxlength="255" autocomplete="address-level2">
+          </div>
+          <div class="form-group full">
+            <label for="contactEmergency">Emergency contact</label>
+            <input class="field" id="contactEmergency" maxlength="255">
+          </div>
+          <div class="form-group full">
+            <label for="contactReason">Comment for the approver (optional)</label>
+            <textarea class="field" id="contactReason" rows="2" maxlength="2000"></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-light" type="button" id="cancelContactModal">Cancel</button>
+          <button class="btn btn-primary" type="submit"><span>Send for approval</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+        </div>
+      </form>
     </div>
   </div>
 

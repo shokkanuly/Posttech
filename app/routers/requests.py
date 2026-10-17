@@ -1,3 +1,4 @@
+from datetime import date
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -11,6 +12,7 @@ from app.models.user import User
 from app.pagination import Page
 from app.schemas.common import DatabaseID
 from app.schemas.request import (
+    LeaveCalendarResponse,
     RequestCreate,
     RequestDetailResponse,
     RequestResponse,
@@ -29,7 +31,7 @@ def list_requests(
         None, description="Filter by status (Pending, Approved, Rejected)"
     ),
     type: Optional[RequestType] = Query(
-        None, description="Filter by type (Vacation, Advance payment)"
+        None, description="Filter by type (Vacation, Advance payment, Profile update)"
     ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -55,6 +57,17 @@ def create_request(
     ip_addr = request.client.host if request.client else None
     new_req = request_service.create_request(db, current_user, payload, ip_address=ip_addr)
     return request_service.to_response(new_req)
+
+
+@router.get("/leave-calendar", response_model=LeaveCalendarResponse)
+def preview_leave_calendar(
+    start_date: date,
+    end_date: date,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Marked weekends and public holidays of a planned vacation, before it is submitted."""
+    return request_service.leave_preview(db, current_user, start_date, end_date)
 
 
 @router.get("/{request_id}", response_model=RequestDetailResponse)

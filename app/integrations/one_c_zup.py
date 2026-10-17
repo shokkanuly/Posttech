@@ -1,11 +1,11 @@
-"""Unconnected 1C boundary. Leave exclusions are explicit local HR configuration.
+"""Unconnected 1C boundary. Leave days use the local calendar in app.leave_calendar.
 
 No production calendar or official policy is fetched from 1C.
 """
 
 from datetime import date
 
-from app.config import settings
+from app import leave_calendar
 from app.schemas.integration import AdapterTelemetry
 
 
@@ -24,11 +24,8 @@ class OneCZupAdapter:
 
     @staticmethod
     def vacation_days(start: date, end: date | None) -> float:
-        """Calendar days minus explicitly configured excluded dates."""
-        last = end or start
-        span = (last - start).days + 1
-        excluded = sum(start <= day <= last for day in set(settings.LEAVE_EXCLUDED_DATES))
-        return float(max(span - excluded, 0))
+        """Calendar days minus public holidays and HR-approved exclusions (local calendar)."""
+        return leave_calendar.charged_days(start, end)
 
 
 one_c_adapter = OneCZupAdapter()

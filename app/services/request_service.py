@@ -7,6 +7,7 @@ from sqlalchemy import update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, joinedload
 
+from app import leave_calendar
 from app.config import settings
 from app.integrations import outbox
 from app.integrations.documentolog import documentolog_adapter
@@ -22,6 +23,8 @@ from app.models.profile import EmployeeProfile
 from app.models.request import Request, RequestEvent
 from app.models.user import User
 from app.schemas.request import (
+    LeaveDay,
+    ProfileChanges,
     RequestCreate,
     RequestDetailResponse,
     RequestEventResponse,
@@ -78,6 +81,8 @@ class RequestService:
             amount_str = f"{req.amount:,.2f} ₸" if req.amount else "Advance request"
             date_str = req.start_date.strftime("%d %b %Y")
             return f"{amount_str} (Requested for {date_str})"
+        elif req.type == RequestType.PROFILE_UPDATE:
+            return ", ".join(req.profile_changes or {})
         return f"{req.start_date}"
 
     @classmethod
@@ -85,6 +90,11 @@ class RequestService:
         user_name = req.user.full_name if req.user else "Unknown"
         dept = req.user.profile.department if (req.user and req.user.profile) else "General"
         reviewer_name = req.reviewer.full_name if req.reviewer else None
+        days = (
+            leave_calendar.breakdown(req.start_date, req.end_date)
+            if req.type == RequestType.VACATION
+            else None
+        )
 
         return RequestResponse(
             id=req.id,
@@ -105,8 +115,11 @@ class RequestService:
             submitted_date_formatted=cls._format_submitted_date(req.created_at),
             period_or_details=cls._format_period_or_details(req),
             vacation_days=cls._calculate_calendar_days(req.start_date, req.end_date)
-            if req.type == RequestType.VACATION
+            if days
             else None,
+            weekend_days=sum(d["kind"] == "weekend" for d in days) if days else None,
+            holiday_days=sum(d["kind"] == "holiday" for d in days) if days else None,
+            profile_changes=req.profile_changes,
             created_at=req.created_at,
             updated_at=req.updated_at,
         )
@@ -127,7 +140,31 @@ class RequestService:
                     created_at=e.created_at,
                 )
             )
-        return RequestDetailResponse(**base.model_dump(), events=event_responses)
+        leave_days = (
+            [LeaveDay(**d) for d in leave_calendar.breakdown(req.start_date, req.end_date)]
+            if req.type == RequestType.VACATION
+            else []
+        )
+        return RequestDetailResponse(
+            **base.model_dump(), events=event_responses, leave_days=leave_days
+        )
+
+    @classmethod
+    def leave_preview(cls, db: Session, user: User, start: date, end: date) -> dict:
+        """Marked days of a planned vacation and what the employee can still take."""
+        if end < start or (end - start).days > settings.REQUEST_HORIZON_DAYS:
+            raise HTTPException(422, "Choose an end date on or after the start date")
+        days = leave_calendar.breakdown(start, end)
+        balance = user.profile.leave_balance_days if user.profile else 0.0
+        pending = cls.leave_summary(db, [user.id])[user.id]["pending_days"]
+        return {
+            "days": days,
+            "calendar_days": len(days),
+            "weekend_days": sum(d["kind"] == "weekend" for d in days),
+            "holiday_days": sum(d["kind"] == "holiday" for d in days),
+            "charged_days": cls._calculate_calendar_days(start, end),
+            "available_days": max(0.0, balance - pending),
+        }
 
     @classmethod
     def create_request(
@@ -170,11 +207,10 @@ class RequestService:
         )
         review_destination = "your manager" if assigned_reviewer else "HR"
         current = request_today()
-        if payload.start_date < current:
+        start = payload.start_date or current  # a profile update is dated today
+        if start < current:
             raise HTTPException(422, "Start date cannot be in the past")
-        if (payload.end_date or payload.start_date) > current + timedelta(
-            days=settings.REQUEST_HORIZON_DAYS
-        ):
+        if (payload.end_date or start) > current + timedelta(days=settings.REQUEST_HORIZON_DAYS):
             raise HTTPException(422, "Request dates exceed the configured planning horizon")
         if (
             payload.type == RequestType.ADVANCE_PAYMENT
@@ -182,8 +218,33 @@ class RequestService:
             and float(payload.amount) > settings.MAX_ADVANCE_AMOUNT
         ):
             raise HTTPException(422, "Advance amount exceeds the allowed maximum")
+        changes = None
+        if payload.type == RequestType.PROFILE_UPDATE:
+            requested = (
+                payload.profile_changes.model_dump(exclude_none=True)
+                if payload.profile_changes
+                else {}
+            )
+            changes = {
+                field: {"from": getattr(profile, field), "to": value}
+                for field, value in requested.items()
+                if getattr(profile, field) != value
+            }
+            if not changes:
+                raise HTTPException(422, "The new values match your current profile")
+            waiting = (
+                db.query(Request.id)
+                .filter(
+                    Request.user_id == user.id,
+                    Request.type == RequestType.PROFILE_UPDATE,
+                    Request.status == RequestStatus.PENDING,
+                )
+                .first()
+            )
+            if waiting:
+                raise HTTPException(409, "A profile update is already awaiting approval")
         if payload.type == RequestType.VACATION:
-            days_needed = cls._calculate_calendar_days(payload.start_date, payload.end_date)
+            days_needed = cls._calculate_calendar_days(start, payload.end_date)
             if days_needed == 0:
                 raise HTTPException(422, "The selected dates are excluded from the leave calendar")
             active_vacations = (
@@ -195,9 +256,9 @@ class RequestService:
                 )
                 .all()
             )
-            new_end = payload.end_date or payload.start_date
+            new_end = payload.end_date or start
             if any(
-                r.start_date <= new_end and (r.end_date or r.start_date) >= payload.start_date
+                r.start_date <= new_end and (r.end_date or r.start_date) >= start
                 for r in active_vacations
             ):
                 raise HTTPException(409, "These dates overlap another active vacation request")
@@ -221,12 +282,13 @@ class RequestService:
             request_code=req_code,
             user_id=user.id,
             type=payload.type,
-            start_date=payload.start_date,
+            start_date=start,
             end_date=payload.end_date,
             amount=float(payload.amount) if payload.amount is not None else None,
             reason=payload.reason,
             status=RequestStatus.PENDING,
             external_sync_id=None,
+            profile_changes=changes,
         )
         db.add(new_req)
         db.flush()
@@ -279,7 +341,7 @@ class RequestService:
             target_id=req_code,
             details={
                 "type": payload.type.value,
-                "start": str(payload.start_date),
+                "start": str(start),
                 "end": str(payload.end_date),
             },
             ip_address=ip_address,
@@ -425,11 +487,18 @@ class RequestService:
                 raise HTTPException(400, "Insufficient leave balance at approval")
 
         db.refresh(req)
-        if new_status == RequestStatus.APPROVED and settings.INTEGRATION_GATEWAY_URL:
+        approved = new_status == RequestStatus.APPROVED
+        if approved and req.type == RequestType.PROFILE_UPDATE and req.user.profile:
+            for field, change in (req.profile_changes or {}).items():
+                if field in ProfileChanges.model_fields:  # contact fields only, never HR data
+                    setattr(req.user.profile, field, change["to"])
+        # Profile contacts are local data; only leave and advance produce HR documents.
+        document = approved and req.type != RequestType.PROFILE_UPDATE
+        if document and settings.INTEGRATION_GATEWAY_URL:
             # Transactional outbox: the delivery task commits with the approval or not at all.
             req.integration_status = "QUEUED"
             outbox.enqueue(db, req, "ONE_C_ORDER")
-        if new_status == RequestStatus.APPROVED and settings.ENABLE_MOCK_INTEGRATIONS:
+        if document and settings.ENABLE_MOCK_INTEGRATIONS:
             # Pure local simulation, never an external document registration.
             simulated = documentolog_adapter.register_approved_request(
                 req.request_code, req.type.value, req.user.full_name

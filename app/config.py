@@ -35,6 +35,16 @@ class Settings(BaseSettings):
     MAX_REQUEST_BODY_BYTES: int = Field(default=262144, ge=65536, le=1048576)
     MOCK_1C_BASE_URL: str = "https://mock-1c.internal.janapost.kz"
     MOCK_DOCUMENTOLOG_BASE_URL: str = "https://mock-doclog.internal.janapost.kz"
+    # Integration gateway (docs/INTEGRATIONS.md). Empty URL: nothing is queued or sent.
+    INTEGRATION_GATEWAY_URL: str = ""
+    INTEGRATION_OUTBOUND_KEY_ID: str = ""
+    INTEGRATION_OUTBOUND_KEY: str = Field(default="", repr=False)
+    # key_id -> secret accepted from the gateway; two ids overlap during key rotation.
+    INTEGRATION_INBOUND_KEYS: dict[str, str] = Field(default_factory=dict, repr=False)
+    # mTLS client certificate for the gateway and the private CA that issued the gateway's.
+    INTEGRATION_TLS_CERT: str = ""
+    INTEGRATION_TLS_KEY: str = Field(default="", repr=False)
+    INTEGRATION_TLS_CA: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -59,6 +69,23 @@ class Settings(BaseSettings):
             self.SECRET_KEY = secrets.token_urlsafe(48)
         if "*" in self.ALLOWED_ORIGINS:
             raise ValueError("ALLOWED_ORIGINS must name explicit origins")
+        integration_keys = list(self.INTEGRATION_INBOUND_KEYS.values())
+        if self.INTEGRATION_GATEWAY_URL:
+            if not self.INTEGRATION_OUTBOUND_KEY_ID:
+                raise ValueError("INTEGRATION_GATEWAY_URL requires INTEGRATION_OUTBOUND_KEY_ID")
+            integration_keys.append(self.INTEGRATION_OUTBOUND_KEY)
+        if any(len(key) < 32 for key in integration_keys):
+            raise ValueError("Integration keys must be at least 32 random characters")
+        if (
+            self.ENVIRONMENT == "production"
+            and self.INTEGRATION_GATEWAY_URL
+            and not (
+                self.INTEGRATION_GATEWAY_URL.startswith("https://")
+                and self.INTEGRATION_TLS_CERT
+                and self.INTEGRATION_TLS_KEY
+            )
+        ):
+            raise ValueError("Production gateway requires https and an mTLS client certificate")
         return self
 
 

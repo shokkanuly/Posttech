@@ -99,3 +99,21 @@ def test_unmigrated_database_is_rejected(tmp_path):
     with pytest.raises(RuntimeError, match="python -m app.migrate"):
         require_current_schema(engine)
     engine.dispose()
+
+
+def test_revision_migration_retains_approved_sources(tmp_path):
+    engine = create_engine("sqlite:///" + str(tmp_path / "approved.db"))
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "0002_sessions_and_approvals")
+        connection.exec_driver_sql(
+            "INSERT INTO knowledge_documents(id,title,category,version,is_active,is_approved,is_synthetic,created_at,updated_at) VALUES (1,'Synthetic reviewed source','HR','2.0',1,1,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)"
+        )
+    upgrade_database(engine)
+    with engine.connect() as connection:
+        row = connection.exec_driver_sql(
+            "SELECT title,version,is_approved,is_synthetic,revision FROM knowledge_documents WHERE id=1"
+        ).one()
+        assert tuple(row) == ("Synthetic reviewed source", "2.0", 1, 1, 1)
+    engine.dispose()

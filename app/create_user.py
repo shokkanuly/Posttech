@@ -6,6 +6,7 @@ from getpass import getpass
 
 from pydantic import EmailStr, TypeAdapter, ValidationError
 
+from app.config import settings
 from app.database import SessionLocal, engine
 from app.migrate import require_current_schema
 from app.models.enums import UserRole
@@ -43,6 +44,8 @@ def main():
     password = getpass("New password (12–256 characters): ")
     if not 12 <= len(password) <= 256 or password != getpass("Confirm password: "):
         parser.error("Passwords must match and contain 12–256 characters")
+    if settings.ENVIRONMENT == "production" and password == "Password123!":
+        parser.error("The published demo password is not allowed in production")
     require_current_schema(engine)
     with SessionLocal() as db:
         if db.query(User).filter(User.email == email).first():

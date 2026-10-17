@@ -1,0 +1,30 @@
+{
+  "url": "http://127.0.0.1:8765",
+  "roles": [
+    {
+      "role": "hr_admin",
+      "email": "hr.demo@example.com",
+      "login": 200,
+      "profile": 200,
+      "admin": 200,
+      "team": 200
+    },
+    {
+      "role": "manager",
+      "email": "manager.demo@example.com",
+      "login": 200,
+      "profile": 200,
+      "admin": 403,
+      "team": 200
+    },
+    {
+      "role": "employee",
+      "email": "employee.demo@example.com",
+      "login": 200,
+      "profile": 200,
+      "admin": 403,
+      "team": 403
+    }
+  ],
+  "original_database_and_env_unchanged": true
+}

@@ -3,7 +3,7 @@ from datetime import date
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import EnrollmentStatus
-from app.schemas.common import UTCDateTime
+from app.schemas.common import BodyDatabaseID, UTCDateTime
 
 
 class LessonBrief(BaseModel):
@@ -65,5 +65,5 @@ class QuizSubmitResponse(BaseModel):
 
 class EnrollmentCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    user_id: int = Field(gt=0)
-    course_id: int = Field(gt=0)
+    user_id: BodyDatabaseID
+    course_id: BodyDatabaseID

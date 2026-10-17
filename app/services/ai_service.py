@@ -6,9 +6,10 @@ import time
 from typing import Literal
 
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, contains_eager
 
 from app.config import settings
+from app.localization import Language, current_language, source_text, translate
 from app.models.enums import UserRole
 from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
 from app.models.user import User
@@ -35,6 +36,11 @@ class AIService:
         "disciplinary record",
         "home address",
         "medical record",
+        "зарплату коллеги",
+        "жалақысын",
+        "личные данные коллег",
+        "домашний адрес",
+        "әріптестің",
     )
     STOP_WORDS = set(
         (
@@ -54,7 +60,50 @@ class AIService:
         "balances": "balance",
         "payments": "payment",
         "contacts": "contact",
+        **dict.fromkeys(
+            (
+                "отпуск",
+                "отпуска",
+                "отпуске",
+                "отпуску",
+                "демалыс",
+                "демалысқа",
+                "демалысының",
+                "демалысқа",
+            ),
+            "vacation",
+        ),
+        **dict.fromkeys(
+            (
+                "заявка",
+                "заявку",
+                "заявки",
+                "заявок",
+                "подать",
+                "запросить",
+                "өтініш",
+                "өтінішті",
+                "өтініштер",
+                "беремін",
+                "сұраймын",
+                "сұрау",
+            ),
+            "request",
+        ),
+        **dict.fromkeys(
+            ("остаток", "остатка", "баланс", "қалдық", "қалдығы", "қалдығын", "қалдықтан"),
+            "balance",
+        ),
+        **dict.fromkeys(("дней", "дня", "дни", "күн", "күндерінің", "күндер", "күндері"), "day"),
+        **dict.fromkeys(("аванс", "аванса", "авансқа", "авансты"), "advance"),
+        **dict.fromkeys(("график", "графика", "кесте", "кестесі", "кестеде"), "schedule"),
+        **dict.fromkeys(("рабочее", "работы", "работа", "жұмыс", "working"), "work"),
+        **dict.fromkeys(("кадровую", "кадровая", "кадровой", "кадр", "службу", "қызметі"), "hr"),
+        **dict.fromkeys(("контакты", "связаться", "байланыс", "хабарласу"), "contact"),
     }
+    STOP_WORDS |= set(
+        "подскажите какой какая какие как где посмотреть системе мой мои мне туралы қалай қандай қайдан көремін жүйеде есть могу можно для нужно".split()
+    )
 
     @classmethod
     def _tokenize(cls, text: str) -> set[str]:
@@ -70,6 +119,7 @@ class AIService:
         query = (
             db.query(KnowledgeChunk)
             .join(KnowledgeDocument)
+            .options(contains_eager(KnowledgeChunk.document))
             .filter(KnowledgeDocument.is_active.is_(True), KnowledgeDocument.is_approved.is_(True))
         )
         if role != UserRole.HR_ADMIN:
@@ -82,26 +132,45 @@ class AIService:
         if not tokens:
             return []
         ranked = []
-        for chunk in cls.accessible_chunks(db, user_role).all():
+        for chunk in cls.accessible_chunks(db, user_role).yield_per(100):
+            localized = source_text(chunk)
+            if localized is None:
+                continue
             # Exact token coverage, not substring counts or repeated keyword sums.
-            evidence = cls._tokenize(f"{chunk.section_title} {chunk.content} {chunk.tags or ''}")
+            evidence = cls._tokenize(
+                f"{localized['section_title']} {localized['content']} {chunk.tags or ''}"
+            )
             score = len(tokens & evidence) / len(tokens)
             if score >= settings.AI_CONFIDENCE_THRESHOLD:
                 ranked.append((chunk, score))
+                ranked = sorted(ranked, key=lambda item: (-item[1], item[0].id))[:2]
         return sorted(ranked, key=lambda item: (-item[1], item[0].id))
 
     @classmethod
-    def source(cls, db: Session, chunk_id: int, role: UserRole):
+    def source(
+        cls,
+        db: Session,
+        chunk_id: int,
+        role: UserRole,
+        revision: int | None = None,
+        language: Language | None = None,
+    ):
         chunk = cls.accessible_chunks(db, role).filter(KnowledgeChunk.id == chunk_id).first()
         if not chunk:
             raise HTTPException(404, "Approved knowledge source not found")
+        localized = source_text(chunk, language)
+        if localized is None:
+            raise HTTPException(404, "Approved knowledge source not found")
+        if revision is not None and chunk.document.revision != revision:
+            raise HTTPException(
+                409, "Source changed; ask the question again for a current citation"
+            )
         return {
             "chunk_id": chunk.id,
             "document_id": chunk.document_id,
-            "document_title": chunk.document.title,
-            "section_title": chunk.section_title,
-            "content": chunk.content,
+            **localized,
             "version": chunk.document.version,
+            "document_revision": chunk.document.revision,
             "is_synthetic": chunk.document.is_synthetic,
         }
 
@@ -111,40 +180,47 @@ class AIService:
     ) -> AIChatResponse:
         started = time.monotonic()
         question = payload.question
-        guidance = f"Contact HR support at {settings.HR_SUPPORT_EMAIL} for confirmation."
+        guidance = translate(f"Contact HR support at {settings.HR_SUPPORT_EMAIL} for confirmation.")
         answer_status: Literal["grounded", "fallback", "unauthorized"]
         chunks = []
+        views = []
         if any(term in question.lower() for term in cls.PRIVACY_RESTRICTED_TERMS):
             answer_status = "unauthorized"
-            answer = (
+            answer = translate(
                 "AI Jana protects employee privacy. Individual salaries, disciplinary and private employee "
                 "records are not available through knowledge queries. Check your own profile or contact HR."
             )
         else:
             matches = cls.retrieve_relevant_chunks(db, question, user.role)
             chunks = [chunk for chunk, _score in matches[:2]]
+            views = [(chunk, text) for chunk in chunks if (text := source_text(chunk)) is not None]
             answer_status = "grounded" if chunks else "fallback"
             answer = (
-                "I couldn't find a reliable answer to this question in the approved knowledge base. "
+                translate(
+                    "I couldn't find a reliable answer to this question in the approved knowledge base."
+                )
+                + " "
                 + guidance
             )
             if chunks:
                 answer = "\n\n".join(
-                    f"{'Synthetic example; not official HR policy. ' if c.document.is_synthetic else ''}"
-                    f"Source: {c.document.title} — {c.section_title} (v{c.document.version})\n{c.content}"
-                    for c in chunks
+                    f"{translate('Synthetic example; not official HR policy.') + ' ' if c.document.is_synthetic else ''}"
+                    f"{translate('Source:')} {text['document_title']} — {text['section_title']} (v{c.document.version})\n{text['content']}"
+                    for c, text in views
                 )
         sources = [
             SourceCitation(
                 chunk_id=c.id,
                 document_id=c.document_id,
-                document_title=c.document.title,
-                section_title=c.section_title,
-                snippet=c.content[:220],
+                document_title=text["document_title"],
+                section_title=text["section_title"],
+                snippet=text["content"][:220],
                 version=c.document.version,
+                document_revision=c.document.revision,
                 is_synthetic=c.document.is_synthetic,
+                language=current_language.get(),
             )
-            for c in chunks
+            for c, text in views
         ]
         action = {
             "grounded": "AI_QUERY_GROUNDED_ANSWER",
@@ -160,6 +236,15 @@ class AIService:
                 "question_hash": hashlib.sha256(question.encode()).hexdigest(),
                 "status": answer_status,
                 "source_ids": [c.id for c in chunks],
+                "source_revisions": [
+                    {
+                        "chunk_id": c.id,
+                        "document_revision": c.document.revision,
+                        "content_hash": hashlib.sha256(text["content"].encode()).hexdigest(),
+                        "language": current_language.get(),
+                    }
+                    for c, text in views
+                ],
             },
         )
         db.commit()

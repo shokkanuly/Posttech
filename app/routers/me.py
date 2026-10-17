@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.localization import LocalizedRoute
+from app.models.academy import Enrollment
 from app.models.enums import RequestStatus, UserRole
 from app.models.profile import EmployeeProfile
 from app.models.request import Request
@@ -12,7 +14,7 @@ from app.services.academy_service import academy_service
 from app.services.auth_service import get_current_user
 from app.services.notification_service import notification_service
 
-router = APIRouter(prefix="/me", tags=["Current User & Profile"])
+router = APIRouter(route_class=LocalizedRoute, prefix="/me", tags=["Current User & Profile"])
 
 
 @router.get("", response_model=MeResponse)
@@ -81,18 +83,14 @@ def get_my_dashboard(current_user: User = Depends(get_current_user), db: Session
 
     # Manager's pending team review count
     if current_user.role == UserRole.MANAGER:
-        report_ids = [
-            p.user_id
-            for p in db.query(EmployeeProfile)
-            .filter(EmployeeProfile.manager_id == current_user.id)
-            .all()
-        ]
         pending_attention = (
             db.query(Request)
-            .filter(Request.user_id.in_(report_ids), Request.status == RequestStatus.PENDING)
+            .join(EmployeeProfile, EmployeeProfile.user_id == Request.user_id)
+            .filter(
+                EmployeeProfile.manager_id == current_user.id,
+                Request.status == RequestStatus.PENDING,
+            )
             .count()
-            if report_ids
-            else 0
         )
     elif current_user.role == UserRole.HR_ADMIN:
         pending_attention = (
@@ -103,7 +101,7 @@ def get_my_dashboard(current_user: User = Depends(get_current_user), db: Session
 
     # Real persisted learning progress
     overall_learning = academy_service.get_user_overall_learning_progress(db, current_user.id)
-    assigned_courses = sum(c.assigned for c in academy_service.get_user_courses(db, current_user))
+    assigned_courses = db.query(Enrollment).filter(Enrollment.user_id == current_user.id).count()
     unread_notifs = notification_service.get_unread_count(db, current_user.id)
 
     # Avatar initials

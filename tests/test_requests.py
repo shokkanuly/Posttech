@@ -110,3 +110,14 @@ def test_employee_cannot_approve_own_request(client, employee_headers):
     )
     assert res.status_code == 403
     assert "Employees cannot approve or reject requests" in res.json()["detail"]
+
+
+def test_advance_amount_preserves_fractional_display(client, employee_headers):
+    result = client.post(
+        "/api/v1/requests",
+        headers=employee_headers,
+        json={"type": "Advance payment", "start_date": "2026-11-10", "amount": 150000.25},
+    )
+    assert result.status_code == 201
+    assert result.json()["amount"] == 150000.25
+    assert "150,000.25 ₸" in result.json()["period_or_details"]

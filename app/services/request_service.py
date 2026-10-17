@@ -5,7 +5,7 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 from sqlalchemy import update
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
 from app.integrations.documentolog import documentolog_adapter
@@ -51,7 +51,7 @@ class RequestService:
                 return f"{start_str} – {end_str}"
             return f"Single day: {start_str}"
         elif req.type == RequestType.ADVANCE_PAYMENT:
-            amount_str = f"{req.amount:,.0f} ₸" if req.amount else "Advance request"
+            amount_str = f"{req.amount:,.2f} ₸" if req.amount else "Advance request"
             date_str = req.start_date.strftime("%d %b %Y")
             return f"{amount_str} (Requested for {date_str})"
         return f"{req.start_date}"
@@ -110,6 +110,26 @@ class RequestService:
         profile = db.query(EmployeeProfile).filter(EmployeeProfile.user_id == user.id).first()
         if not profile:
             raise HTTPException(409, "An HR profile is required before submitting a request")
+        assigned_reviewer = (
+            db.query(User)
+            .filter(
+                User.id == profile.manager_id,
+                User.id != user.id,
+                User.is_active.is_(True),
+                User.role.in_([UserRole.MANAGER, UserRole.HR_ADMIN]),
+            )
+            .first()
+            if profile.manager_id is not None
+            else None
+        )
+        reviewers = (
+            [assigned_reviewer]
+            if assigned_reviewer
+            else db.query(User)
+            .filter(User.role == UserRole.HR_ADMIN, User.is_active.is_(True), User.id != user.id)
+            .all()
+        )
+        review_destination = "your manager" if assigned_reviewer else "HR"
         if payload.type == RequestType.VACATION:
             days_needed = cls._calculate_calendar_days(payload.start_date, payload.end_date)
             if profile.leave_balance_days < days_needed:
@@ -153,17 +173,21 @@ class RequestService:
             db=db,
             user_id=user.id,
             title="Request submitted",
-            message=f"Your {payload.type.value} request ({req_code}) was submitted and sent to your manager for review.",
+            message=(
+                f"Your {payload.type.value} request ({req_code}) was submitted and sent to {review_destination} for review."
+                if reviewers
+                else f"Your {payload.type.value} request ({req_code}) was submitted. An authorized reviewer must be configured; contact HR."
+            ),
             type=NotificationType.REQUEST,
             reference_type="request",
             reference_id=req_code,
         )
 
-        # Notification to Manager if exists
-        if profile and profile.manager_id:
+        # Notify only active, authorized reviewers; HR covers missing/unavailable managers.
+        for reviewer in reviewers:
             notification_service.create_notification(
                 db=db,
-                user_id=profile.manager_id,
+                user_id=reviewer.id,
                 title="New request awaiting your review",
                 message=f"{user.full_name} submitted a {payload.type.value} request ({req_code}).",
                 type=NotificationType.REQUEST,
@@ -197,13 +221,26 @@ class RequestService:
         user: User,
         status_filter: Optional[RequestStatus] = None,
         type_filter: Optional[RequestType] = None,
+        limit: int = 50,
+        offset: int = 0,
     ) -> List[Request]:
-        query = db.query(Request).filter(Request.user_id == user.id)
+        query = (
+            db.query(Request)
+            .options(
+                joinedload(Request.user).joinedload(User.profile), joinedload(Request.reviewer)
+            )
+            .filter(Request.user_id == user.id)
+        )
         if status_filter:
             query = query.filter(Request.status == status_filter)
         if type_filter:
             query = query.filter(Request.type == type_filter)
-        return query.order_by(Request.created_at.desc()).all()
+        return (
+            query.order_by(Request.created_at.desc(), Request.id.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
 
     @classmethod
     def get_team_requests(
@@ -211,29 +248,25 @@ class RequestService:
         db: Session,
         manager: User,
         status_filter: Optional[RequestStatus] = None,
+        limit: int = 50,
+        offset: int = 0,
     ) -> List[Request]:
         """Returns requests from direct reports of the manager."""
-        if manager.role == UserRole.HR_ADMIN:
-            query = db.query(Request)
-            if status_filter:
-                query = query.filter(Request.status == status_filter)
-            return query.order_by(Request.created_at.desc()).all()
-
-        report_user_ids = [
-            p.user_id
-            for p in db.query(EmployeeProfile)
-            .filter(EmployeeProfile.manager_id == manager.id)
-            .all()
-        ]
-
-        # If no direct reports, return empty list (prevents leaking all records)
-        if not report_user_ids:
-            return []
-
-        query = db.query(Request).filter(Request.user_id.in_(report_user_ids))
+        query = db.query(Request).options(
+            joinedload(Request.user).joinedload(User.profile), joinedload(Request.reviewer)
+        )
+        if manager.role != UserRole.HR_ADMIN:
+            query = query.join(EmployeeProfile, EmployeeProfile.user_id == Request.user_id).filter(
+                EmployeeProfile.manager_id == manager.id
+            )
         if status_filter:
             query = query.filter(Request.status == status_filter)
-        return query.order_by(Request.created_at.desc()).all()
+        return (
+            query.order_by(Request.created_at.desc(), Request.id.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
 
     @classmethod
     def get_request_by_id(cls, db: Session, request_id: int, user: User) -> Request:

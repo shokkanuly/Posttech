@@ -2,6 +2,7 @@
  * JanaMen Digital HR — client controller.
  * Talks to the FastAPI backend with a bearer token kept in memory only.
  * Authorization is enforced server-side; the UI only hides what a role cannot use.
+ * UI text is written in English and translated to RU/KZ by I18n (static/locales/catalog.json).
  */
 
 const API_BASE = "/api/v1";
@@ -11,7 +12,7 @@ const state = {
   user: null,
   profile: null,
   page: "home",
-  lang: "en",
+  lang: I18n.savedLanguage(),
   notifications: [],
   courses: [],
   currentCourse: null,
@@ -21,23 +22,43 @@ const state = {
 
 let demoAccounts = {};
 
-// --- HELPERS ---
+// --- HTTP ---
 async function api(path, options = {}) {
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const headers = { "Content-Type": "application/json", "Accept-Language": localeCode(), ...(options.headers || {}) };
   if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
 
   const tokenAtStart = state.token;
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const languageAtStart = state.lang;
+  let res;
+  try { res = await fetch(`${API_BASE}${path}`, { ...options, headers }); }
+  catch { throw new Error(I18n.t("Unable to connect. Please try again.")); }
   const data = await res.json().catch(() => ({}));
   if (tokenAtStart !== state.token) throw new Error("Session changed; please retry.");
+  if (languageAtStart !== state.lang) throw new Error("Language changed; please retry.");
   if (res.status === 401 && !path.includes("/auth/login")) showLogin();
   if (!res.ok) {
-    const fields = data.error?.fields?.map(f => `${f.location.slice(1).join(".")}: ${f.message}`).join("; ");
+    const fields = data.error?.fields?.map(f => f.message).join("; ");
     throw new Error(fields || data.error?.message || data.detail || `Request failed (${res.status})`);
   }
   return data;
 }
 
+// List endpoints are paginated (limit ≤ 100); fetch every page.
+async function apiAll(path) {
+  const tokenAtStart = state.token;
+  const languageAtStart = state.lang;
+  const rows = [];
+  for (let offset = 0; offset <= 1000000; offset += 100) {
+    if (tokenAtStart !== state.token) throw new Error("Session changed; please retry.");
+    if (languageAtStart !== state.lang) throw new Error("Language changed; please retry.");
+    const page = await api(`${path}${path.includes("?") ? "&" : "?"}limit=100&offset=${offset}`);
+    rows.push(...page);
+    if (page.length < 100) return rows;
+  }
+  throw new Error("Too many results; narrow the filter.");
+}
+
+// --- HELPERS ---
 function toast(msg) {
   const el = document.getElementById("toast");
   el.textContent = msg;
@@ -50,26 +71,35 @@ function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-const t = key => (I18N[state.lang] || I18N.en)[key] || I18N.en[key] || key;
 const icon = name => `<svg class="ic"><use href="#i-${name}"/></svg>`;
-const STATUS_KEYS = { Pending: "stPending", Approved: "stApproved", Rejected: "stRejected" };
-const TYPE_KEYS = { Vacation: "vacation", "Advance payment": "advancePayment" };
-const statusBadge = s => `<span class="status ${esc(s).toLowerCase()}">${esc(t(STATUS_KEYS[s] || s))}</span>`;
-const typeLabel = type => esc(t(TYPE_KEYS[type] || type));
-const locale = () => ({ ru: "ru-RU", kz: "kk-KZ" }[state.lang] || "en-GB");
+const statusBadge = s => `<span class="status ${esc(s).toLowerCase()}">${esc(s)}</span>`;
 const initials = name => name.split(/\s+/).slice(0, 2).map(p => p[0] || "").join("").toUpperCase();
+
+function localeCode() { return state.lang === "kz" ? "kk-KZ" : "ru-RU"; }
+function formatDate(value) {
+  const date = new Date(value.length === 10 ? `${value}T12:00:00` : value);
+  const months = state.lang === "kz"
+    ? ["қаңтар", "ақпан", "наурыз", "сәуір", "мамыр", "маусым", "шілде", "тамыз", "қыркүйек", "қазан", "қараша", "желтоқсан"]
+    : ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} ${state.lang === "kz" ? "ж." : "г."}`;
+}
+function formatTime(value) { return new Date(value).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", hour12: false }); }
+function formatPeriod(request) {
+  const start = formatDate(request.start_date);
+  if (request.type === "Advance payment") return `${new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(request.amount)} ₸ · ${start}`;
+  return request.end_date && request.end_date !== request.start_date ? `${start} — ${formatDate(request.end_date)}` : start;
+}
 
 function greetingText() {
   const hour = new Date().getHours();
-  const key = hour < 12 ? "greetMorning" : hour < 18 ? "greetAfternoon" : "greetEvening";
-  return `${t(key)}, ${state.user.full_name.split(" ")[0]}`;
+  const word = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  return `${word}, ${state.user.full_name.split(" ")[0]}`;
 }
 
 // --- INITIALIZATION & AUTH ---
 async function initApp() {
-  try { state.lang = localStorage.getItem("janamen.lang") || "en"; } catch { /* storage unavailable */ }
-  document.getElementById("langSwitch").value = state.lang;
-  applyLanguage(state.lang, false);
+  try { await I18n.load(); }
+  catch (error) { document.getElementById("loginError").textContent = error.message; return; }
 
   setupNavigation();
   setupRoleSwitch();
@@ -122,7 +152,9 @@ async function initApp() {
     document.querySelectorAll("[data-persona]").forEach(card => {
       card.querySelector("[data-email]").textContent = demoAccounts[card.dataset.persona] || "";
     });
-    document.getElementById("loginHint").textContent = t(config.demo_mode ? "loginHintDemo" : "loginHint");
+    document.getElementById("loginHint").textContent = config.demo_mode
+      ? "Synthetic demo. Use a test account and the demo password configured by the operator."
+      : "Use your account email and password.";
     showLogin(demoAccounts.employee || "");
   } catch (error) {
     document.getElementById("loginError").textContent = error.message;
@@ -142,7 +174,10 @@ function showLogin(email = "") {
   document.querySelectorAll(".modal-backdrop").forEach(el => el.classList.remove("open"));
   ["homeRequests", "homeCourseCard", "homeActivity", "academyGrid", "notificationsList", "teamTable", "requestTable",
    "knowledgeList", "knowledgeDocuments", "approvedKnowledgeList", "adminAuditTable", "adminIntegrationsList",
-   "chatMessages", "playerLessonsList", "playerQuizOptions", "detailModalTimeline", "profCourses"]
+   "chatMessages", "playerLessonsList", "playerQuizOptions", "detailModalTimeline", "profCourses",
+   "detailModalTitle", "detailModalCode", "detailModalRequester", "detailModalDept", "detailModalDates",
+   "detailModalSync", "playerCourseTitle", "playerLessonTitle", "playerQuizQuestion", "playerQuizFeedback",
+   "citationDocTitle", "citationSecTitle"]
     .forEach(id => document.getElementById(id)?.replaceChildren());
   document.querySelectorAll('[id^="prof"], #userName, #userRole, #avatar, #greeting, #citationSnippet, #playerLessonContent')
     .forEach(el => { if (el.childElementCount === 0) el.textContent = "—"; });
@@ -150,7 +185,7 @@ function showLogin(email = "") {
   document.getElementById("loginEmail").value = email;
   document.getElementById("loginPassword").value = "";
   document.getElementById("loginGate").hidden = false;
-  document.title = "JanaМен · HR workspace";
+  document.title = I18n.t("JanaМен · People Workspace");
 }
 
 async function logout(email = "") {
@@ -196,15 +231,18 @@ function setupNavigation() {
 }
 
 const pageTitles = {
-  home: "overview", profile: "myProfile", requests: "myRequests", academy: "janaAcademy",
-  assistant: "aiJana", notifications: "notifications", team: "teamApprovals", admin: "hrAdmin",
+  home: "Overview", profile: "My profile", requests: "My requests", academy: "Jana Academy",
+  assistant: "AI Jana", notifications: "Notifications", team: "Team & approvals", admin: "HR administration",
 };
 
 async function go(page) {
   if (!state.token) { showLogin(); return; }
-  const required = { team: "manager", admin: "hr_admin" }[page];
-  if (required && !ROLE_ACCESS[required].includes(state.user?.role)) {
-    toast(t("accessDenied"));
+  if (page === "team" && !ROLE_ACCESS.manager.includes(state.user?.role)) {
+    toast("Access denied: Team workspace requires a manager or HR admin role.");
+    return;
+  }
+  if (page === "admin" && state.user?.role !== "hr_admin") {
+    toast("Access denied: HR Administration is reserved for HR administrators.");
     return;
   }
   state.page = page;
@@ -212,7 +250,7 @@ async function go(page) {
   document.querySelectorAll("[data-page]").forEach(b => b.classList.toggle("active", b.dataset.page === page));
   document.getElementById("navLinks").classList.remove("open");
   document.getElementById("menuBtn").setAttribute("aria-expanded", "false");
-  document.title = `${t(pageTitles[page])} · JanaМен`;
+  document.title = `${I18n.t(pageTitles[page])} · JanaМен`;
   window.scrollTo({ top: 0, behavior: "smooth" });
   await refreshCurrentPage();
 }
@@ -243,22 +281,14 @@ function setupHome() {
   }));
 }
 
-function requestRows(requests) {
-  return requests.map(r => `
-    <div class="request-row">
-      <div class="req-icon">${icon(r.type === "Vacation" ? "calendar" : "wallet")}</div>
-      <div>
-        <div class="req-title">${typeLabel(r.type)}</div>
-        <div class="req-sub">${esc(r.request_code)} · ${esc(r.period_or_details)}</div>
-      </div>
-      ${statusBadge(r.status)}
-    </div>`).join("");
+function notificationIcon(type) {
+  return icon(type === "ACADEMY" ? "book" : type === "REQUEST" ? "file" : "bell");
 }
 
 async function loadDashboard() {
   try {
     const [data, courses, notifications, requests] = await Promise.all([
-      api("/me/dashboard"), api("/courses"), api("/notifications?limit=3"), api("/requests"),
+      api("/me/dashboard"), apiAll("/courses"), api("/notifications?limit=3"), apiAll("/requests"),
     ]);
     document.getElementById("greeting").textContent = greetingText();
     document.getElementById("leaveDays").textContent = data.leave_balance_days.toFixed(1);
@@ -267,9 +297,15 @@ async function loadDashboard() {
     document.getElementById("statCourses").textContent = data.assigned_courses_count;
     document.getElementById("statNotifications").textContent = data.unread_notifications_count;
 
-    document.getElementById("homeRequests").innerHTML = requests.length
-      ? requestRows(requests.slice(0, 4))
-      : `<div class="empty">${esc(t("noRequests"))}</div>`;
+    document.getElementById("homeRequests").innerHTML = requests.length ? requests.slice(0, 4).map(r => `
+      <div class="request-row">
+        <div class="req-icon">${icon(r.type === "Vacation" ? "calendar" : "wallet")}</div>
+        <div>
+          <div class="req-title">${esc(r.type)}</div>
+          <div class="req-sub"><span data-verbatim>${esc(r.request_code)}</span> · ${esc(formatPeriod(r))}</div>
+        </div>
+        ${statusBadge(r.status)}
+      </div>`).join("") : `<div class="empty">No requests yet.</div>`;
 
     const assigned = courses.filter(c => c.assigned);
     const next = assigned.find(c => c.status !== "COMPLETED") || assigned[0];
@@ -277,26 +313,24 @@ async function loadDashboard() {
     banner.innerHTML = next ? `
       <div>
         <h2 class="h2">${esc(next.title)}</h2>
-        <p>Jana Academy · ${next.total_lessons} ${esc(t("lessonsUnit"))} · ${Math.round(next.progress_percent)}% ${esc(t("complete"))}</p>
+        <p>Jana Academy · ${next.total_lessons} lessons · ${Math.round(next.progress_percent)}% complete</p>
         <div class="progress"><span style="width:${next.progress_percent}%"></span></div>
       </div>
-      <button class="btn btn-white" data-course="${next.id}">${esc(t(next.status === "COMPLETED" ? "reviewCourse" : "continueLearning"))} ${icon("arrow")}</button>`
-      : `<div><h2 class="h2">Jana Academy</h2><p>${esc(t("noCourses"))}</p></div>
-         <button class="btn btn-white" data-open-academy>${esc(t("openCatalog"))} ${icon("arrow")}</button>`;
+      <button class="btn btn-white" data-course="${next.id}"><span>${next.status === "COMPLETED" ? "Review course" : "Continue learning"}</span>${icon("arrow")}</button>`
+      : `<div><h2 class="h2">Jana Academy</h2><p>No courses assigned. Explore Jana Academy to enroll.</p></div>
+         <button class="btn btn-white" data-open-academy><span>All courses</span>${icon("arrow")}</button>`;
     banner.querySelector("[data-course]")?.addEventListener("click", e => openCoursePlayer(Number(e.currentTarget.dataset.course)));
     banner.querySelector("[data-open-academy]")?.addEventListener("click", () => go("academy"));
 
-    document.getElementById("homeActivity").innerHTML = notifications.length
-      ? notifications.map(n => `
-        <article class="update-card">
-          <span class="notice-icon">${icon(n.type === "ACADEMY" ? "book" : n.type === "REQUEST" ? "file" : "bell")}</span>
-          <b>${esc(n.title)}</b>
-          <p>${esc(n.message)}</p>
-          <small>${esc(n.time_ago)}</small>
-        </article>`).join("")
-      : `<div class="empty">${esc(t("noNotifications"))}</div>`;
+    document.getElementById("homeActivity").innerHTML = notifications.length ? notifications.map(n => `
+      <article class="update-card">
+        <span class="notice-icon">${notificationIcon(n.type)}</span>
+        <b>${esc(n.title)}</b>
+        <p>${esc(n.message)}</p>
+        <small>${esc(n.time_ago)}</small>
+      </article>`).join("") : `<div class="empty">No updates yet.</div>`;
   } catch (err) {
-    toast(`${t("loadError")}: ${err.message}`);
+    toast(`Error: ${err.message}`);
   }
 }
 
@@ -306,103 +340,104 @@ async function loadProfilePage() {
     const p = await api("/me/profile");
     document.getElementById("profAvatar").textContent = initials(p.full_name);
     document.getElementById("profName").textContent = p.full_name;
-    document.getElementById("profPosition").textContent = `${p.position} · ${p.email}`;
+    document.getElementById("profPosition").textContent = p.position;
     document.getElementById("profEmpCode").textContent = p.employee_code;
     document.getElementById("profDept").textContent = p.department;
     document.getElementById("profCompany").textContent = p.company;
-    document.getElementById("profManager").textContent = p.manager_name || "—";
-    document.getElementById("profHireDate").textContent = new Date(p.hire_date).toLocaleDateString(locale(), { day: "2-digit", month: "short", year: "numeric" });
+    document.getElementById("profManager").textContent = p.manager_name || "None (Department Head)";
+    document.getElementById("profHireDate").textContent = formatDate(p.hire_date);
     document.getElementById("profLocation").textContent = p.location;
-    document.getElementById("profLeaveBalance").textContent = `${p.leave_balance_days.toFixed(1)} ${t("daysUnit")}`;
+    document.getElementById("profLeaveBalance").textContent = `${p.leave_balance_days.toFixed(1)} days`;
     document.getElementById("profLearningPct").textContent = `${Math.round(p.learning_progress_percent)}%`;
     document.getElementById("profCourses").innerHTML = p.courses.length ? p.courses.map(c => `
       <div class="course-line">
         <span class="notice-icon">${icon(c.status === "COMPLETED" ? "check" : "book")}</span>
         <div>
           <b>${esc(c.title)}</b>
-          <div class="req-sub">${esc(t(c.is_mandatory ? "mandatory" : "recommended"))}${c.due_date ? ` · ${esc(t("due"))} ${esc(c.due_date)}` : ""}</div>
+          <div class="req-sub"><span>${c.is_mandatory ? "Mandatory" : "Recommended"}</span>${c.due_date ? ` · <span>Due ${esc(formatDate(c.due_date))}</span>` : ""}${c.score === null ? "" : ` · <span>${Math.round(c.score)}% lessons passed</span>`}</div>
           <div class="progress"><span style="width:${c.progress_percent}%"></span></div>
         </div>
-      </div>`).join("") : `<div class="empty">${esc(t("noCourses"))}</div>`;
+      </div>`).join("") : `<div class="empty">No courses assigned.</div>`;
   } catch (err) {
-    toast(`${t("loadError")}: ${err.message}`);
+    toast(`Error: ${err.message}`);
   }
 }
 
 // --- REQUESTS ---
 async function loadRequestsPage() {
+  const params = new URLSearchParams();
   const sf = document.getElementById("statusFilter").value;
   const tf = document.getElementById("typeFilter").value;
-  const params = new URLSearchParams();
   if (sf !== "all") params.set("status", sf);
   if (tf !== "all") params.set("type", tf);
   try {
-    const requests = await api(`/requests?${params}`);
-    const tbody = document.getElementById("requestTable");
-    tbody.innerHTML = requests.length ? requests.map(r => `
+    const query = params.toString();
+    const requests = await apiAll(`/requests${query ? `?${query}` : ""}`);
+    document.getElementById("requestTable").innerHTML = requests.length ? requests.map(r => `
       <tr>
-        <td><b>${typeLabel(r.type)}</b><div class="req-sub">${esc(r.request_code)}</div></td>
-        <td>${esc(r.submitted_date_formatted)}</td>
-        <td>${esc(r.period_or_details)}<div class="req-sub">${esc(r.reason || "—")}</div></td>
+        <td><b>${esc(r.type)}</b><div class="req-sub" data-verbatim>${esc(r.request_code)}</div></td>
+        <td>${esc(formatDate(r.created_at))}</td>
+        <td>${esc(formatPeriod(r))}<div class="req-sub">${esc(r.reason || "No comment")}</div></td>
         <td>${statusBadge(r.status)}</td>
-        <td><button class="text-link" onclick="openRequestDetailModal(${r.id})">${esc(t("details"))} →</button></td>
+        <td><button class="text-link" onclick="openRequestDetailModal(${r.id})">Details</button></td>
       </tr>`).join("")
-      : `<tr><td colspan="5" class="empty">${esc(t("noRequests"))}</td></tr>`;
+      : `<tr><td colspan="5" class="empty">No requests found.</td></tr>`;
   } catch (err) {
-    toast(`${t("loadError")}: ${err.message}`);
+    toast(`Error: ${err.message}`);
   }
 }
 
 // --- JANA ACADEMY ---
 async function loadAcademyPage() {
   try {
-    const courses = await api("/courses");
+    const courses = await apiAll("/courses");
     state.courses = courses;
     document.getElementById("academyGrid").innerHTML = courses.map(c => {
       const done = c.status === "COMPLETED";
-      const action = done ? "reviewCourse" : c.progress_percent > 0 ? "continueLearning" : c.assigned ? "startCourse" : "enroll";
+      const action = done ? "Review course" : c.progress_percent > 0 ? "Continue learning" : c.assigned ? "Start course" : "Enroll";
       return `
       <article class="card course-tile ${c.is_mandatory ? "mandatory" : ""}">
         <div class="course-art">${icon(done ? "award" : "book")}</div>
         <div class="course-meta">
-          <span class="chip">${esc(t(c.is_mandatory ? "mandatory" : "recommended"))}</span>
-          <span class="chip">${c.duration_minutes} ${esc(t("minUnit"))}</span>
-          ${done ? `<span class="status approved">${esc(t("passed"))} ${Math.round(c.score ?? 100)}%</span>` : ""}
+          <span class="chip">${c.is_mandatory ? "Mandatory" : "Recommended"}</span>
+          <span class="chip">${c.duration_minutes} min</span>
+          ${done ? `<span class="status approved">Passed ${Math.round(c.score ?? 100)}% ✓</span>` : ""}
         </div>
         <h3 class="h4">${esc(c.title)}</h3>
         <p>${esc(c.description)}</p>
         <div>
           <div class="progress"><span style="width:${c.progress_percent}%"></span></div>
           <div class="progress-label">
-            <span>${Math.round(c.progress_percent)}% ${esc(t("complete"))}</span>
-            <span>${c.assigned ? (c.due_date ? `${esc(t("due"))} ${esc(c.due_date)}` : esc(t("assigned"))) : esc(t("availableToEnroll"))}</span>
+            <span>${Math.round(c.progress_percent)}% complete</span>
+            <span>${c.assigned ? (c.due_date ? `Due ${esc(formatDate(c.due_date))}` : "Assigned") : "Available to enroll"}</span>
           </div>
         </div>
-        <button class="btn ${done ? "btn-light" : "btn-primary"}" onclick="openCoursePlayer(${c.id})">${esc(t(action))} ${icon("arrow")}</button>
+        <button class="btn ${done ? "btn-light" : "btn-primary"}" onclick="openCoursePlayer(${c.id})"><span>${action}</span>${icon("arrow")}</button>
       </article>`;
     }).join("");
   } catch (err) {
-    toast(`${t("loadError")}: ${err.message}`);
+    toast(`Error: ${err.message}`);
   }
 }
 
 // --- NOTIFICATIONS ---
 async function loadNotificationsPage() {
   try {
-    const notifs = await api("/notifications");
+    const notifs = await apiAll("/notifications");
     state.notifications = notifs;
     document.getElementById("notificationsList").innerHTML = notifs.length ? notifs.map(n => `
       <button class="notice" onclick="markNotificationRead(${n.id})">
-        <span class="notice-icon">${icon(n.type === "ACADEMY" ? "book" : n.type === "REQUEST" ? "file" : "bell")}</span>
+        <span class="notice-icon">${notificationIcon(n.type)}</span>
         <span style="flex:1">
           <b>${esc(n.title)}</b>
-          <p>${esc(n.message)} · ${esc(n.time_ago)}</p>
+          <p>${esc(n.message)}</p>
+          <p class="small">${esc(n.time_ago)}</p>
         </span>
         ${n.is_read ? "" : `<span class="unread-dot" aria-label="unread"></span>`}
       </button>`).join("")
-      : `<div class="empty">${esc(t("noNotifications"))}</div>`;
+      : `<div class="empty">No notifications in your inbox.</div>`;
   } catch (err) {
-    toast(`${t("loadError")}: ${err.message}`);
+    toast(`Error: ${err.message}`);
   }
 }
 
@@ -419,7 +454,7 @@ async function markNotificationRead(id) {
 async function markAllNotificationsRead() {
   try {
     await api("/notifications/read-all", { method: "POST" });
-    toast(t("allRead"));
+    toast("All notifications marked as read.");
     await loadNotificationsPage();
     await updateNotificationBadge();
   } catch (err) {
@@ -441,35 +476,35 @@ async function updateNotificationBadge() {
 // --- MANAGER ---
 async function loadTeamPage() {
   try {
-    const [requests, members] = await Promise.all([api("/manager/requests?status=Pending"), api("/manager/team")]);
-    document.getElementById("teamScope").textContent = t(state.user.role === "hr_admin" ? "scopeCompany" : "scopeDirect");
+    const [requests, members] = await Promise.all([apiAll("/manager/requests?status=Pending"), apiAll("/manager/team")]);
+    document.getElementById("teamScope").textContent = state.user.role === "hr_admin" ? "Company" : "Direct reports";
     document.getElementById("teamCount").textContent = members.length;
     document.getElementById("teamPendingStat").textContent = requests.length;
-    document.getElementById("teamPendingBadge").textContent = `${requests.length} ${t("pendingUnit")}`;
+    document.getElementById("teamPendingBadge").textContent = `${requests.length} pending`;
     document.getElementById("teamTable").innerHTML = requests.length ? requests.map(r => `
       <tr>
         <td><b>${esc(r.user_name)}</b><div class="req-sub">${esc(r.department)}</div></td>
-        <td>${typeLabel(r.type)}<div class="req-sub">${esc(r.request_code)}</div></td>
-        <td>${esc(r.period_or_details)}<div class="req-sub">${esc(r.reason || "—")}</div></td>
+        <td>${esc(r.type)}<div class="req-sub" data-verbatim>${esc(r.request_code)}</div></td>
+        <td>${esc(formatPeriod(r))}<div class="req-sub">${esc(r.reason || "No comment")}</div></td>
         <td>${statusBadge(r.status)}</td>
         <td style="white-space:nowrap">
-          <button class="small-btn primary" onclick="reviewRequestPrompt(${r.id}, 'approve')">${esc(t("approve"))}</button>
-          <button class="small-btn danger" onclick="reviewRequestPrompt(${r.id}, 'reject')">${esc(t("reject"))}</button>
-          <button class="text-link" onclick="openRequestDetailModal(${r.id})">${esc(t("details"))}</button>
+          <button class="small-btn primary" onclick="reviewRequestPrompt(${r.id}, 'approve')">Approve</button>
+          <button class="small-btn danger" onclick="reviewRequestPrompt(${r.id}, 'reject')">Decline</button>
+          <button class="text-link" onclick="openRequestDetailModal(${r.id})">Details</button>
         </td>
       </tr>`).join("")
-      : `<tr><td colspan="5" class="empty">${esc(t("noPending"))}</td></tr>`;
+      : `<tr><td colspan="5" class="empty">No pending requests from your team.</td></tr>`;
   } catch (err) {
-    toast(`${t("loadError")}: ${err.message}`);
+    toast(`Error: ${err.message}`);
   }
 }
 
 function reviewRequestPrompt(requestId, action) {
   state.pendingReview = { requestId, action };
   const approve = action === "approve";
-  document.getElementById("reviewTitle").textContent = t(approve ? "approveRequest" : "declineRequest");
+  document.getElementById("reviewTitle").textContent = approve ? "Approve request" : "Decline request";
   document.getElementById("reviewComment").value = "";
-  document.getElementById("submitReview").textContent = t(approve ? "confirmApproval" : "confirmRejection");
+  document.getElementById("submitReview").textContent = approve ? "Confirm approval" : "Confirm rejection";
   document.getElementById("reviewModal").classList.add("open");
 }
 
@@ -477,7 +512,7 @@ function reviewRequestPrompt(requestId, action) {
 async function loadAdminPage() {
   try {
     const [summary, chunks, documents, adapters, logs] = await Promise.all([
-      api("/admin/summary"), api("/admin/knowledge"), api("/admin/knowledge/documents"),
+      api("/admin/summary"), apiAll("/admin/knowledge"), apiAll("/admin/knowledge/documents"),
       api("/admin/integrations"), api("/admin/audit?limit=15"),
     ]);
     document.getElementById("adminEmployeeCount").textContent = summary.active_accounts;
@@ -489,27 +524,32 @@ async function loadAdminPage() {
         <div style="flex:1">
           <b>${esc(c.document_title)} · ${esc(c.section_title)}</b>
           <p>${c.is_approved ? "Approved" : "Draft"}${c.is_synthetic ? " · Synthetic example" : ""}</p>
-          <p>${esc(c.content.substring(0, 140))}…</p>
+          <details><summary>Review full source text</summary><p data-verbatim style="white-space:pre-wrap">${esc(c.content)}</p></details>
         </div>
       </div>`).join("");
 
     const documentList = document.getElementById("knowledgeDocuments");
-    documentList.innerHTML = documents.map(doc => `
+    documentList.innerHTML = documents.map(doc => {
+      const ownChunks = chunks.filter(c => c.document_id === doc.id);
+      const reviewedRevision = ownChunks.length ? Math.min(...ownChunks.map(c => c.document_revision)) : doc.revision;
+      return `
       <div class="notice">
         <span class="notice-icon">${icon("book")}</span>
         <div style="flex:1">
           <b>${esc(doc.title)} · v${esc(doc.version)}</b>
           <p>${doc.is_synthetic ? "Synthetic example · " : ""}${doc.is_approved ? "Approved" : "Draft"} · ${doc.is_active ? "Active" : "Inactive"}</p>
-          ${!doc.is_approved && doc.is_active ? `<button class="small-btn primary" data-approve-document="${doc.id}">Approve reviewed source</button>` : ""}
-          ${doc.is_active ? `<button class="small-btn" data-deactivate-document="${doc.id}">Deactivate</button>` : ""}
+          ${!doc.is_approved && doc.is_active ? `<button class="small-btn primary" data-approve-document="${doc.id}" data-revision="${reviewedRevision}">Approve reviewed source</button>` : ""}
+          ${doc.is_active ? `<button class="small-btn" data-deactivate-document="${doc.id}" data-revision="${doc.revision}">Deactivate</button>` : ""}
         </div>
-      </div>`).join("");
+      </div>`;
+    }).join("");
     documentList.querySelectorAll("[data-approve-document], [data-deactivate-document]").forEach(button => {
       button.addEventListener("click", async () => {
         try {
           const id = button.dataset.approveDocument || button.dataset.deactivateDocument;
-          await api(`/admin/knowledge/documents/${id}`, { method: "PATCH", body: JSON.stringify(
-            button.dataset.approveDocument ? { is_approved: true } : { is_active: false }) });
+          const change = button.dataset.approveDocument ? { is_approved: true } : { is_active: false };
+          await api(`/admin/knowledge/documents/${id}`, { method: "PATCH",
+            body: JSON.stringify({ ...change, expected_revision: Number(button.dataset.revision) }) });
           await loadAdminPage();
         } catch (error) { toast(error.message); }
       });
@@ -527,13 +567,13 @@ async function loadAdminPage() {
 
     document.getElementById("adminAuditTable").innerHTML = logs.map(l => `
       <tr>
-        <td><code>${esc(l.action)}</code></td>
+        <td><code>${esc(I18n.t(l.action))}</code></td>
         <td>${esc(l.actor_name)}</td>
-        <td>${esc(l.target_type || "—")}: ${esc(l.target_id || "—")}</td>
-        <td>${esc(new Date(l.timestamp).toLocaleTimeString(locale()))}</td>
+        <td>${esc(I18n.t(l.target_type || "—"))}: ${esc(l.target_id || "—")}</td>
+        <td>${esc(formatTime(l.timestamp))}</td>
       </tr>`).join("");
   } catch (err) {
-    toast(`${t("loadError")}: ${err.message}`);
+    toast(`Error: ${err.message}`);
   }
 }
 
@@ -545,7 +585,7 @@ function setupKnowledgeForm() {
     submit.disabled = true;
     try {
       const doc = await api("/admin/knowledge/documents", { method: "POST", body: JSON.stringify({
-        title: form.elements.title.value, is_synthetic: form.elements.synthetic.checked,
+        title: form.elements.title.value, language: state.lang === "kz" ? "kk" : "ru", is_synthetic: form.elements.synthetic.checked,
       }) });
       await api("/admin/knowledge", { method: "POST", body: JSON.stringify({ document_id: doc.id,
         section_title: form.elements.section.value, content: form.elements.content.value,
@@ -560,11 +600,12 @@ function setupKnowledgeForm() {
 
 // --- MODALS & WORKFLOWS ---
 function setupModals() {
-  const closeAll = () => document.querySelectorAll(".modal-backdrop").forEach(m => m.classList.remove("open"));
   document.querySelectorAll(".modal-backdrop").forEach(backdrop => {
     backdrop.addEventListener("click", e => { if (e.target === backdrop) backdrop.classList.remove("open"); });
   });
-  document.addEventListener("keydown", e => { if (e.key === "Escape") closeAll(); });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") document.querySelectorAll(".modal-backdrop").forEach(m => m.classList.remove("open"));
+  });
   ["closeModal", "cancelModal", "closeDetailModal", "closeCourseModal", "closeCitationModal", "cancelReview"].forEach(id => {
     document.getElementById(id).addEventListener("click", () => document.getElementById(id).closest(".modal-backdrop").classList.remove("open"));
   });
@@ -581,7 +622,7 @@ function setupModals() {
       }) });
       document.getElementById("reviewModal").classList.remove("open");
       state.pendingReview = null;
-      toast(`${result.request_code}: ${t(STATUS_KEYS[result.status] || result.status)}`);
+      toast(`${result.request_code} ${result.status.toLowerCase()}`);
       await refreshCurrentPage();
     } catch (error) { toast(error.message); }
     finally { button.disabled = false; }
@@ -622,13 +663,13 @@ function setupModals() {
         amount: type === "Advance payment" && amount ? parseFloat(amount) : null,
         reason: reason || null,
       }) });
-      toast(`${res.request_code} — ${t("requestCreated")}`);
+      toast(`Request ${res.request_code} successfully created!`);
       document.getElementById("requestModal").classList.remove("open");
       e.target.reset();
       syncRequestType();
       await refreshCurrentPage();
     } catch (err) {
-      toast(`${t("submitFailed")}: ${err.message}`);
+      toast(`Submission failed: ${err.message}`);
     } finally {
       submit.disabled = false;
     }
@@ -638,19 +679,19 @@ function setupModals() {
 async function openRequestDetailModal(id) {
   try {
     const r = await api(`/requests/${id}`);
-    document.getElementById("detailModalTitle").textContent = `${r.request_code} · ${t(TYPE_KEYS[r.type] || r.type)}`;
+    document.getElementById("detailModalTitle").innerHTML = `<span data-verbatim>${esc(r.request_code)}</span> · <span>${esc(r.type)}</span>`;
     document.getElementById("detailModalCode").textContent = r.request_code;
     document.getElementById("detailModalStatus").innerHTML = statusBadge(r.status);
     document.getElementById("detailModalRequester").textContent = r.user_name;
     document.getElementById("detailModalDept").textContent = r.department;
-    document.getElementById("detailModalDates").textContent = r.period_or_details;
-    document.getElementById("detailModalSync").textContent = r.external_sync_id || t("notRegistered");
+    document.getElementById("detailModalDates").textContent = formatPeriod(r);
+    document.getElementById("detailModalSync").textContent = r.external_sync_id || I18n.t("Documentolog is unconnected; no external registration");
     document.getElementById("detailModalTimeline").innerHTML = r.events.map(ev => `
       <div class="activity">
         <span class="activity-dot ${ev.event_type === "APPROVED" ? "ok" : ev.event_type === "REJECTED" ? "bad" : ""}"></span>
         <div>
-          <b>${esc(ev.event_type)} · ${esc(ev.actor_name)}</b>
-          <p>${esc(ev.comment || "")}${ev.comment ? " · " : ""}${esc(new Date(ev.created_at).toLocaleString(locale()))}</p>
+          <b>${esc(ev.event_type)} by ${esc(ev.actor_name)}</b>
+          <p>${ev.comment ? `<span>${esc(ev.comment)}</span> · ` : ""}${esc(formatDate(ev.created_at))} ${esc(formatTime(ev.created_at))}</p>
         </div>
       </div>`).join("");
     document.getElementById("requestDetailModal").classList.add("open");
@@ -664,7 +705,7 @@ function renderCourse(course) {
   state.currentCourse = course;
   document.getElementById("playerCourseTitle").textContent = course.title;
   document.getElementById("playerProgressBar").style.width = `${course.progress_percent}%`;
-  document.getElementById("playerProgressLabel").textContent = `${Math.round(course.progress_percent)}% ${t("complete")}`;
+  document.getElementById("playerProgressLabel").textContent = `${Math.round(course.progress_percent)}% complete`;
   const currentId = state.currentLesson?.id ?? course.current_lesson_id;
   document.getElementById("playerLessonsList").innerHTML = course.lessons.map(l => `
     <button class="${l.id === currentId ? "current" : ""}" data-lesson="${l.id}" onclick="loadLessonInPlayer(${l.id})">
@@ -709,7 +750,7 @@ async function loadLessonInPlayer(lessonId) {
 async function submitLessonQuiz() {
   if (!state.currentLesson) return;
   const selected = document.querySelector('input[name="lessonQuiz"]:checked');
-  if (!selected) { toast(t("pickAnswer")); return; }
+  if (!selected) { toast("Please select an answer option."); return; }
   try {
     const res = await api(`/courses/lessons/${state.currentLesson.id}/quiz`, {
       method: "POST", body: JSON.stringify({ answer_index: parseInt(selected.value, 10) }),
@@ -719,25 +760,25 @@ async function submitLessonQuiz() {
     fb.className = res.passed ? "ok" : "bad";
     fb.textContent = res.explanation;
     renderCourse(await api(`/courses/${state.currentCourse.id}`));
-    if (res.course_completed) toast(t("courseCompleted"));
+    if (res.course_completed) toast("🎉 Congratulations! You have successfully completed this course!");
     await refreshCurrentPage();
   } catch (err) {
-    toast(err.message);
+    toast(`Quiz error: ${err.message}`);
   }
 }
 
 // --- AI JANA ---
 async function loadKnowledgeSummary() {
   try {
-    const documents = await api("/ai/documents");
+    const documents = await apiAll("/ai/documents");
     document.getElementById("approvedKnowledgeList").innerHTML = documents.length
       ? documents.map(doc => `<div class="notice"><span class="notice-icon">${icon("file")}</span><div><b>${esc(doc.title)}</b><p>v${esc(doc.version)} · ${doc.is_synthetic ? "Synthetic example" : "Approved source"}</p></div></div>`).join("")
-      : `<p class="muted">${esc(t("noSources"))}</p>`;
+      : `<p class="muted">No approved sources are available for your account.</p>`;
   } catch (error) { toast(error.message); }
 }
 
 function resetChat() {
-  document.getElementById("chatMessages").innerHTML = `<div class="message">${esc(t("aiHello"))}<small>AI Jana</small></div>`;
+  document.getElementById("chatMessages").innerHTML = `<div class="message">Hi! I'm AI Jana. I assist Jana Post employees with HR policy questions. Every answer I provide is grounded in verified documentation and cites the exact source.<small>AI Jana · Ready to help</small></div>`;
 }
 
 function setupAIChat() {
@@ -749,6 +790,7 @@ function setupAIChat() {
     input.value = "";
     await sendAIQuery(q);
   });
+  // data-question is translated by I18n, so the chips ask in the interface language.
   document.querySelectorAll("[data-question]").forEach(btn => btn.addEventListener("click", () => sendAIQuery(btn.dataset.question)));
   document.getElementById("clearChat").onclick = resetChat;
   resetChat();
@@ -758,35 +800,36 @@ async function sendAIQuery(question) {
   const container = document.getElementById("chatMessages");
   const userBubble = document.createElement("div");
   userBubble.className = "message user";
+  userBubble.dataset.verbatim = "";
   userBubble.textContent = question;
   const botBubble = document.createElement("div");
   botBubble.className = "message";
-  botBubble.innerHTML = `<i>${esc(t("aiThinking"))}</i>`;
+  botBubble.innerHTML = `<i>Checking verified HR knowledge base…</i>`;
   container.append(userBubble, botBubble);
   container.scrollTop = container.scrollHeight;
 
   try {
     const res = await api("/ai/chat", { method: "POST", body: JSON.stringify({ question }) });
-    let html = `<div style="white-space:pre-wrap">${esc(res.answer)}</div>`;
+    let html = `<div data-verbatim style="white-space:pre-wrap">${esc(res.answer)}</div>`;
     if (res.sources?.length) {
       html += `<div class="citation-buttons">${res.sources.map((source, index) =>
-        `<button class="source-pill" type="button" data-source-index="${index}">${icon("file")}${esc(source.document_title)} · ${esc(source.section_title)}</button>`).join("")}</div>`;
+        `<button class="source-pill" type="button" data-verbatim data-source-index="${index}">${icon("file")}${esc(source.document_title)} · ${esc(source.section_title)}</button>`).join("")}</div>`;
     }
     if (res.answer_status !== "grounded") {
       botBubble.classList.add("fallback");
-      if (res.escalation_guidance) html += `<div class="fallback-note"><b>${esc(t("safeFallback"))}:</b> ${esc(res.escalation_guidance)}</div>`;
+      if (res.escalation_guidance) html += `<div class="fallback-note"><b>Safe Fallback:</b> <span data-verbatim>${esc(res.escalation_guidance)}</span></div>`;
     }
-    html += `<small>AI Jana · ${esc(res.answer_status)} · ${Math.round(res.processing_time_ms)} ms</small>`;
+    html += `<small><span>AI Jana</span> · <span>${esc(res.answer_status)}</span>${res.engine ? ` · <span data-verbatim>${esc(res.engine)}</span>` : ""} · <span>${Math.round(res.processing_time_ms)} ms</span></small>`;
     botBubble.innerHTML = html;
     botBubble.querySelectorAll("[data-source-index]").forEach(button => {
       const source = res.sources[Number(button.dataset.sourceIndex)];
       button.addEventListener("click", async () => {
         try {
-          const full = await api(`/ai/sources/${source.chunk_id}`);
+          const full = await api(`/ai/sources/${source.chunk_id}?revision=${source.document_revision}&language=${source.language}`);
           document.getElementById("citationDocTitle").textContent = `${full.document_title} · v${full.version}`;
           document.getElementById("citationSecTitle").textContent = full.section_title;
           document.getElementById("citationSnippet").textContent =
-            `${full.is_synthetic ? "Synthetic example; not official HR policy.\n\n" : ""}${full.content}`;
+            `${full.is_synthetic ? I18n.t("Synthetic example; not official HR policy.") + "\n\n" : ""}${full.content}`;
           document.getElementById("citationModal").classList.add("open");
         } catch (error) { toast(error.message); }
       });
@@ -803,25 +846,24 @@ function setupRoleSwitch() {
 }
 
 function setupLanguageSwitch() {
-  document.getElementById("langSwitch").addEventListener("change", e => {
-    applyLanguage(e.target.value, true);
-    if (state.token) refreshCurrentPage();
+  document.querySelectorAll("[data-language-select]").forEach(select => {
+    select.value = state.lang;
+    select.addEventListener("change", async event => {
+      state.lang = event.target.value;
+      I18n.apply(state.lang);
+      document.querySelectorAll(".modal-backdrop").forEach(modal => modal.classList.remove("open"));
+      if (state.token) {
+        try {
+          const me = await api("/me");
+          state.user = me.user;
+          state.profile = me.profile;
+          updateUserUI();
+          document.title = `${I18n.t(pageTitles[state.page])} · JanaМен`;
+          await refreshCurrentPage();
+        } catch (error) { toast(error.message); }
+      }
+    });
   });
-}
-
-function applyLanguage(lang, announce) {
-  state.lang = I18N[lang] ? lang : "en";
-  try { localStorage.setItem("janamen.lang", state.lang); } catch { /* storage unavailable */ }
-  const dict = I18N[state.lang];
-  document.querySelectorAll("[data-i18n]").forEach(el => {
-    const text = dict[el.dataset.i18n] || I18N.en[el.dataset.i18n];
-    if (!text) return;
-    if (el.hasAttribute("placeholder")) el.placeholder = text;
-    else el.textContent = text;
-  });
-  document.documentElement.lang = state.lang === "kz" ? "kk" : state.lang;
-  if (state.user) document.title = `${t(pageTitles[state.page])} · JanaМен`;
-  if (announce) toast(t("langChanged"));
 }
 
 document.addEventListener("DOMContentLoaded", initApp);

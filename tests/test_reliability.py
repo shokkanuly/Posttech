@@ -391,9 +391,11 @@ def test_document_approval_lifecycle_and_source_scope(client, employee_headers, 
         ).json()
 
     assert ask(hr_admin_headers)["answer_status"] == "fallback"
-    assert client.patch(url, headers=hr_admin_headers, json={"is_approved": True}).json()[
-        "is_approved"
-    ]
+    assert client.patch(
+        url,
+        headers=hr_admin_headers,
+        json={"is_approved": True, "expected_revision": chunk["document_revision"]},
+    ).json()["is_approved"]
     assert ask(hr_admin_headers)["sources"][0]["version"] == "2.0"
     assert ask(employee_headers)["answer_status"] == "fallback"
     source = f"/api/v1/ai/sources/{chunk['id']}"
@@ -411,7 +413,17 @@ def test_document_approval_lifecycle_and_source_scope(client, employee_headers, 
     )
     assert ask(hr_admin_headers)["answer_status"] == "fallback"
     assert (
-        client.patch(url, headers=hr_admin_headers, json={"is_approved": True}).status_code == 200
+        client.patch(
+            url,
+            headers=hr_admin_headers,
+            json={
+                "is_approved": True,
+                "expected_revision": client.get(
+                    "/api/v1/admin/knowledge/documents", headers=hr_admin_headers
+                ).json()[-1]["revision"],
+            },
+        ).status_code
+        == 200
     )
     assert client.patch(url, headers=hr_admin_headers, json={"is_active": False}).status_code == 200
     assert client.get(source, headers=hr_admin_headers).status_code == 404
@@ -568,3 +580,11 @@ def test_local_provisioning_creates_readonly_profile(client, db_session, db_engi
         "/api/v1/me/profile", headers={"Authorization": "Bearer " + result.json()["access_token"]}
     ).json()
     assert profile["employee_code"] == "TEST-NEW" and profile["manager_name"] == "Timur Kasymov"
+
+
+def test_published_demo_password_is_denied_in_production(client, monkeypatch):
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    result = client.post(
+        "/api/v1/auth/login", json={"email": "aigerim@janapost.kz", "password": "Password123!"}
+    )
+    assert result.status_code == 401

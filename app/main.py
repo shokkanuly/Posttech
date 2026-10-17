@@ -1,16 +1,20 @@
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.database import engine
+from app.database import engine, get_db
 from app.errors import install_error_handlers
-from app.migrate import require_current_schema
+from app.middleware import RequestBodyLimitMiddleware
+from app.migrate import SchemaNotCurrentError, require_current_schema
+from app.models.user import User
+from app.provision_demo import DEMO_ACCOUNTS
 from app.routers.academy import router as academy_router
 from app.routers.admin import router as admin_router
 from app.routers.ai import router as ai_router
@@ -39,10 +43,12 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
     responses={
-        code: {"model": ErrorResponse} for code in (400, 401, 403, 404, 409, 422, 429, 500, 503)
+        code: {"model": ErrorResponse}
+        for code in (400, 401, 403, 404, 409, 413, 422, 429, 500, 503)
     },
 )
 
+app.add_middleware(RequestBodyLimitMiddleware, max_bytes=settings.MAX_REQUEST_BODY_BYTES)
 install_error_handlers(app)
 
 # Same-origin by default. Optional development/deployment origins are explicit.
@@ -57,16 +63,23 @@ if settings.ALLOWED_ORIGINS:
 
 
 @app.get(settings.API_V1_STR + "/config", tags=["Configuration"], response_model=PublicConfig)
-def public_config():
+def public_config(db: Session = Depends(get_db)):
+    accounts = {
+        "employee": "aruzhan@janapost.kz",
+        "manager": "timur@janapost.kz",
+        "hr_admin": "aigerim@janapost.kz",
+    }
+    if settings.DEMO_MODE:
+        for user in (
+            db.query(User)
+            .filter(User.email.in_(DEMO_ACCOUNTS.values()), User.is_active.is_(True))
+            .all()
+        ):
+            if DEMO_ACCOUNTS.get(user.role.value) == user.email:
+                accounts[user.role.value] = user.email
     return {
         "demo_mode": settings.DEMO_MODE,
-        "demo_accounts": {
-            "employee": "aruzhan@janapost.kz",
-            "manager": "timur@janapost.kz",
-            "hr_admin": "aigerim@janapost.kz",
-        }
-        if settings.DEMO_MODE
-        else {},
+        "demo_accounts": accounts if settings.DEMO_MODE else {},
     }
 
 
@@ -91,7 +104,12 @@ if os.path.exists(static_dir):
 def health_check():
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
-    require_current_schema(engine)
+    try:
+        require_current_schema(engine)
+    except SchemaNotCurrentError:
+        from fastapi import HTTPException
+
+        raise HTTPException(503, "Database schema is not ready; contact the operator") from None
     return {
         "status": "healthy",
         "platform": "JanaMen Digital HR",

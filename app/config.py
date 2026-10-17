@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     AI_CONFIDENCE_THRESHOLD: float = Field(default=0.8, ge=0.0, le=1.0)
     HR_SUPPORT_EMAIL: str = "hr-support@janapost.kz"
     ENABLE_MOCK_INTEGRATIONS: bool = False
+    MAX_REQUEST_BODY_BYTES: int = Field(default=262144, ge=65536, le=1048576)
     MOCK_1C_BASE_URL: str = "https://mock-1c.internal.janapost.kz"
     MOCK_DOCUMENTOLOG_BASE_URL: str = "https://mock-doclog.internal.janapost.kz"
 

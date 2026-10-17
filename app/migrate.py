@@ -7,7 +7,11 @@ from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from sqlalchemy.engine import Engine
 
-HEAD = "0002_sessions_and_approvals"
+HEAD = "0004_source_translations"
+
+
+class SchemaNotCurrentError(RuntimeError):
+    pass
 
 
 def upgrade_database(target: Engine) -> None:
@@ -22,7 +26,9 @@ def upgrade_database(target: Engine) -> None:
 def require_current_schema(target: Engine) -> None:
     with target.connect() as connection:
         if MigrationContext.configure(connection).get_current_revision() != HEAD:
-            raise RuntimeError("Database schema is not current. Run: python -m app.migrate")
+            raise SchemaNotCurrentError(
+                "Database schema is not current. Run: python -m app.migrate"
+            )
 
 
 if __name__ == "__main__":

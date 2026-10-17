@@ -1,0 +1,19 @@
+{
+  "migration_head": "0003_knowledge_revisions",
+  "before_counts": {
+    "users": 5,
+    "requests": 6,
+    "knowledge_documents": 2,
+    "knowledge_chunks": 6
+  },
+  "after_counts": {
+    "users": 5,
+    "requests": 6,
+    "knowledge_documents": 2,
+    "knowledge_chunks": 6
+  },
+  "foreign_key_violations": 0,
+  "model_schema_differences": 0,
+  "original_database_unchanged": true,
+  "rehearsal_database": "/var/folders/c7/hdw9k4tn52z32sbg0dld44100000gn/T/janamen-revision-rehearsal-0o2_2_v9/copy.db"
+}

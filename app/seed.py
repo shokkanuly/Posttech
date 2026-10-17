@@ -2,6 +2,7 @@ import json
 from datetime import date, datetime, timedelta, timezone
 
 from app.database import SessionLocal, engine
+from app.demo_translations import install_demo_translations
 from app.models import (
     AuditEvent,
     Course,
@@ -40,6 +41,8 @@ def seed_database(session=None):
     try:
         # Check if already seeded
         if db.query(User).count() > 0:
+            install_demo_translations(db)
+            db.commit()
             print("Database already contains data. Skipping re-seed.")
             return
 
@@ -603,6 +606,8 @@ def seed_database(session=None):
             )
         )
 
+        db.flush()
+        install_demo_translations(db)
         db.commit()
         print("Database seeded successfully with deterministic accounts and scenario data!")
 

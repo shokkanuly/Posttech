@@ -10,6 +10,8 @@ class SourceCitation(BaseModel):
     section_title: str
     snippet: str
     version: str
+    document_revision: int
+    language: str
     is_synthetic: bool
 
 
@@ -34,4 +36,6 @@ class KnowledgeSourceResponse(BaseModel):
     section_title: str
     content: str
     version: str
+    document_revision: int
+    language: str
     is_synthetic: bool

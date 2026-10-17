@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, false
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -16,6 +16,13 @@ class KnowledgeDocument(Base):
     category: Mapped[str] = mapped_column(String(100), default="HR Policy", nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     version: Mapped[str] = mapped_column(String(20), default="1.0", nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
+    language: Mapped[str] = mapped_column(
+        String(5), default="en", server_default="en", nullable=False
+    )
+    translations: Mapped[dict] = mapped_column(
+        JSON, default=dict, server_default="{}", nullable=False
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_approved: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=false(), nullable=False
@@ -55,6 +62,9 @@ class KnowledgeChunk(Base):
     )
     section_title: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    translations: Mapped[dict] = mapped_column(
+        JSON, default=dict, server_default="{}", nullable=False
+    )
     tags: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )  # Comma-separated search keywords

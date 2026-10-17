@@ -1,26 +1,29 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import PositiveInt
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.localization import LocalizedRoute
 from app.models.user import User
-from app.schemas.common import NotificationCountResponse, ReadAllResponse
+from app.pagination import Page
+from app.schemas.common import DatabaseID, NotificationCountResponse, ReadAllResponse
 from app.schemas.notification import NotificationResponse, NotificationUpdate
 from app.services.auth_service import get_current_user
 from app.services.notification_service import notification_service
 
-router = APIRouter(prefix="/notifications", tags=["Notifications"])
+router = APIRouter(route_class=LocalizedRoute, prefix="/notifications", tags=["Notifications"])
 
 
 @router.get("", response_model=List[NotificationResponse])
 def get_notifications(
+    page: Page,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    limit: int = Query(50, ge=1, le=100),
 ):
-    notifs = notification_service.get_user_notifications(db, current_user.id, limit)
+    notifs = notification_service.get_user_notifications(
+        db, current_user.id, page.limit, page.offset
+    )
     return [
         NotificationResponse(
             id=n.id,
@@ -40,7 +43,7 @@ def get_notifications(
 
 @router.patch("/{notification_id}", response_model=NotificationResponse)
 def update_notification(
-    notification_id: PositiveInt,
+    notification_id: DatabaseID,
     payload: NotificationUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

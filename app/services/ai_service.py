@@ -72,6 +72,59 @@ def _name_key(word: str) -> str:
     return word.replace("й", "и").replace("ы", "и")[:4]
 
 
+KAZAKH_SPECIFIC_CHARS = set("әғқңөұүһіӘҒҚҢӨҰҮҺІ")
+KAZAKH_MARKER_WORDS = {
+    "қалай", "калай", "қандай", "кандай", "қайда", "кайда", "қайдан", "кайдан",
+    "демалыс", "демалысқа", "демалыска", "демалысы", "демалысым",
+    "өтініш", "отиниш", "өтінішті", "отиништи", "өтініштер", "отиништер", "өтінішім",
+    "авансқа", "аванска", "авансты", "авансы",
+    "жұмыс", "жумыс", "жұмысы", "жумысы", "кестесі", "кестеси", "уақыты", "уакыты",
+    "күн", "күндер", "кундер", "күндері", "кундери", "күндерім", "кундерим", "күнтізбелік",
+    "оқу", "оку", "сабақ", "сабак", "өту", "оту", "өтуге", "отуге", "өткім", "отким", "өтемін", "отемин",
+    "көмек", "комек", "қалдық", "калдык", "қалдығы", "калдыгы", "қалдығым", "қалдықтан",
+    "болады", "бола", "болу", "болуы", "керек", "қажет", "кажет",
+    "аламын", "алуға", "алуга", "беремін", "беремин", "беру", "беруге", "берсем",
+    "істеймін", "истеймин", "істеу", "истеу", "қанша", "канша", "неше",
+    "маған", "маган", "менің", "менин", "сенің", "сенин", "сіздің", "сиздин", "біздің", "биздин",
+    "ауырып", "қалсам", "калсам", "қалса", "калса", "сырқат", "еңбекке", "жарамсыздық"
+}
+
+KAZAKH_SUFFIXES = (
+    "тарымыз", "теріміз", "дарымыз", "деріміз", "ларымыз", "леріміз",
+    "тардың", "тердің", "дардың", "дердің", "лардың", "лердің",
+    "тардан", "терден", "дардан", "дерден", "лардан", "лерден",
+    "тармен", "термен", "дармен", "дермен", "лармен", "лермен",
+    "тары", "тері", "дары", "дері", "лары", "лері",
+    "тарға", "терге", "дарға", "дерге", "ларға", "лерге",
+    "тарды", "терді", "дарды", "дерді", "ларды", "лерді",
+    "тарда", "терде", "дарда", "дерде", "ларда", "лерде",
+    "ымыз", "іміз", "ыңыз", "іңіз", "сызда", "сізде",
+    "тар", "тер", "дар", "дер", "лар", "лер",
+    "дан", "ден", "тан", "тен", "нан", "нен",
+    "мен", "бен", "пен",
+    "дың", "дің", "тың", "тің", "ның", "нің",
+    "ды", "ді", "ты", "ті", "ны", "ні",
+    "да", "де", "та", "те", "нда", "нде",
+    "ға", "ге", "қа", "ке", "на", "не",
+    "ым", "ім", "ың", "ің", "сы", "сі",
+)
+
+
+def detect_query_language(text: str) -> Language | None:
+    if any(char in KAZAKH_SPECIFIC_CHARS for char in text):
+        return "kk"
+    words = {w.lower() for w in re.findall(r"\w+", text)}
+    if words & KAZAKH_MARKER_WORDS:
+        return "kk"
+    has_cyrillic = bool(re.search(r"[а-яА-ЯёЁ]", text))
+    has_latin = bool(re.search(r"[a-zA-Z]", text))
+    if has_cyrillic and not has_latin:
+        return "ru"
+    if has_latin and not has_cyrillic:
+        return "en"
+    return None
+
+
 class AIService:
     # Privacy terms are versioned data in knowledge/assistant_rules.json.
     PRIVACY_RESTRICTED_TERMS = tuple(load_assistant_rules().privacy_restricted_terms)
@@ -80,7 +133,15 @@ class AIService:
             "what the for with from how does can are and this that policy rules about guide sample "
             "where find many get official jana post system please tell explain employees employee "
             "should must would could my your their its into do is has have not which when why "
-            "что как для или это где правила инструкция қалай қандай қайда туралы ереже"
+            "что как для или это где правила инструкция туралы ереже "
+            "подскажите какой какая какие как где посмотреть системе мой мои мне есть могу можно для нужно "
+            "положено делать если когда мен хочу хотел хотела хотим желаю "
+            "қалай қандай қайда қайдан кім не неге қашан "
+            "көремін жүйеде келеді керек қажет болады бола болу болуы істеймін істеу "
+            "қалсам қалса болсам болса "
+            "маған менің сенің сіздің біздің оның олардың "
+            "дейін үшін арқылы бойы бойынша бар жоқ еді екен "
+            "отдел отдела отделом бөлім бөлімі бөліміне бөлімін"
         ).split()
     )
     ALIASES = {
@@ -99,10 +160,16 @@ class AIService:
                 "отпуска",
                 "отпуске",
                 "отпуску",
+                "отпуском",
+                "отпусках",
                 "демалыс",
                 "демалысқа",
+                "демалысы",
+                "демалысым",
+                "демалысын",
+                "демалыстар",
                 "демалысының",
-                "демалысқа",
+                "демалыспен",
             ),
             "vacation",
         ),
@@ -113,34 +180,152 @@ class AIService:
                 "заявки",
                 "заявок",
                 "подать",
+                "подача",
                 "запросить",
-                "өтініш",
-                "өтінішті",
-                "өтініштер",
-                "беремін",
-                "сұраймын",
-                "сұрау",
+                "запрос",
                 "оформить",
                 "оформление",
                 "взять",
                 "получить",
+                "получение",
+                "өтініш",
+                "өтінішті",
+                "өтініштер",
+                "өтінішім",
+                "өтінішке",
+                "өтініштің",
+                "беру",
+                "беруге",
+                "беремін",
+                "берсем",
+                "беріп",
+                "беріледі",
+                "сұрау",
+                "сұрауға",
+                "сұраймын",
+                "алу",
+                "алуға",
+                "аламын",
+                "алам",
+                "алсам",
             ),
             "request",
         ),
         **dict.fromkeys(
-            ("остаток", "остатка", "баланс", "қалдық", "қалдығы", "қалдығын", "қалдықтан"),
+            (
+                "остаток",
+                "остатка",
+                "остатки",
+                "баланс",
+                "баланса",
+                "қалдық",
+                "қалдығы",
+                "қалдығын",
+                "қалдықтан",
+                "қалдықты",
+                "қалдығым",
+            ),
             "balance",
         ),
         **dict.fromkeys(
-            ("день", "дней", "дня", "дни", "күн", "күндерінің", "күндер", "күндері"), "day"
+            (
+                "день",
+                "дней",
+                "дня",
+                "дни",
+                "күн",
+                "күндер",
+                "күндері",
+                "күндерім",
+                "күндерін",
+                "күндерінің",
+                "күнге",
+                "күнтізбелік",
+            ),
+            "day",
         ),
-        **dict.fromkeys(("аванс", "аванса", "авансқа", "авансты"), "advance"),
-        **dict.fromkeys(("график", "графика", "кесте", "кестесі", "кестеде"), "schedule"),
-        **dict.fromkeys(("рабочее", "работы", "работа", "жұмыс", "working"), "work"),
         **dict.fromkeys(
-            ("кадровую", "кадровая", "кадровой", "кадр", "кадры", "службу", "қызметі"), "hr"
+            (
+                "аванс",
+                "аванса",
+                "авансу",
+                "авансом",
+                "авансқа",
+                "авансты",
+                "авансы",
+                "аванстың",
+                "зарплата",
+                "зарплаты",
+                "зарплату",
+                "жалақы",
+                "айлық",
+            ),
+            "advance",
         ),
-        **dict.fromkeys(("контакты", "связаться", "байланыс"), "contact"),
+        **dict.fromkeys(
+            (
+                "график",
+                "графика",
+                "графике",
+                "кесте",
+                "кестесі",
+                "кестеде",
+                "кестесін",
+                "уақыты",
+                "уақыт",
+                "сағат",
+            ),
+            "schedule",
+        ),
+        **dict.fromkeys(
+            (
+                "работа",
+                "работы",
+                "работе",
+                "рабочее",
+                "рабочий",
+                "жұмыс",
+                "жұмыстың",
+                "жұмысы",
+                "жұмысқа",
+            ),
+            "work",
+        ),
+        **dict.fromkeys(
+            (
+                "заболел",
+                "заболела",
+                "болезнь",
+                "болею",
+                "ауырып",
+                "ауырған",
+                "ауырғанда",
+                "ауру",
+                "сырқат",
+                "ауырсам",
+            ),
+            "illness",
+        ),
+        **dict.fromkeys(
+            ("кадровую", "кадровая", "кадровой", "кадр", "кадры", "службу", "служба", "қызметі", "hr"),
+            "hr",
+        ),
+        **dict.fromkeys(
+            (
+                "контакты",
+                "связаться",
+                "обратиться",
+                "байланыс",
+                "байланысу",
+                "байланысуға",
+                "хабарласу",
+                "хабарласуға",
+                "хабарласамын",
+                "позвонить",
+                "написать",
+            ),
+            "contact",
+        ),
         **dict.fromkeys(
             (
                 "курс",
@@ -155,7 +340,6 @@ class AIService:
                 "курстан",
                 "обучение",
                 "обучения",
-                "обучению",
                 "академия",
                 "академии",
                 "академиясы",
@@ -163,6 +347,11 @@ class AIService:
                 "courses",
                 "course",
                 "learning",
+                "оқу",
+                "оқуды",
+                "оқыту",
+                "сабақ",
+                "сабақтар",
             ),
             "course",
         ),
@@ -172,10 +361,8 @@ class AIService:
                 "прохождение",
                 "проходить",
                 "пройду",
-                "пройдено",
                 "записаться",
                 "запись",
-                "записан",
                 "өту",
                 "өтуге",
                 "өтуі",
@@ -185,20 +372,28 @@ class AIService:
                 "тіркелу",
                 "жазылу",
                 "тапсыру",
+                "бітіру",
+                "аяқтау",
                 "complete",
                 "enroll",
                 "pass",
             ),
             "pass_course",
         ),
+        **dict.fromkeys(("сколько", "сколь", "қанша", "канша", "неше"), "how_many"),
     }
-    STOP_WORDS |= set(
-        "подскажите какой какая какие как где посмотреть системе мой мои мне туралы қалай қандай қайдан көремін жүйеде есть могу можно для нужно "
-        "положено делать если отдел когда істеймін қашан мен хочу хотел хотела хотим желаю келеді керек болады бола болу істеу что".split()
-    )
     # ponytail: RU/KK inflect heavily, so Cyrillic words match on a 5-letter prefix
-    # (отпуском ~ отпуска). Swap for a Snowball stemmer if false matches show up.
-    ALIASES |= {k[:5]: v for k, v in ALIASES.items() if not k.isascii()}
+    # (отпуском ~ отпуска). Avoid 'хабар' prefix matching 'хабарлап' (notify manager).
+    base_aliases = {
+        k[:5]: v
+        for k, v in ALIASES.items()
+        if not k.isascii() and not k.startswith("хабар")
+    }
+    base_aliases["хабарлас"] = "contact"
+    base_aliases["хабарласу"] = "contact"
+    base_aliases["хабарласуға"] = "contact"
+    base_aliases["хабарласамын"] = "contact"
+    ALIASES |= base_aliases
     STOP_WORDS |= {w[:5] for w in STOP_WORDS if not w.isascii()}
 
     @classmethod
@@ -206,9 +401,26 @@ class AIService:
         text = text.lower().replace("time off", "vacation").replace("carry over", "carryover")
         tokens = set()
         for t in re.findall(r"\w+", text):
-            stem = t if t.isascii() or t in cls.ALIASES else t[:5]
-            if len(t) > 2 and t not in cls.STOP_WORDS and stem not in cls.STOP_WORDS:
-                tokens.add(cls.ALIASES.get(stem, stem))
+            if t in cls.STOP_WORDS:
+                continue
+            if t in cls.ALIASES:
+                tokens.add(cls.ALIASES[t])
+                continue
+            stem = t
+            for sfx in KAZAKH_SUFFIXES:
+                if len(t) - len(sfx) >= 3 and t.endswith(sfx):
+                    cand = t[:-len(sfx)]
+                    if cand in cls.ALIASES or cand in cls.STOP_WORDS:
+                        stem = cand
+                        break
+            if stem in cls.STOP_WORDS:
+                continue
+            if stem in cls.ALIASES:
+                tokens.add(cls.ALIASES[stem])
+                continue
+            prefix = stem if stem.isascii() or stem in cls.ALIASES else stem[:5]
+            if len(stem) > 2 and prefix not in cls.STOP_WORDS:
+                tokens.add(cls.ALIASES.get(prefix, prefix))
         return tokens
 
     @staticmethod
@@ -244,13 +456,14 @@ class AIService:
             return None
 
     @classmethod
-    def rank_chunks(cls, db: Session, question: str, user_role: UserRole):
-        """[(chunk, coverage, similarity)] for every passage readable in the current language.
+    def rank_chunks(cls, db: Session, question: str, user_role: UserRole, language: Language | None = None):
+        """[(chunk, coverage, similarity)] for every passage readable in the target language.
 
         coverage   — share of meaningful question words found in the passage (strict gate);
         similarity — TF-IDF char n-gram cosine (ML ranking, tolerant to inflection).
         """
-        chunks = [c for c in cls.accessible_chunks(db, user_role) if source_text(c) is not None]
+        target_lang = language or current_language.get()
+        chunks = [c for c in cls.accessible_chunks(db, user_role) if source_text(c, target_lang) is not None]
         if not chunks:
             return []
         evidence = [f"{cls.evidence_text(c)} {c.tags or ''}" for c in chunks]
@@ -263,16 +476,17 @@ class AIService:
         return sorted(ranked, key=lambda r: (-r[1], -r[2], r[0].id))
 
     @classmethod
-    def strict_matches(cls, question: str, ranked) -> list:
+    def strict_matches(cls, question: str, ranked, language: Language | None = None) -> list:
         """Passages allowed for an extractive answer: the coverage gate always applies;
         the trained model (if enabled) can only re-order and further reject them."""
+        target_lang = language or current_language.get()
         gated = [c for c, cov, _sim in ranked if cov >= settings.AI_CONFIDENCE_THRESHOLD]
         model = cls.relevance_model()
         if model is None:
             return gated[:2]
         scored = []
         for chunk in gated:
-            text = source_text(chunk)
+            text = source_text(chunk, target_lang)
             if text is None:
                 continue
             score = model.score(
@@ -288,11 +502,12 @@ class AIService:
         return [c for _s, c in sorted(scored, key=lambda item: (-item[0], item[1].id))][:2]
 
     @classmethod
-    def retrieve_relevant_chunks(cls, db: Session, question: str, user_role: UserRole):
+    def retrieve_relevant_chunks(cls, db: Session, question: str, user_role: UserRole, language: Language | None = None):
         """Strict extractive matches with their coverage score (kept for callers and tests)."""
-        ranked = cls.rank_chunks(db, question, user_role)
+        target_lang = language or current_language.get()
+        ranked = cls.rank_chunks(db, question, user_role, target_lang)
         coverage = {c.id: cov for c, cov, _sim in ranked}
-        return [(c, coverage[c.id]) for c in cls.strict_matches(question, ranked)]
+        return [(c, coverage[c.id]) for c in cls.strict_matches(question, ranked, target_lang)]
 
     @classmethod
     def is_private_question(cls, db: Session, user: User, question: str) -> bool:
@@ -347,9 +562,10 @@ class AIService:
         return "\n\n".join(quotes), [p["chunk"] for p in cited]
 
     @classmethod
-    def answer_with_llm(cls, question: str, ranked):
+    def answer_with_llm(cls, question: str, ranked, language: Language | None = None):
         """Returns ((answer, chunks), status); status is accepted/rejected/unavailable/skipped."""
-        allowed_ids = {c.id for c in cls.strict_matches(question, ranked)}
+        target_lang = language or current_language.get()
+        allowed_ids = {c.id for c in cls.strict_matches(question, ranked, target_lang)}
         candidates = [
             chunk
             for chunk, coverage, sim in sorted(ranked, key=lambda r: (-r[2], r[0].id))
@@ -359,7 +575,7 @@ class AIService:
             return None, "skipped"
         passages = []
         for index, chunk in enumerate(candidates, start=1):
-            text = source_text(chunk)
+            text = source_text(chunk, target_lang)
             if text is None:
                 continue
             passages.append(
@@ -371,7 +587,7 @@ class AIService:
                     "chunk": chunk,
                 }
             )
-        result = gemini.generate_grounded_answer(question, passages, current_language.get())
+        result = gemini.generate_grounded_answer(question, passages, target_lang)
         if result is None:
             return None, "unavailable"
         verified = cls.verify_llm_answer(result, passages)
@@ -411,7 +627,23 @@ class AIService:
     ) -> AIChatResponse:
         started = time.monotonic()
         question = payload.question
-        guidance = translate(f"Contact HR support at {settings.HR_SUPPORT_EMAIL} for confirmation.")
+
+        detected_lang = detect_query_language(question)
+        if detected_lang == "kk":
+            effective_language: Language = "kk"
+        elif current_language.get() == "kk":
+            effective_language = "kk"
+        elif detected_lang == "ru":
+            effective_language = "ru"
+        elif detected_lang == "en":
+            effective_language = "en"
+        else:
+            effective_language = current_language.get()
+
+        guidance = translate(
+            f"Contact HR support at {settings.HR_SUPPORT_EMAIL} for confirmation.",
+            language=effective_language,
+        )
         answer_status: Literal["grounded", "fallback", "unauthorized"]
         chunks = []
         views = []
@@ -422,35 +654,46 @@ class AIService:
             answer_status = "unauthorized"
             answer = translate(
                 "AI Jana protects employee privacy. Individual salaries, disciplinary and private employee "
-                "records are not available through knowledge queries. Check your own profile or contact HR."
+                "records are not available through knowledge queries. Check your own profile or contact HR.",
+                language=effective_language,
             )
         else:
-            ranked = cls.rank_chunks(db, question, user.role)
+            ranked = cls.rank_chunks(db, question, user.role, language=effective_language)
             similarity = {chunk.id: sim for chunk, _cov, sim in ranked}
-            chunks = cls.strict_matches(question, ranked)
+            chunks = cls.strict_matches(question, ranked, language=effective_language)
             llm_answer = None
             if gemini.enabled():
-                verified, llm_status = cls.answer_with_llm(question, ranked)
+                verified, llm_status = cls.answer_with_llm(
+                    question, ranked, language=effective_language
+                )
                 if verified:
                     llm_answer, chunks = verified
                     engine = f"gemini:{settings.GEMINI_MODEL}"
-            views = [(chunk, text) for chunk in chunks if (text := source_text(chunk)) is not None]
+            views = [
+                (chunk, text)
+                for chunk in chunks
+                if (text := source_text(chunk, effective_language)) is not None
+            ]
             answer_status = "grounded" if views else "fallback"
             answer = (
                 translate(
-                    "I couldn't find a reliable answer to this question in the approved knowledge base."
+                    "I couldn't find a reliable answer to this question in the approved knowledge base.",
+                    language=effective_language,
                 )
                 + " "
                 + guidance
             )
-            synthetic = translate("Synthetic example; not official HR policy.")
+            synthetic = translate(
+                "Synthetic example; not official HR policy.", language=effective_language
+            )
+            source_label = translate("Source:", language=effective_language)
             if llm_answer:
                 disclaimer = f"{synthetic} " if any(c.document.is_synthetic for c in chunks) else ""
                 answer = f"{disclaimer}{llm_answer}"
             elif views:
                 answer = "\n\n".join(
                     f"{synthetic + ' ' if c.document.is_synthetic else ''}"
-                    f"{translate('Source:')} {text['document_title']} — {text['section_title']} (v{c.document.version})\n{text['content']}"
+                    f"{source_label} {text['document_title']} — {text['section_title']} (v{c.document.version})\n{text['content']}"
                     for c, text in views
                 )
         sources = [
@@ -463,7 +706,7 @@ class AIService:
                 version=c.document.version,
                 document_revision=c.document.revision,
                 is_synthetic=c.document.is_synthetic,
-                language=current_language.get(),
+                language=effective_language,
                 relevance=similarity.get(c.id),
             )
             for c, text in views
@@ -489,7 +732,7 @@ class AIService:
                         "chunk_id": c.id,
                         "document_revision": c.document.revision,
                         "content_hash": hashlib.sha256(text["content"].encode()).hexdigest(),
-                        "language": current_language.get(),
+                        "language": effective_language,
                     }
                     for c, text in views
                 ],
@@ -504,6 +747,7 @@ class AIService:
             escalation_guidance=guidance,
             engine=engine,
             processing_time_ms=round((time.monotonic() - started) * 1000, 2),
+            language=effective_language,
         )
 
 

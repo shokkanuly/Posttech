@@ -99,16 +99,18 @@ class LocalizedRoute(APIRoute):
             try:
                 response = await original(request)
                 content_language = language
-                if language != "en" and response.headers.get("content-type", "").startswith(
-                    "application/json"
-                ):
-                    payload = localize_payload(json.loads(response.body), language)
-                    if "/ai/sources/" in request.url.path and isinstance(payload, dict):
-                        content_language = payload.get("language", language)
-                    response.body = json.dumps(
-                        payload, ensure_ascii=False, separators=(",", ":")
-                    ).encode()
-                    response.headers["Content-Length"] = str(len(response.body))
+                if response.headers.get("content-type", "").startswith("application/json"):
+                    raw = json.loads(response.body)
+                    if "/ai/chat" in request.url.path and isinstance(raw, dict):
+                        content_language = raw.get("language", language)
+                    elif language != "en":
+                        payload = localize_payload(raw, language)
+                        if "/ai/sources/" in request.url.path and isinstance(payload, dict):
+                            content_language = payload.get("language", language)
+                        response.body = json.dumps(
+                            payload, ensure_ascii=False, separators=(",", ":")
+                        ).encode()
+                        response.headers["Content-Length"] = str(len(response.body))
                 response.headers["Content-Language"] = content_language
                 response.headers["Vary"] = "Accept-Language"
                 return response

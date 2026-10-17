@@ -29,6 +29,8 @@ class AIChatResponse(BaseModel):
     escalation_guidance: str | None = None
     engine: str = "extractive"  # or "gemini:<model>" when a verified model answer is shown
     processing_time_ms: float
+    language: str = "en"
+
 
 
 class KnowledgeSourceResponse(BaseModel):

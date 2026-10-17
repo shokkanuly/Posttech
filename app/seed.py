@@ -492,7 +492,7 @@ def seed_database(session=None):
             section_title="Vacation Request Workflow",
             content="To request vacation, navigate to 'My requests' -> 'New request' -> select 'Vacation'. Enter your start and end dates and provide a brief handover note. Your direct manager will review the request. Once approved, the leave days are deducted from your balance in this local demonstration. Documentolog is unconnected and no official order is submitted.",
             tags="vacation, leave, time off, отпуск, демалыс, submission, dates, request, how to request, "
-            "оформить отпуск, ежегодный отпуск, еңбек демалысы",
+            "оформить отпуск, ежегодный отпуск, еңбек демалысы, өтініш беру, арыз, өтініш",
             access_level="all",
         )
         chunk2 = KnowledgeChunk(
@@ -500,7 +500,7 @@ def seed_database(session=None):
             section_title="Leave Balance & Accrual Rules",
             content="Full-time employees at Jana Post accrue 24 calendar days of paid vacation per completed year of service. Your available balance is displayed on your Overview and My Profile screens. These are synthetic sample balances; 1C:ZUP is unconnected.",
             tags="balance, days, leave days, сколько дней, баланс, қалдық, vacation balance, 1c, "
-            "сколько осталось, положено, қанша күн",
+            "сколько осталось, положено, қанша күн, демалыс, күн, күндерім, қанша, қалдық қанша",
             access_level="all",
         )
         chunk3 = KnowledgeChunk(
@@ -508,7 +508,7 @@ def seed_database(session=None):
             section_title="Advance Payment Policy",
             content="Employees may request an advance payment of up to 50% of their monthly base salary for urgent personal expenses. Requests are submitted through JanaMen under 'Advance payment' and require direct manager approval. Approved amounts are disbursed on the 20th of the month and deducted from the subsequent payroll.",
             tags="advance, advance payment, salary, аванс, жалақы, төлем, money, payment, "
-            "выплата аванса, авансқа өтініш",
+            "выплата аванса, авансқа өтініш, аванс алу, аламын",
             access_level="all",
         )
         chunk4 = KnowledgeChunk(
@@ -540,7 +540,7 @@ def seed_database(session=None):
             section_title="HR People Support Contacts",
             content="For medical leave certificates, maternity/paternity leave, or confidential employment inquiries not answered in the knowledge base, contact the People Operations Helpdesk at hr-support@janapost.kz or call extension 1040 (internal) / +7 (727) 344-9000. The HR office is located on the 3rd floor (Room 304), Almaty Central Hub.",
             tags="contact, hr, support, help, email, телефон, байланыс, көмек, emergency, escalations, "
-            "отдел кадров, связаться, кадр бөлімі, хабарласу",
+            "отдел кадров, связаться, кадр бөлімі, хабарласу, хабарласамын, қалай хабарласуға болады",
             access_level="all",
         )
         chunk6 = KnowledgeChunk(
@@ -548,7 +548,7 @@ def seed_database(session=None):
             section_title="Medical & Sick Leave Documentation",
             content="Sick leave requires an official digital or paper medical certificate (лист о временной нетрудоспособности / еңбекке жарамсыздық парағы) from an accredited clinic. You must notify your manager within 24 hours of falling ill and upload or deliver the certificate upon return.",
             tags="sick, medical, illness, больничный, ауырып қалу, дәрігер, certificate, "
-            "оформить больничный, заболел, заболела, болезнь, ауырып қалсам, ауырсам",
+            "оформить больничный, заболел, заболела, болезнь, ауырып қалсам, ауырсам, еңбекке жарамсыздық, ауырғанда",
             access_level="all",
         )
         db.add_all([chunk5, chunk6])
@@ -571,7 +571,8 @@ def seed_database(session=None):
             document_id=doc3.id,
             section_title="Course Enrollment & Learning Progress",
             content="All employees have access to courses in Jana Academy. Navigate to 'Jana Academy', select an assigned or available course, and click enroll. Complete each lesson and answer the knowledge check quiz at the end. Your learning progress is automatically saved to your profile upon passing the quiz.",
-            tags="course, courses, learning, academy, lesson, quiz, прогресс, обучение, курс, курсы, урок, уроки, пройти курс, записаться, сабақ, оқу, өту, қалай өтеді, тіркелу, тест",
+            tags="course, courses, learning, academy, lesson, quiz, прогресс, обучение, курс, курсы, урок, уроки, "
+            "пройти курс, записаться, сабақ, оқу, өту, қалай өтеді, тіркелу, тест, курстан өту, курстан қалай өтуге болады",
             access_level="all",
         )
         db.add(chunk7)

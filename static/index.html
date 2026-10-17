@@ -3,765 +3,713 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>JanaМен · People Workspace | Jana Post</title>
-  <meta name="description" content="JanaМен — Unified Digital HR Self-Service Platform for Jana Post employees, managers, and HR administrators.">
+  <title>JanaМен · HR workspace</title>
+  <meta name="description" content="JanaМен — unified HR self-service workspace for Jana Post employees, managers and HR administrators.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="/static/css/style.css">
   <script src="/static/js/i18n.js" defer></script>
   <script src="/static/js/app.js" defer></script>
 </head>
 <body>
-<div class="app" id="app" hidden>
-  <div class="shell">
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar" id="sidebar">
-      <div class="brand">
-        <div class="logo">J</div>
-        <div>
-          <strong>JanaМен</strong>
-          <small>People workspace</small>
-        </div>
-      </div>
+<!-- Icon sprite: 24px stroke icons, original drawings -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.5v.4M12 17h.01"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 8 2.5 8h-17S6 15 6 9zM10 20.5a2.2 2.2 0 0 0 4 0"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17M8 14h3"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M15.5 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6.5 6.5 0 0 1 3.5 6"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8zM18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+    <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="9" r="6"/><circle cx="12" cy="9" r="2.5"/><path d="M8.5 14L7 21.5l5-2.5 5 2.5-1.5-7.5"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4.5"/><path d="M12 12.5V21M8 21h8"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 7.5l-9-4.5-9 4.5v9l9 4.5 9-4.5zM3 7.5l9 4.5 9-4.5M12 12v9M7.5 5.2l9 4.6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.8-3.4 8-8 9-4.6-1-8-4.2-8-9V6z"/><path d="M8.8 12.2l2.2 2.2 4.2-4.4"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3A4.5 4.5 0 0 0 13 4.6l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3L10 14M21 3l-6.5 18-4.5-7-7-4.5z"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  </defs>
+</svg>
 
-      <div>
-        <div class="nav-label" data-i18n="workspace">Workspace</div>
-        <nav class="nav" id="nav">
-          <button class="active" data-page="home"><span class="ico">◫</span><span data-i18n="overview">Overview</span></button>
-          <button data-page="profile"><span class="ico">◉</span><span data-i18n="myProfile">My profile</span></button>
-          <button data-page="requests"><span class="ico">▤</span><span data-i18n="myRequests">My requests</span></button>
-          <button data-page="academy"><span class="ico">▧</span><span data-i18n="janaAcademy">Jana Academy</span></button>
-          <button data-page="assistant"><span class="ico">✳</span><span data-i18n="aiJana">AI Jana</span></button>
-          <button data-page="notifications">
-            <span class="ico">♧</span><span data-i18n="notifications">Notifications</span>
-            <span class="count" id="navNotifCount" style="display:none">0</span>
-          </button>
-        </nav>
-      </div>
-
-      <div>
-        <div class="nav-label" data-i18n="workspaceTools">Workspace tools</div>
-        <nav class="nav">
-          <button data-page="team" id="teamNav" style="display:none"><span class="ico">♙</span><span data-i18n="teamApprovals">Team & approvals</span></button>
-          <button data-page="admin" id="adminNav" style="display:none"><span class="ico">⚙</span><span data-i18n="hrAdmin">HR administration</span></button>
-        </nav>
-      </div>
-
-      <div class="side-bottom">
-        <div class="help-card">
-          <div style="font-size:22px;color:var(--green)">✦</div>
-          <b data-i18n="needAHand">Need a hand?</b>
-          <p data-i18n="needAHandDesc">Find answers in the verified HR knowledge base.</p>
-          <button class="small-btn primary" data-goto="assistant" data-i18n="askAiJana">Ask AI Jana ↗</button>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Main Content Area -->
-    <main class="main">
-      <!-- Topbar Header -->
-      <header class="topbar">
-        <div style="display:flex;align-items:center;gap:12px">
-          <button class="icon-btn mobile-menu" id="menuBtn" aria-label="Open navigation menu">☰</button>
-          <div class="crumb">
-            <span>JanaМен</span>
-            <span style="color:var(--line)">/</span>
-            <b id="crumb">Overview</b>
-          </div>
-        </div>
-
-        <div class="top-actions">
-          <!-- Language Switcher -->
-          <select class="lang-switcher-select" id="langSwitch" aria-label="Select language">
-            <option value="en">EN</option>
-            <option value="ru">RU</option>
-            <option value="kz">KZ</option>
-          </select>
-
-          <!-- Role / Persona Quick-Switcher -->
-          <select class="role-switcher-select" id="roleSwitch" aria-label="Switch active persona">
-            <option value="employee">Persona: Employee (Aruzhan S.)</option>
-            <option value="manager">Persona: Manager (Timur K.)</option>
-            <option value="hr_admin">Persona: HR Admin (Aigerim N.)</option>
-          </select>
-
-          <button class="small-btn" id="logoutBtn">Sign out</button>
-
-          <!-- Notifications Bell -->
-          <button class="icon-btn" data-goto="notifications" aria-label="Notifications" title="Notifications">
-            ♧<span class="dot" id="notifDot" style="display:none"></span>
-          </button>
-
-          <!-- User Chip -->
-          <div class="user-chip">
-            <div class="avatar" id="avatar">AS</div>
-            <div>
-              <strong id="userName">Aruzhan Sadykova</strong>
-              <small id="userRole">Product Operations</small>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div class="content">
-        <!-- 1. OVERVIEW PAGE -->
-        <section class="page active" id="page-home">
-          <div class="welcome">
-            <div>
-              <div class="eyebrow">OCTOBER 2026 · HACKATHON EDITION</div>
-              <h1 id="greeting">Good afternoon, Aruzhan <span>✳</span></h1>
-              <p>Your work life, in one place. Here's your unified snapshot for today.</p>
-            </div>
-            <div class="date-pill">◷ &nbsp; Local HR records · 1C:ZUP unconnected</div>
-          </div>
-
-          <!-- Hero Leave Balance Banner -->
-          <div class="hero">
-            <div>
-              <div class="eyebrow">ANNUAL VACATION BALANCE</div>
-              <h2>A little time off goes a long way.</h2>
-              <p>Plan your rest. Submit a request in seconds and follow approval progress in real time.</p>
-              <button class="primary" data-action="new-request" data-i18n="requestTimeOff">Request time off ↗</button>
-            </div>
-            <div class="hero-right">
-              <div class="leave-ring">
-                <div>
-                  <strong id="leaveDays">18.5</strong>
-                  <span data-i18n="daysAvailable">days available</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Quick Stats Cards -->
-          <div class="grid stats">
-            <div class="card">
-              <div class="stat-top">
-                <span data-i18n="openRequests">Open requests</span>
-                <span class="stat-icon">▤</span>
-              </div>
-              <div class="stat-num" id="statRequests">1</div>
-              <div class="stat-foot">Documentolog · unconnected</div>
-            </div>
-
-            <div class="card">
-              <div class="stat-top">
-                <span data-i18n="learningProgress">Learning progress</span>
-                <span class="stat-icon">▧</span>
-              </div>
-              <div class="stat-num" id="statLearning">75%</div>
-              <div class="stat-foot">Persisted in <em>Jana Academy</em></div>
-            </div>
-
-            <div class="card">
-              <div class="stat-top">
-                <span data-i18n="coursesAssigned">Courses assigned</span>
-                <span class="stat-icon">✦</span>
-              </div>
-              <div class="stat-num" id="statCourses">2</div>
-              <div class="stat-foot">Mandatory security training</div>
-            </div>
-
-            <div class="card">
-              <div class="stat-top">
-                <span data-i18n="notifications">Unread updates</span>
-                <span class="stat-icon">♧</span>
-              </div>
-              <div class="stat-num" id="statNotifications">2</div>
-              <div class="stat-foot">Persistent notifications</div>
-            </div>
-          </div>
-
-          <!-- Lower Dashboard Section -->
-          <div class="grid lower">
-            <div class="card">
-              <div class="section-head">
-                <h3 data-i18n="recentRequests">Recent requests</h3>
-                <button class="text-link" data-goto="requests" data-i18n="viewAll">View all ↗</button>
-              </div>
-              <div class="request-list" id="homeRequests"></div>
-            </div>
-
-            <div class="card">
-              <div class="section-head">
-                <h3 data-i18n="pickUpWhereYouLeftOff">Pick up where you left off</h3>
-                <button class="text-link" data-goto="academy">All courses ↗</button>
-              </div>
-              <div id="homeCourseCard" class="course-card" style="display:flex;gap:14px;align-items:flex-start">
-                <div class="tile-art" style="width:70px;height:75px;border-radius:12px;background:linear-gradient(145deg,#d9f27a,#84c99a);display:grid;place-items:center;font-size:24px;color:#173e2b;flex:0 0 auto">▤</div>
-                <div style="min-width:0;flex:1">
-                  <h4 style="font-size:13.5px;font-weight:750;margin-bottom:4px">Data protection essentials</h4>
-                  <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px">Lesson 4 of 4: Incident reporting</p>
-                  <div class="progress"><span style="width:75%"></span></div>
-                  <div class="progress-label"><span>Progress</span><b>75%</b></div>
-                  <button class="text-link" style="padding-top:10px" data-goto="academy" data-i18n="continueLearning">Continue learning →</button>
-                </div>
-              </div>
-              <div class="mini-divider"></div>
-              <div class="activity" id="homeActivity">Your latest notification will appear here.</div>
-            </div>
-          </div>
-        </section>
-
-        <!-- 2. MY PROFILE PAGE -->
-        <section class="page" id="page-profile">
-          <div class="page-head">
-            <div>
-              <div class="eyebrow">YOUR DETAILS</div>
-              <h1 data-i18n="myProfile">My profile</h1>
-              <p>Your read-only local HR profile. External systems are unconnected.</p>
-            </div>
-            <button class="small-btn" data-i18n="officialHrData">HR fields · Read-only</button>
-          </div>
-
-          <div class="grid profile-grid">
-            <div class="card">
-              <div class="profile-banner">
-                <div class="big-avatar">AS</div>
-                <div>
-                  <h2 id="profName">Aruzhan Sadykova</h2>
-                  <p id="profPosition">Product Operations Specialist</p>
-                  <span class="status approved" style="margin-top:6px;font-size:10px">● Active Employee</span>
-                </div>
-              </div>
-              <div class="mini-divider"></div>
-              <div class="detail-grid">
-                <div class="detail">
-                  <label>Employee ID</label>
-                  <strong id="profEmpCode">JP-10428</strong>
-                </div>
-                <div class="detail">
-                  <label>Department</label>
-                  <strong id="profDept">Product Operations</strong>
-                </div>
-                <div class="detail">
-                  <label>Company</label>
-                  <strong id="profCompany">Jana Post Kazakhstan</strong>
-                </div>
-                <div class="detail">
-                  <label>Direct Manager</label>
-                  <strong id="profManager">Timur Kasymov</strong>
-                </div>
-                <div class="detail">
-                  <label>Start Date</label>
-                  <strong id="profHireDate">12 Mar 2023</strong>
-                </div>
-                <div class="detail">
-                  <label>Work Location</label>
-                  <strong id="profLocation">Almaty, Kazakhstan</strong>
-                </div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="section-head">
-                <h3>Employment snapshot</h3>
-                <span class="status approved">1C:ZUP Master Source</span>
-              </div>
-              <div class="grid stats" style="grid-template-columns:1fr 1fr;margin-bottom:18px">
-                <div style="padding:16px;background:var(--surface2);border-radius:var(--radius-md)">
-                  <div class="stat-foot" data-i18n="annualLeaveBalance">Annual leave balance</div>
-                  <div class="stat-num" id="profLeaveBalance" style="font-size:24px">18.5 days</div>
-                  <div class="stat-foot">Synchronized read-only</div>
-                </div>
-                <div style="padding:16px;background:var(--surface2);border-radius:var(--radius-md)">
-                  <div class="stat-foot" data-i18n="learningProgress">Learning completion</div>
-                  <div class="stat-num" id="profLearningPct" style="font-size:24px">75%</div>
-                  <div class="stat-foot">2 assigned courses</div>
-                </div>
-              </div>
-              <div class="mini-divider"></div>
-              <h3 style="font-size:14px;margin-bottom:10px">Compliance & Assigned Training</h3>
-              <div class="activity">
-                <span class="activity-dot"></span>
-                <div>
-                  <b>Data protection essentials</b>
-                  <p>Mandatory · Due 30 October 2026</p>
-                </div>
-              </div>
-              <div class="activity">
-                <span class="activity-dot" style="background:var(--orange)"></span>
-                <div>
-                  <b>Working safely with customer data</b>
-                  <p>Recommended · 25 minutes</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- 3. MY REQUESTS PAGE -->
-        <section class="page" id="page-requests">
-          <div class="page-head">
-            <div>
-              <div class="eyebrow">TRACK EVERY STEP</div>
-              <h1 data-i18n="myRequests">My requests</h1>
-              <p>Submit a request and follow its journey, from creation to manager resolution.</p>
-            </div>
-            <button class="primary" data-action="new-request" data-i18n="newRequest">＋ New request</button>
-          </div>
-
-          <div class="card">
-            <div class="section-head">
-              <h3>Request history</h3>
-              <div class="toolbar">
-                <select id="statusFilter" style="width:auto" onchange="loadRequestsPage()">
-                  <option value="all" data-i18n="allStatuses">All statuses</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Rejected">Rejected</option>
-                </select>
-                <select id="typeFilter" style="width:auto" onchange="loadRequestsPage()">
-                  <option value="all" data-i18n="allTypes">All types</option>
-                  <option value="Vacation">Vacation</option>
-                  <option value="Advance payment">Advance payment</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="table-wrap">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>REQUEST</th>
-                    <th>SUBMITTED</th>
-                    <th>PERIOD / DETAILS</th>
-                    <th>STATUS</th>
-                    <th>ACTION</th>
-                  </tr>
-                </thead>
-                <tbody id="requestTable"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- 4. JANA ACADEMY PAGE -->
-        <section class="page" id="page-academy">
-          <div class="page-head">
-            <div>
-              <div class="eyebrow">GROW EVERY DAY</div>
-              <h1 data-i18n="janaAcademy">Jana Academy</h1>
-              <p>Learning that moves with you. Assigned courses, lesson material, and quizzes.</p>
-            </div>
-            <span class="status approved">LMS Active</span>
-          </div>
-
-          <div class="grid course-grid" id="academyGrid"></div>
-        </section>
-
-        <!-- 5. AI JANA PAGE -->
-        <section class="page" id="page-assistant">
-          <div class="page-head">
-            <div>
-              <div class="eyebrow">YOUR HR KNOWLEDGE COMPANION</div>
-              <h1>AI Jana <span style="color:var(--green)">✳</span></h1>
-              <p>Answers from approved documents. Demo sources are synthetic examples, not official HR policy.</p>
-            </div>
-            <span class="status approved">Approved-source retrieval</span>
-          </div>
-
-          <div class="chat-layout">
-            <div class="card chat-box">
-              <div class="section-head">
-                <div style="display:flex;align-items:center;gap:10px">
-                  <div class="logo" style="width:34px;height:34px;border-radius:10px">✳</div>
-                  <div>
-                    <h3>Ask AI Jana</h3>
-                    <div class="stat-foot">Approved document retrieval · partial RU / KZ interface</div>
-                  </div>
-                </div>
-                <button class="small-btn" id="clearChat" data-i18n="newChat">New chat</button>
-              </div>
-
-              <!-- Suggestion Chips -->
-              <div class="suggestions">
-                <button data-question="How do I request vacation in the system?">How do I request vacation?</button>
-                <button data-question="Where can I find my leave balance and how many days do I get?">Where is my leave balance?</button>
-                <button data-question="What is the advance payment policy?">Advance payment policy?</button>
-                <button data-question="What are official working hours?">Working hours?</button>
-                <button data-question="What is the pet insurance reimbursement policy?">Pet insurance? (Fallback demo)</button>
-              </div>
-
-              <div class="chat-messages" id="chatMessages">
-                <div class="message">
-                  Hi! I'm AI Jana. I assist Jana Post employees with HR policy questions.
-                  Every answer I provide is grounded in verified documentation and cites the exact source.
-                  <small>AI Jana · Ready to help</small>
-                </div>
-              </div>
-
-              <form class="chat-compose" id="chatForm">
-                <input class="field" id="chatInput" placeholder="Ask an HR policy question…" data-i18n="askQuestionPlaceholder" autocomplete="off" required>
-                <button class="primary" type="submit" data-i18n="send">Send ↗</button>
-              </form>
-            </div>
-
-            <!-- Trust Sidebar -->
-            <aside>
-              <div class="card">
-                <div class="section-head">
-                  <h3 data-i18n="sourcesIncluded">Trust comes first</h3>
-                  <span style="color:var(--green)">✳</span>
-                </div>
-                <div class="activity">
-                  <span class="activity-dot"></span>
-                  <div>
-                    <b data-i18n="sourcesIncluded">Sources included</b>
-                    <p data-i18n="sourcesIncludedDesc">Every supported answer points to a verified knowledge source.</p>
-                  </div>
-                </div>
-                <div class="activity">
-                  <span class="activity-dot" style="background:var(--orange)"></span>
-                  <div>
-                    <b data-i18n="noGuesswork">No guesswork</b>
-                    <p data-i18n="noGuessworkDesc">If the knowledge base is silent, AI Jana says so safely.</p>
-                  </div>
-                </div>
-                <div class="activity">
-                  <span class="activity-dot" style="background:var(--green)"></span>
-                  <div>
-                    <b data-i18n="privacyAware">Privacy-aware</b>
-                    <p data-i18n="privacyAwareDesc">Personal HR records are protected and never disclosed in public Q&A.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div class="card" style="margin-top:16px">
-                <h3 style="margin:0 0 8px;font-size:14px">Approved Knowledge Base</h3>
-                <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Synthetic sample documents approved for demonstration.</p>
-                <div id="approvedKnowledgeList"></div>
-              </div>
-            </aside>
-          </div>
-        </section>
-
-        <!-- 6. NOTIFICATIONS PAGE -->
-        <section class="page" id="page-notifications">
-          <div class="page-head">
-            <div>
-              <div class="eyebrow">STAY IN THE LOOP</div>
-              <h1 data-i18n="notifications">Notifications</h1>
-              <p>Updates on your request workflow, assigned training, and corporate events.</p>
-            </div>
-            <button class="small-btn" onclick="markAllNotificationsRead()" data-i18n="markAllRead">Mark all as read</button>
-          </div>
-
-          <div class="card" id="notificationsList"></div>
-        </section>
-
-        <!-- 7. MANAGER TEAM & APPROVALS PAGE -->
-        <section class="page" id="page-team">
-          <div class="page-head">
-            <div>
-              <div class="eyebrow">MANAGER WORKSPACE</div>
-              <h1 data-i18n="teamApprovals">Team & approvals</h1>
-              <p>Review requests in your direct report scope and take action.</p>
-            </div>
-            <span class="status pending" id="teamPendingBadge">Pending review</span>
-          </div>
-
-          <div class="card">
-            <div class="section-head">
-              <h3 data-i18n="pendingApprovals">Pending approvals</h3>
-              <span class="stat-foot">Scoped to direct reports; HR has company-wide access</span>
-            </div>
-            <div class="table-wrap">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>EMPLOYEE</th>
-                    <th>REQUEST</th>
-                    <th>DATES / DETAILS</th>
-                    <th>STATUS</th>
-                    <th>ACTION</th>
-                  </tr>
-                </thead>
-                <tbody id="teamTable"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="card" style="margin-top:20px">
-            <h3 style="margin-top:0">Team overview</h3>
-            <div class="grid stats" style="grid-template-columns:repeat(3, 1fr);margin-bottom:0">
-              <div>
-                <div class="stat-foot">Direct reports</div>
-                <div class="stat-num" id="teamCount">3</div>
-              </div>
-              <div>
-                <div class="stat-foot">Awaiting review</div>
-                <div class="stat-num" id="teamPendingStat">1</div>
-              </div>
-              <div>
-                <div class="stat-foot">Review scope</div>
-                <div class="stat-num" id="teamScope" style="font-size:18px">Direct reports</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- 8. HR ADMINISTRATION PAGE -->
-        <section class="page" id="page-admin">
-          <div class="page-head">
-            <div>
-              <div class="eyebrow">HR OPERATIONS & INTEGRATIONS</div>
-              <h1 data-i18n="hrAdmin">HR administration</h1>
-              <p>Platform controls for knowledge sources, integration adapters, and audit trails.</p>
-            </div>
-            <span class="status approved">HR access</span>
-          </div>
-
-          <div class="grid stats" style="grid-template-columns:repeat(3, minmax(0, 1fr))">
-            <div class="card">
-              <div class="stat-top">Active accounts <span class="stat-icon">♙</span></div>
-              <div class="stat-num" id="adminEmployeeCount">—</div>
-              <div class="stat-foot">Database-backed account count</div>
-            </div>
-            <div class="card">
-              <div class="stat-top">Knowledge chunks <span class="stat-icon">▤</span></div>
-              <div class="stat-num" id="adminKnowledgeCount">6</div>
-              <div class="stat-foot">Indexed for AI retrieval</div>
-            </div>
-            <div class="card">
-              <div class="stat-top">Enterprise adapters <span class="stat-icon">↔</span></div>
-              <div class="stat-num">2</div>
-              <div class="stat-foot">1C:ZUP & Documentolog</div>
-            </div>
-          </div>
-
-          <!-- Integration Boundaries -->
-          <div class="card" style="margin-top:20px">
-            <div class="section-head">
-              <h3>Enterprise Integration Boundaries</h3>
-              <span class="status pending">Unconnected</span>
-            </div>
-            <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px">
-              Demonstrates where and how external corporate systems integrate with JanaMen. Official HR data remains read-only.
-            </p>
-            <div id="adminIntegrationsList"></div>
-          </div>
-
-          <!-- Knowledge Base Management & Audit Logs -->
-          <div class="grid lower" style="margin-top:20px">
-            <div class="card">
-              <div class="section-head">
-                <h3>Knowledge Sources</h3>
-                <span class="stat-foot">Indexed passages</span>
-              </div>
-              <details style="margin-bottom:16px">
-                <summary>Create a knowledge document</summary>
-                <form id="knowledgeForm" class="form-grid" style="margin-top:12px">
-                  <label>Document title<input class="field" name="title" required maxlength="255"></label>
-                  <label>Section title<input class="field" name="section" required maxlength="255"></label>
-                  <label>Source text<textarea class="field" name="content" required maxlength="20000"></textarea></label>
-                  <label>Access<select class="field" name="access"><option value="all">All roles</option><option value="employee">Employees</option><option value="manager">Managers</option><option value="hr_admin">HR only</option></select></label>
-                  <label><input type="checkbox" name="synthetic" checked> Synthetic example</label>
-                  <button class="primary" type="submit">Save draft</button>
-                </form>
-              </details>
-              <p>Review source text before approval. Draft or inactive documents are excluded from AI Jana.</p>
-              <div id="knowledgeDocuments"></div>
-              <div id="knowledgeList" style="max-height:360px;overflow-y:auto"></div>
-            </div>
-
-            <div class="card">
-              <div class="section-head">
-                <h3>System Audit Trail</h3>
-                <span class="status approved">Application audit trail</span>
-              </div>
-              <div class="table-wrap" style="max-height:360px;overflow-y:auto">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>ACTION</th>
-                      <th>ACTOR</th>
-                      <th>TARGET</th>
-                      <th>TIME</th>
-                    </tr>
-                  </thead>
-                  <tbody id="adminAuditTable"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-    </main>
+<header class="site-header">
+  <div class="container util-row">
+    <label class="util-pill">
+      <svg class="ic"><use href="#i-globe"/></svg>
+      <select id="langSwitch" aria-label="Interface language">
+        <option value="en">English</option>
+        <option value="ru">Русский</option>
+        <option value="kz">Қазақша</option>
+      </select>
+      <svg class="ic chev"><use href="#i-chevron"/></svg>
+    </label>
+    <div class="util-actions auth-only">
+      <label class="util-btn" id="personaWrap" hidden>
+        <svg class="ic"><use href="#i-users"/></svg>
+        <select id="roleSwitch" aria-label="Switch demo persona">
+          <option value="employee">Employee</option>
+          <option value="manager">Manager</option>
+          <option value="hr_admin">HR admin</option>
+        </select>
+      </label>
+      <button class="util-btn" data-goto="assistant"><svg class="ic"><use href="#i-help"/></svg><span data-i18n="help">Help</span></button>
+      <button class="util-btn" id="logoutBtn"><svg class="ic"><use href="#i-logout"/></svg><span data-i18n="signOut">Sign out</span></button>
+    </div>
   </div>
 
+  <div class="container">
+    <nav class="navbar" aria-label="Main">
+      <button class="logo" data-goto="home" aria-label="JanaМен home">
+        <span class="logo-word">JANA</span><span class="logo-sub">МЕН · HR</span>
+      </button>
+      <div class="nav-links auth-only" id="navLinks">
+        <button class="active" data-page="home" data-i18n="overview">Home</button>
+        <button data-page="profile" data-i18n="myProfile">Profile</button>
+        <button data-page="requests" data-i18n="myRequests">Requests</button>
+        <button data-page="academy" data-i18n="janaAcademy">Jana Academy</button>
+        <button data-page="assistant" data-i18n="aiJana">AI Jana</button>
+        <button data-page="notifications" class="nav-mobile-only" data-i18n="notifications">Notifications</button>
+        <button data-page="team" data-requires="manager" hidden data-i18n="teamApprovals">Team</button>
+        <button data-page="admin" data-requires="hr_admin" hidden data-i18n="hrAdmin">HR admin</button>
+      </div>
+      <div class="nav-right auth-only">
+        <button class="icon-btn" data-goto="notifications" aria-label="Notifications">
+          <svg class="ic"><use href="#i-bell"/></svg>
+          <span class="count" id="navNotifCount" hidden>0</span>
+        </button>
+        <button class="user-chip" data-goto="profile">
+          <span class="avatar" id="avatar">—</span>
+          <span class="user-meta"><strong id="userName">—</strong><small id="userRole">—</small></span>
+        </button>
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false">
+          <svg class="ic"><use href="#i-menu"/></svg>
+        </button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<!-- ===================== LOGIN ===================== -->
+<section class="auth-gate" id="loginGate" aria-labelledby="loginTitle">
+  <div class="container hero">
+    <h1 class="h1" id="loginTitle" data-i18n="loginTitle">Your work life in one place</h1>
+    <p class="hero-sub" data-i18n="loginSub">Profile, requests, learning and HR answers — one workspace for every Jana Post employee</p>
+  </div>
+  <div class="container login-layout">
+    <form id="loginForm" class="card login-card">
+      <h2 class="h3" data-i18n="signIn">Sign in</h2>
+      <p class="muted" id="loginHint">Use your account email and password.</p>
+      <label class="field-label" for="loginEmail" data-i18n="email">Email</label>
+      <input id="loginEmail" class="field" type="email" autocomplete="username" required maxlength="255">
+      <label class="field-label" for="loginPassword" data-i18n="password">Password</label>
+      <input id="loginPassword" class="field" type="password" autocomplete="current-password" required maxlength="256">
+      <p id="loginError" role="alert"></p>
+      <button class="btn btn-primary btn-block" id="loginSubmit" type="submit"><span data-i18n="signIn">Sign in</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+    </form>
+    <div class="persona-list" id="demoPersonas" hidden>
+      <p class="muted" data-i18n="demoPick">Synthetic demo accounts — pick a role to fill in the email:</p>
+      <button class="persona-card" data-persona="employee" type="button">
+        <svg class="ic ic-lg"><use href="#i-user"/></svg>
+        <span><b data-i18n="roleEmployee">Employee</b><small data-email></small></span>
+      </button>
+      <button class="persona-card" data-persona="manager" type="button">
+        <svg class="ic ic-lg"><use href="#i-users"/></svg>
+        <span><b data-i18n="roleManager">Manager</b><small data-email></small></span>
+      </button>
+      <button class="persona-card green" data-persona="hr_admin" type="button">
+        <svg class="ic ic-lg"><use href="#i-shield"/></svg>
+        <span><b data-i18n="roleHr">HR administrator</b><small data-email></small></span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== APP ===================== -->
+<main id="app" hidden>
+
+  <!-- 1. HOME -->
+  <section class="page active" id="page-home">
+    <div class="container hero">
+      <h1 class="h1" id="greeting">Welcome</h1>
+      <p class="hero-sub" data-i18n="heroSub">Profile, requests, learning and HR answers — in one Jana Post workspace</p>
+      <form class="hero-search" id="heroAskForm">
+        <label class="search-box">
+          <svg class="ic"><use href="#i-search"/></svg>
+          <input id="heroAskInput" data-i18n="heroAskPlaceholder" placeholder="Ask AI Jana: how do I request vacation?" autocomplete="off" maxlength="2000">
+        </label>
+        <button class="btn btn-primary" type="submit" data-i18n="ask">Ask</button>
+      </form>
+
+      <div class="stat-row">
+        <button class="stat-card" data-goto="requests">
+          <svg class="ic ic-lg"><use href="#i-file"/></svg>
+          <span><strong class="stat-num" id="statRequests">—</strong><span class="stat-label" data-i18n="openRequests">Open requests</span></span>
+        </button>
+        <button class="stat-card" data-goto="academy">
+          <svg class="ic ic-lg"><use href="#i-award"/></svg>
+          <span><strong class="stat-num" id="statLearning">—</strong><span class="stat-label"><span data-i18n="learningProgress">Learning progress</span> · <span id="statCourses">—</span> <span data-i18n="coursesUnit">courses</span></span></span>
+        </button>
+        <button class="stat-card" data-goto="notifications">
+          <svg class="ic ic-lg"><use href="#i-bell"/></svg>
+          <span><strong class="stat-num" id="statNotifications">—</strong><span class="stat-label" data-i18n="unreadUpdates">Unread updates</span></span>
+        </button>
+        <div class="stat-card green">
+          <svg class="ic ic-lg"><use href="#i-calendar"/></svg>
+          <span><strong class="stat-num"><span id="leaveDays">—</span> <span data-i18n="daysUnit">days</span></strong><span class="stat-label" data-i18n="annualLeaveBalance">Annual leave balance</span></span>
+          <button class="btn btn-white btn-sm" data-action="new-request" data-type="Vacation"><span data-i18n="requestTimeOff">Request time off</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <section class="band white">
+      <div class="container">
+        <h2 class="h2"><span data-i18n="servicesTitle1">Everything you need</span><br><span class="green" data-i18n="servicesTitle2">in one workspace</span></h2>
+        <div class="service-grid">
+          <button class="service-tile" data-action="new-request" data-type="Vacation">
+            <span class="tile-ico c-green"><svg class="ic"><use href="#i-calendar"/></svg></span>
+            <b data-i18n="vacation">Vacation</b><span data-i18n="svcVacation">Plan time off and follow the approval</span>
+          </button>
+          <button class="service-tile" data-action="new-request" data-type="Advance payment">
+            <span class="tile-ico c-yellow"><svg class="ic"><use href="#i-wallet"/></svg></span>
+            <b data-i18n="advancePayment">Advance payment</b><span data-i18n="svcAdvance">Request part of your salary in advance</span>
+          </button>
+          <button class="service-tile" data-goto="profile">
+            <span class="tile-ico c-slate"><svg class="ic"><use href="#i-user"/></svg></span>
+            <b data-i18n="myProfile">Profile</b><span data-i18n="svcProfile">Your HR record, read-only from 1C:ZUP</span>
+          </button>
+          <button class="service-tile" data-goto="academy">
+            <span class="tile-ico c-dark"><svg class="ic"><use href="#i-book"/></svg></span>
+            <b data-i18n="janaAcademy">Jana Academy</b><span data-i18n="svcAcademy">Assigned courses, lessons and quizzes</span>
+          </button>
+          <button class="service-tile" data-goto="assistant">
+            <span class="tile-ico c-green"><svg class="ic"><use href="#i-spark"/></svg></span>
+            <b data-i18n="aiJana">AI Jana</b><span data-i18n="svcAi">Answers from approved HR documents</span>
+          </button>
+          <button class="service-tile" data-goto="notifications">
+            <span class="tile-ico c-yellow"><svg class="ic"><use href="#i-bell"/></svg></span>
+            <b data-i18n="notifications">Notifications</b><span data-i18n="svcNotif">Status changes and course updates</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="band white band-tight">
+      <div class="container split">
+        <div class="panel-gray">
+          <div class="section-head">
+            <h3 class="h4" data-i18n="recentRequests">Recent requests</h3>
+            <button class="link" data-goto="requests"><span data-i18n="viewAll">View all</span> →</button>
+          </div>
+          <div class="request-list" id="homeRequests"></div>
+        </div>
+        <div>
+          <h2 class="h2" data-i18n="howTitle">How a request works</h2>
+          <ol class="steps">
+            <li><span class="step-num">1</span><div><b data-i18n="step1">Create a request</b><span data-i18n="step1d">Vacation or advance — a few fields, checked by the server</span></div></li>
+            <li><span class="step-num">2</span><div><b data-i18n="step2">Manager review</b><span data-i18n="step2d">Only your direct manager or HR can approve or decline</span></div></li>
+            <li><span class="step-num">3</span><div><b data-i18n="step3">Registration</b><span data-i18n="step3d">An approved request gets a Documentolog reference (mock)</span></div></li>
+            <li><span class="step-num">4</span><div><b data-i18n="step4">Notification</b><span data-i18n="step4d">You are notified and your leave balance is updated</span></div></li>
+          </ol>
+        </div>
+      </div>
+      <div class="container">
+        <div class="banner-green" id="homeCourseCard"></div>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="container">
+        <div class="band-head">
+          <div>
+            <h2 class="h2" data-i18n="latestUpdates">Latest updates</h2>
+            <p class="muted" data-i18n="latestUpdatesSub">Request decisions and course assignments</p>
+          </div>
+          <button class="arrow-btn" data-goto="notifications" aria-label="All notifications"><svg class="ic"><use href="#i-arrow"/></svg></button>
+        </div>
+        <div class="update-grid" id="homeActivity"></div>
+      </div>
+    </section>
+
+    <section class="band white">
+      <div class="container center">
+        <h2 class="h2" data-i18n="rolesTitle">How can JanaМен help you?</h2>
+        <div class="segmented" role="tablist">
+          <button class="active" data-role-tab="employee" data-i18n="forEmployees">For employees</button>
+          <button data-role-tab="manager" data-i18n="forManagers">For managers</button>
+          <button data-role-tab="hr" data-i18n="forHr">For HR</button>
+        </div>
+        <div class="role-card" data-role-panel="employee">
+          <div class="role-text">
+            <h3 class="h3" data-i18n="forEmployees">For employees</h3>
+            <p class="muted" data-i18n="roleEmpSub">Self-service without paperwork or chasing HR</p>
+            <ul class="icon-list">
+              <li><svg class="ic"><use href="#i-user"/></svg><span data-i18n="roleEmp1">Profile and leave balance from 1C:ZUP</span></li>
+              <li><svg class="ic"><use href="#i-calendar"/></svg><span data-i18n="roleEmp2">Vacation and advance requests with history</span></li>
+              <li><svg class="ic"><use href="#i-book"/></svg><span data-i18n="roleEmp3">Mandatory courses in Jana Academy</span></li>
+              <li><svg class="ic"><use href="#i-spark"/></svg><span data-i18n="roleEmp4">AI Jana answers with a source</span></li>
+            </ul>
+            <button class="btn btn-primary" data-action="new-request"><span data-i18n="newRequest">New request</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+          </div>
+          <div class="role-art"><svg class="ic"><use href="#i-user"/></svg></div>
+        </div>
+        <div class="role-card" data-role-panel="manager" hidden>
+          <div class="role-text">
+            <h3 class="h3" data-i18n="forManagers">For managers</h3>
+            <p class="muted" data-i18n="roleMgrSub">Approvals for your direct reports only</p>
+            <ul class="icon-list">
+              <li><svg class="ic"><use href="#i-file"/></svg><span data-i18n="roleMgr1">Queue of pending team requests</span></li>
+              <li><svg class="ic"><use href="#i-check"/></svg><span data-i18n="roleMgr2">Approve or decline with a comment</span></li>
+              <li><svg class="ic"><use href="#i-shield"/></svg><span data-i18n="roleMgr3">No access to other teams' data</span></li>
+              <li><svg class="ic"><use href="#i-clock"/></svg><span data-i18n="roleMgr4">Every decision lands in the audit log</span></li>
+            </ul>
+            <button class="btn btn-primary" data-goto="team" data-requires="manager" hidden><span data-i18n="openApprovals">Open approvals</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+          </div>
+          <div class="role-art"><svg class="ic"><use href="#i-users"/></svg></div>
+        </div>
+        <div class="role-card" data-role-panel="hr" hidden>
+          <div class="role-text">
+            <h3 class="h3" data-i18n="forHr">For HR</h3>
+            <p class="muted" data-i18n="roleHrSub">Knowledge base, integrations and audit</p>
+            <ul class="icon-list">
+              <li><svg class="ic"><use href="#i-book"/></svg><span data-i18n="roleHr1">Approve sources before AI Jana uses them</span></li>
+              <li><svg class="ic"><use href="#i-users"/></svg><span data-i18n="roleHr2">Company-wide request overview</span></li>
+              <li><svg class="ic"><use href="#i-link"/></svg><span data-i18n="roleHr3">1C:ZUP and Documentolog integration points</span></li>
+              <li><svg class="ic"><use href="#i-shield"/></svg><span data-i18n="roleHr4">Audit trail of key actions</span></li>
+            </ul>
+            <button class="btn btn-primary" data-goto="admin" data-requires="hr_admin" hidden><span data-i18n="openAdmin">Open HR admin</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+          </div>
+          <div class="role-art"><svg class="ic"><use href="#i-sliders"/></svg></div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- 2. PROFILE -->
+  <section class="page" id="page-profile">
+    <div class="container page-wrap">
+      <div class="page-head">
+        <div>
+          <h1 class="h2" data-i18n="myProfile">Profile</h1>
+          <p class="muted" data-i18n="profileSub">Official HR data is read-only. Changes go through HR.</p>
+        </div>
+        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg><span data-i18n="officialHrData">Read-only · 1C:ZUP mock</span></span>
+      </div>
+      <div class="grid profile-grid">
+        <div class="card">
+          <div class="profile-banner">
+            <div class="big-avatar" id="profAvatar">—</div>
+            <div>
+              <h2 class="h3" id="profName">—</h2>
+              <p class="muted" id="profPosition">—</p>
+            </div>
+          </div>
+          <dl class="detail-grid">
+            <div class="detail"><dt data-i18n="employeeId">Employee ID</dt><dd id="profEmpCode">—</dd></div>
+            <div class="detail"><dt data-i18n="department">Department</dt><dd id="profDept">—</dd></div>
+            <div class="detail"><dt data-i18n="company">Company</dt><dd id="profCompany">—</dd></div>
+            <div class="detail"><dt data-i18n="manager">Manager</dt><dd id="profManager">—</dd></div>
+            <div class="detail"><dt data-i18n="hireDate">Hire date</dt><dd id="profHireDate">—</dd></div>
+            <div class="detail"><dt data-i18n="location">Location</dt><dd id="profLocation">—</dd></div>
+          </dl>
+        </div>
+        <div class="profile-side">
+          <div class="stat-card green static">
+            <svg class="ic ic-lg"><use href="#i-calendar"/></svg>
+            <span><strong class="stat-num" id="profLeaveBalance">—</strong><span class="stat-label" data-i18n="annualLeaveBalance">Annual leave balance</span></span>
+            <button class="btn btn-white btn-sm" data-action="new-request" data-type="Vacation"><span data-i18n="requestTimeOff">Request time off</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+          </div>
+          <div class="card">
+            <div class="section-head">
+              <h3 class="h4" data-i18n="assignedTraining">Assigned training</h3>
+              <span class="chip"><span id="profLearningPct">—</span></span>
+            </div>
+            <div id="profCourses"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. REQUESTS -->
+  <section class="page" id="page-requests">
+    <div class="container page-wrap">
+      <div class="page-head">
+        <div>
+          <h1 class="h2" data-i18n="myRequests">Requests</h1>
+          <p class="muted" data-i18n="requestsSub">Every request with its type, date, status and full history.</p>
+        </div>
+        <button class="btn btn-primary" data-action="new-request"><svg class="ic"><use href="#i-plus"/></svg><span data-i18n="newRequest">New request</span></button>
+      </div>
+      <div class="card">
+        <div class="section-head">
+          <h3 class="h4" data-i18n="requestHistory">Request history</h3>
+          <div class="toolbar">
+            <select id="statusFilter" class="field field-sm" onchange="loadRequestsPage()" aria-label="Status filter">
+              <option value="all" data-i18n="allStatuses">All statuses</option>
+              <option value="Pending" data-i18n="stPending">Pending</option>
+              <option value="Approved" data-i18n="stApproved">Approved</option>
+              <option value="Rejected" data-i18n="stRejected">Rejected</option>
+            </select>
+            <select id="typeFilter" class="field field-sm" onchange="loadRequestsPage()" aria-label="Type filter">
+              <option value="all" data-i18n="allTypes">All types</option>
+              <option value="Vacation" data-i18n="vacation">Vacation</option>
+              <option value="Advance payment" data-i18n="advancePayment">Advance payment</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr><th data-i18n="thRequest">Request</th><th data-i18n="thSubmitted">Submitted</th><th data-i18n="thDetails">Period / details</th><th data-i18n="thStatus">Status</th><th></th></tr>
+            </thead>
+            <tbody id="requestTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. ACADEMY -->
+  <section class="page" id="page-academy">
+    <div class="container page-wrap">
+      <div class="page-head">
+        <div>
+          <h1 class="h2" data-i18n="janaAcademy">Jana Academy</h1>
+          <p class="muted" data-i18n="academySub">Assigned courses, lesson material, quizzes and your result.</p>
+        </div>
+      </div>
+      <div class="grid course-grid" id="academyGrid"></div>
+    </div>
+  </section>
+
+  <!-- 5. AI JANA -->
+  <section class="page" id="page-assistant">
+    <div class="container page-wrap">
+      <div class="page-head">
+        <div>
+          <h1 class="h2">AI Jana</h1>
+          <p class="muted" data-i18n="aiSub">Answers only from approved HR documents, always with a source. Demo sources are synthetic.</p>
+        </div>
+        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg><span data-i18n="groundedOnly">Grounded answers only</span></span>
+      </div>
+      <div class="chat-layout">
+        <div class="card chat-box">
+          <div class="section-head">
+            <div class="chat-title">
+              <span class="tile-ico c-green"><svg class="ic"><use href="#i-spark"/></svg></span>
+              <div><h3 class="h4" data-i18n="askAiJana">Ask AI Jana</h3><small class="muted" data-i18n="aiBadge">Approved-document retrieval</small></div>
+            </div>
+            <button class="btn btn-light btn-sm" id="clearChat" data-i18n="newChat">New chat</button>
+          </div>
+          <div class="suggestions">
+            <button data-question="How do I request vacation in the system?" data-i18n="q1">How do I request vacation?</button>
+            <button data-question="Where can I find my leave balance and how many days do I get?" data-i18n="q2">Where is my leave balance?</button>
+            <button data-question="What is the advance payment policy?" data-i18n="q3">Advance payment policy</button>
+            <button data-question="What are official working hours?" data-i18n="q4">Working hours</button>
+            <button data-question="What is the pet insurance reimbursement policy?" data-i18n="q5">Pet insurance (fallback demo)</button>
+          </div>
+          <div class="chat-messages" id="chatMessages"></div>
+          <form class="chat-compose" id="chatForm">
+            <label class="search-box">
+              <svg class="ic"><use href="#i-spark"/></svg>
+              <input id="chatInput" data-i18n="askQuestionPlaceholder" placeholder="Ask an HR policy question…" autocomplete="off" required maxlength="2000">
+            </label>
+            <button class="btn btn-primary" type="submit"><span data-i18n="send">Send</span><svg class="ic"><use href="#i-send"/></svg></button>
+          </form>
+        </div>
+        <aside class="chat-side">
+          <div class="card">
+            <h3 class="h4" data-i18n="trustTitle">Trust comes first</h3>
+            <ul class="icon-list">
+              <li><svg class="ic"><use href="#i-file"/></svg><span><b data-i18n="sourcesIncluded">Sources included</b><small data-i18n="sourcesIncludedDesc">Every answer points to an approved document section.</small></span></li>
+              <li><svg class="ic"><use href="#i-help"/></svg><span><b data-i18n="noGuesswork">No guesswork</b><small data-i18n="noGuessworkDesc">If the knowledge base is silent, AI Jana says so and offers HR escalation.</small></span></li>
+              <li><svg class="ic"><use href="#i-shield"/></svg><span><b data-i18n="privacyAware">Privacy-aware</b><small data-i18n="privacyAwareDesc">Colleagues' personal data never enters retrieval.</small></span></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3 class="h4" data-i18n="approvedKb">Approved knowledge base</h3>
+            <div id="approvedKnowledgeList"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. NOTIFICATIONS -->
+  <section class="page" id="page-notifications">
+    <div class="container page-wrap">
+      <div class="page-head">
+        <div>
+          <h1 class="h2" data-i18n="notifications">Notifications</h1>
+          <p class="muted" data-i18n="notifSub">Request status changes and course assignments.</p>
+        </div>
+        <button class="btn btn-light btn-sm" onclick="markAllNotificationsRead()" data-i18n="markAllRead">Mark all as read</button>
+      </div>
+      <div class="card" id="notificationsList"></div>
+    </div>
+  </section>
+
+  <!-- 7. TEAM -->
+  <section class="page" id="page-team">
+    <div class="container page-wrap">
+      <div class="page-head">
+        <div>
+          <h1 class="h2" data-i18n="teamApprovals">Team</h1>
+          <p class="muted" data-i18n="teamSub">Requests from your direct reports. Scope is enforced by the server.</p>
+        </div>
+        <span class="status pending" id="teamPendingBadge">—</span>
+      </div>
+      <div class="stat-row stat-row-3">
+        <div class="stat-card static"><svg class="ic ic-lg"><use href="#i-users"/></svg><span><strong class="stat-num" id="teamCount">—</strong><span class="stat-label" data-i18n="directReports">Direct reports</span></span></div>
+        <div class="stat-card static"><svg class="ic ic-lg"><use href="#i-clock"/></svg><span><strong class="stat-num" id="teamPendingStat">—</strong><span class="stat-label" data-i18n="awaitingReview">Awaiting review</span></span></div>
+        <div class="stat-card green static"><svg class="ic ic-lg"><use href="#i-shield"/></svg><span><strong class="stat-num" id="teamScope">—</strong><span class="stat-label" data-i18n="reviewScope">Review scope</span></span></div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h3 class="h4" data-i18n="pendingApprovals">Pending approvals</h3></div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th data-i18n="thEmployee">Employee</th><th data-i18n="thRequest">Request</th><th data-i18n="thDetails">Period / details</th><th data-i18n="thStatus">Status</th><th></th></tr></thead>
+            <tbody id="teamTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. HR ADMIN -->
+  <section class="page" id="page-admin">
+    <div class="container page-wrap">
+      <div class="page-head">
+        <div>
+          <h1 class="h2" data-i18n="hrAdmin">HR admin</h1>
+          <p class="muted" data-i18n="adminSub">Knowledge sources, integration boundaries and the audit trail.</p>
+        </div>
+        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg>HR access</span>
+      </div>
+      <div class="stat-row stat-row-3">
+        <div class="stat-card static"><svg class="ic ic-lg"><use href="#i-users"/></svg><span><strong class="stat-num" id="adminEmployeeCount">—</strong><span class="stat-label" data-i18n="activeAccounts">Active accounts</span></span></div>
+        <div class="stat-card static"><svg class="ic ic-lg"><use href="#i-book"/></svg><span><strong class="stat-num" id="adminKnowledgeCount">—</strong><span class="stat-label" data-i18n="knowledgeChunks">Knowledge passages</span></span></div>
+        <div class="stat-card green static"><svg class="ic ic-lg"><use href="#i-link"/></svg><span><strong class="stat-num">2</strong><span class="stat-label">1C:ZUP · Documentolog</span></span></div>
+      </div>
+      <div class="card">
+        <div class="section-head">
+          <h3 class="h4" data-i18n="integrationTitle">Enterprise integration boundaries</h3>
+          <span class="status pending">Unconnected</span>
+        </div>
+        <p class="muted" data-i18n="integrationSub">Where 1C:ZUP and Documentolog plug in. Official HR data stays read-only.</p>
+        <div id="adminIntegrationsList"></div>
+      </div>
+      <div class="grid lower">
+        <div class="card">
+          <div class="section-head"><h3 class="h4" data-i18n="knowledgeSources">Knowledge sources</h3></div>
+          <details class="disclosure">
+            <summary data-i18n="createDoc">Create a knowledge document</summary>
+            <form id="knowledgeForm" class="form-grid">
+              <label class="form-group full">Document title<input class="field" name="title" required maxlength="255"></label>
+              <label class="form-group full">Section title<input class="field" name="section" required maxlength="255"></label>
+              <label class="form-group full">Source text<textarea class="field" name="content" required maxlength="20000" rows="4"></textarea></label>
+              <label class="form-group">Access<select class="field" name="access"><option value="all">All roles</option><option value="employee">Employees</option><option value="manager">Managers</option><option value="hr_admin">HR only</option></select></label>
+              <label class="check"><input type="checkbox" name="synthetic" checked> Synthetic example</label>
+              <button class="btn btn-primary" type="submit">Save draft</button>
+            </form>
+          </details>
+          <p class="muted small" data-i18n="kbNote">Draft or inactive documents are excluded from AI Jana until HR approves them.</p>
+          <div id="knowledgeDocuments"></div>
+          <div id="knowledgeList" class="scroll-box"></div>
+        </div>
+        <div class="card">
+          <div class="section-head"><h3 class="h4" data-i18n="auditTitle">System audit trail</h3></div>
+          <div class="table-wrap scroll-box">
+            <table class="table">
+              <thead><tr><th>Action</th><th>Actor</th><th>Target</th><th>Time</th></tr></thead>
+              <tbody id="adminAuditTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- MODAL: CREATE REQUEST -->
-  <div class="modal-backdrop" id="requestModal">
+  <div class="modal-backdrop" id="requestModal" role="dialog" aria-modal="true" aria-labelledby="requestModalTitle">
     <div class="modal">
       <div class="modal-head">
-        <h3>Create a request</h3>
-        <button class="close" id="closeModal" aria-label="Close modal">✕</button>
+        <h3 class="h4" id="requestModalTitle" data-i18n="createRequest">Create a request</h3>
+        <button class="close" id="closeModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
       </div>
-      <p style="color:var(--muted);font-size:12.5px;margin-top:-8px;margin-bottom:18px">
-        Your request will be validated by the backend and routed to your direct manager for review.
-      </p>
-
+      <p class="muted small" data-i18n="createRequestSub">The server validates your request and routes it to your direct manager.</p>
       <form id="requestForm">
         <div class="form-grid">
           <div class="form-group full">
             <label for="reqType" data-i18n="requestType">Request type</label>
-            <select id="reqType">
-              <option value="Vacation">Vacation</option>
-              <option value="Advance payment">Advance payment</option>
+            <select id="reqType" class="field">
+              <option value="Vacation" data-i18n="vacation">Vacation</option>
+              <option value="Advance payment" data-i18n="advancePayment">Advance payment</option>
             </select>
           </div>
-
           <div class="form-group">
-            <label for="reqStart" data-i18n="startDate">Start date / requested date</label>
+            <label for="reqStart" data-i18n="startDate">Start date</label>
             <input class="field" id="reqStart" type="date" required>
           </div>
-
           <div class="form-group" id="reqEndGroup">
             <label for="reqEnd" data-i18n="endDate">End date</label>
             <input class="field" id="reqEnd" type="date">
           </div>
-
-          <div class="form-group full" id="reqAmountGroup" style="display:none">
-            <label for="reqAmount" data-i18n="amount">Amount in KZT (₸)</label>
-            <input class="field" id="reqAmount" type="number" min="5000" step="5000" placeholder="e.g. 100000">
+          <div class="form-group full" id="reqAmountGroup" hidden>
+            <label for="reqAmount" data-i18n="amount">Amount (₸)</label>
+            <input class="field" id="reqAmount" type="number" min="5000" step="5000" placeholder="100000">
           </div>
-
           <div class="form-group full">
-            <label for="reqReason" data-i18n="reason">Reason / handover notes</label>
-            <textarea id="reqReason" rows="3" placeholder="Provide notes or handover coverage details…"></textarea>
+            <label for="reqReason" data-i18n="reason">Reason / comment</label>
+            <textarea class="field" id="reqReason" rows="3" maxlength="2000"></textarea>
           </div>
         </div>
-
         <div class="form-actions">
-          <button class="small-btn" type="button" id="cancelModal" data-i18n="cancel">Cancel</button>
-          <button class="primary" type="submit" data-i18n="submitRequest">Submit request ↗</button>
+          <button class="btn btn-light" type="button" id="cancelModal" data-i18n="cancel">Cancel</button>
+          <button class="btn btn-primary" type="submit"><span data-i18n="submitRequest">Submit request</span><svg class="ic"><use href="#i-arrow"/></svg></button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- MODAL: REQUEST DETAILS & TIMELINE -->
-  <div class="modal-backdrop" id="requestDetailModal">
+  <!-- MODAL: REQUEST DETAILS -->
+  <div class="modal-backdrop" id="requestDetailModal" role="dialog" aria-modal="true" aria-labelledby="detailModalTitle">
     <div class="modal">
       <div class="modal-head">
-        <h3 id="detailModalTitle">Request details</h3>
-        <button class="close" id="closeDetailModal" aria-label="Close modal">✕</button>
+        <h3 class="h4" id="detailModalTitle">Request</h3>
+        <button class="close" id="closeDetailModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
       </div>
-
-      <div class="detail-grid" style="margin-top:0;margin-bottom:18px">
-        <div class="detail">
-          <label>Request ID</label>
-          <strong id="detailModalCode">REQ-1042</strong>
-        </div>
-        <div class="detail">
-          <label>Status</label>
-          <div id="detailModalStatus"></div>
-        </div>
-        <div class="detail">
-          <label>Requester</label>
-          <strong id="detailModalRequester">Aruzhan S.</strong>
-        </div>
-        <div class="detail">
-          <label>Department</label>
-          <strong id="detailModalDept">Product Operations</strong>
-        </div>
-        <div class="detail">
-          <label>Details</label>
-          <strong id="detailModalDates">26–30 Oct 2026</strong>
-        </div>
-        <div class="detail">
-          <label>Documentolog Reference</label>
-          <code id="detailModalSync" style="font-size:11px">DOCLOG-2026-1042</code>
-        </div>
-      </div>
-
-      <div class="mini-divider"></div>
-      <h4 style="font-size:13px;margin-bottom:12px">Audit & Event History</h4>
-      <div id="detailModalTimeline"></div>
+      <dl class="detail-grid">
+        <div class="detail"><dt>ID</dt><dd id="detailModalCode">—</dd></div>
+        <div class="detail"><dt data-i18n="thStatus">Status</dt><dd id="detailModalStatus"></dd></div>
+        <div class="detail"><dt data-i18n="requester">Requester</dt><dd id="detailModalRequester">—</dd></div>
+        <div class="detail"><dt data-i18n="department">Department</dt><dd id="detailModalDept">—</dd></div>
+        <div class="detail"><dt data-i18n="thDetails">Period / details</dt><dd id="detailModalDates">—</dd></div>
+        <div class="detail"><dt>Documentolog</dt><dd><code id="detailModalSync">—</code></dd></div>
+      </dl>
+      <h4 class="sub-title" data-i18n="history">History</h4>
+      <div class="timeline" id="detailModalTimeline"></div>
     </div>
   </div>
 
-  <!-- MODAL: JANA ACADEMY COURSE PLAYER -->
-  <div class="modal-backdrop" id="coursePlayerModal">
-    <div class="modal" style="width:min(680px, 100%)">
+  <!-- MODAL: COURSE PLAYER -->
+  <div class="modal-backdrop" id="coursePlayerModal" role="dialog" aria-modal="true" aria-labelledby="playerCourseTitle">
+    <div class="modal modal-wide">
       <div class="modal-head">
-        <h3 id="playerCourseTitle">Course Player</h3>
-        <button class="close" id="closeCourseModal" aria-label="Close modal">✕</button>
+        <h3 class="h4" id="playerCourseTitle">Course</h3>
+        <button class="close" id="closeCourseModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
       </div>
-
-      <div class="progress"><span id="playerProgressBar" style="width:75%"></span></div>
-      <div class="progress-label" style="margin-bottom:16px">
-        <span id="playerProgressLabel">75% complete</span>
-        <span>Jana Academy LMS</span>
-      </div>
-
-      <div class="grid" style="grid-template-columns:220px 1fr;gap:18px">
-        <!-- Lessons Navigation -->
-        <div>
-          <div class="nav-label" style="padding:0;margin-bottom:8px">Lessons</div>
-          <div id="playerLessonsList"></div>
-        </div>
-
-        <!-- Lesson Reader & Quiz Activity -->
-        <div style="background:var(--surface2);padding:18px;border-radius:var(--radius-md)">
-          <h4 id="playerLessonTitle" style="margin-bottom:8px;font-size:15px">Lesson Title</h4>
-          <p id="playerLessonContent" style="font-size:13px;line-height:1.55;color:var(--ink);margin-bottom:18px">Lesson content...</p>
-
-          <div id="playerQuizBox" style="border-top:1px solid var(--line);padding-top:14px;display:none">
-            <b style="font-size:12.5px;display:block;margin-bottom:8px" id="playerQuizQuestion">Quiz Question</b>
+      <div class="progress"><span id="playerProgressBar"></span></div>
+      <div class="progress-label"><span id="playerProgressLabel">0%</span><span>Jana Academy</span></div>
+      <div class="player-grid">
+        <div id="playerLessonsList" class="lesson-list"></div>
+        <div class="panel-gray">
+          <h4 class="h4" id="playerLessonTitle">—</h4>
+          <p id="playerLessonContent" class="lesson-text">—</p>
+          <div id="playerQuizBox" class="quiz" hidden>
+            <b id="playerQuizQuestion">—</b>
             <div id="playerQuizOptions"></div>
-            <div id="playerQuizFeedback" style="margin-top:10px;display:none"></div>
-            <button class="primary" style="margin-top:12px;width:100%;justify-content:center" onclick="submitLessonQuiz()">Submit Answer</button>
+            <div id="playerQuizFeedback" hidden></div>
+            <button class="btn btn-primary btn-block" onclick="submitLessonQuiz()" data-i18n="submitAnswer">Submit answer</button>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: SOURCE CITATION POPUP -->
-  <div class="modal-backdrop" id="citationModal">
-    <div class="modal" style="width:min(500px, 100%)">
+  <!-- MODAL: SOURCE CITATION -->
+  <div class="modal-backdrop" id="citationModal" role="dialog" aria-modal="true" aria-labelledby="citationSecTitle">
+    <div class="modal">
       <div class="modal-head">
-        <h3>Verified Knowledge Source</h3>
-        <button class="close" id="closeCitationModal" aria-label="Close modal">✕</button>
+        <h3 class="h4" data-i18n="verifiedSource">Approved knowledge source</h3>
+        <button class="close" id="closeCitationModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
       </div>
-
-      <div style="padding:16px;background:var(--surface2);border-radius:var(--radius-md)">
-        <span class="eyebrow" id="citationDocTitle">Employee Request Guide</span>
-        <h4 id="citationSecTitle" style="font-size:15px;margin:6px 0 10px">Section Title</h4>
-        <p id="citationSnippet" style="font-size:13px;line-height:1.55;color:var(--ink)">Source content snippet...</p>
-        <span class="status approved" style="margin-top:10px;font-size:10px">Approved source · check document version</span>
+      <div class="panel-gray">
+        <span class="chip" id="citationDocTitle">—</span>
+        <h4 class="h4" id="citationSecTitle">—</h4>
+        <p id="citationSnippet" class="lesson-text">—</p>
       </div>
     </div>
   </div>
 
-
-  <div class="modal-backdrop" id="reviewModal" role="dialog" aria-labelledby="reviewTitle" aria-modal="true">
+  <!-- MODAL: REVIEW -->
+  <div class="modal-backdrop" id="reviewModal" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
     <div class="modal">
-      <h3 id="reviewTitle">Review request</h3>
-      <form id="reviewForm" class="form-grid">
-        <label for="reviewComment">Review comment (optional)</label>
-        <textarea id="reviewComment" class="field" maxlength="2000"></textarea>
-        <button class="small-btn" id="cancelReview" type="button">Cancel</button>
-        <button class="primary" id="submitReview" type="submit">Confirm review</button>
+      <div class="modal-head"><h3 class="h4" id="reviewTitle">Review request</h3></div>
+      <form id="reviewForm">
+        <div class="form-group">
+          <label for="reviewComment" data-i18n="reviewComment">Comment (optional)</label>
+          <textarea id="reviewComment" class="field" rows="3" maxlength="2000"></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-light" id="cancelReview" type="button" data-i18n="cancel">Cancel</button>
+          <button class="btn btn-primary" id="submitReview" type="submit">Confirm</button>
+        </div>
       </form>
     </div>
   </div>
+</main>
 
-  <!-- Global Toast Notification -->
-  <div class="toast" id="toast" role="status"></div>
-</div>
-
-<div class="auth-gate" id="loginGate" role="dialog" aria-labelledby="loginTitle" aria-modal="true">
-  <div class="modal">
-    <div class="brand"><div class="logo">J</div><strong>JanaМен</strong></div>
-    <h1 id="loginTitle">Sign in to your workspace</h1>
-    <p id="loginHint">Use your account email and password.</p>
-    <form id="loginForm" class="form-grid">
-      <label for="loginEmail">Email</label><input id="loginEmail" class="field" type="email" autocomplete="username" required maxlength="255">
-      <label for="loginPassword">Password</label><input id="loginPassword" class="field" type="password" autocomplete="current-password" required maxlength="256">
-      <p id="loginError" role="alert"></p>
-      <button class="primary" id="loginSubmit" type="submit">Sign in</button>
-    </form>
+<footer class="site-footer">
+  <div class="container footer-top">
+    <div>
+      <div class="logo logo-dark"><span class="logo-word">JANA</span><span class="logo-sub">МЕН · HR</span></div>
+      <p data-i18n="footerTag">HR workspace of Jana Post · hackathon prototype</p>
+    </div>
+    <div class="footer-badges">
+      <a class="badge-btn" href="/docs" target="_blank" rel="noopener"><small>OpenAPI</small><b>API docs</b></a>
+      <a class="badge-btn" href="/health" target="_blank" rel="noopener"><small>Status</small><b>Health</b></a>
+    </div>
   </div>
-</div>
+  <div class="container footer-cols">
+    <div>
+      <h3 data-i18n="integrations">Integrations</h3>
+      <ul class="footer-list">
+        <li><svg class="ic"><use href="#i-link"/></svg>1C:ZUP 3.1 — <span data-i18n="mockAdapter">mock adapter, read-only</span></li>
+        <li><svg class="ic"><use href="#i-link"/></svg>Documentolog — <span data-i18n="mockAdapter2">mock adapter, registration</span></li>
+      </ul>
+    </div>
+    <div>
+      <h3 data-i18n="navigation">Navigation</h3>
+      <ul class="footer-links">
+        <li><button data-goto="home" data-i18n="overview">Home</button></li>
+        <li><button data-goto="profile" data-i18n="myProfile">Profile</button></li>
+        <li><button data-goto="requests" data-i18n="myRequests">Requests</button></li>
+        <li><button data-goto="academy" data-i18n="janaAcademy">Jana Academy</button></li>
+        <li><button data-goto="assistant" data-i18n="aiJana">AI Jana</button></li>
+        <li><button data-goto="notifications" data-i18n="notifications">Notifications</button></li>
+      </ul>
+    </div>
+    <div>
+      <h3 data-i18n="contact">Contact</h3>
+      <small class="footer-caption" data-i18n="hrSupport">HR support</small>
+      <ul class="footer-list">
+        <li><svg class="ic"><use href="#i-mail"/></svg>hr-support@janapost.kz</li>
+        <li><svg class="ic"><use href="#i-pin"/></svg>Almaty, Kazakhstan</li>
+      </ul>
+    </div>
+  </div>
+  <div class="container footer-bottom">
+    <span>© 2026 JanaМен · <span data-i18n="syntheticData">Synthetic demo data only</span></span>
+    <span class="footer-bottom-links"><a href="/docs" target="_blank" rel="noopener">Swagger</a><a href="/redoc" target="_blank" rel="noopener">ReDoc</a><a href="/openapi.json" target="_blank" rel="noopener">OpenAPI</a></span>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

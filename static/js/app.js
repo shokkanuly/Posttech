@@ -1,6 +1,7 @@
 /**
- * JanaMen Digital HR - Core Application Client Controller
- * Connected to FastAPI backend with JWT authorization and real persistent data.
+ * JanaMen Digital HR — client controller.
+ * Talks to the FastAPI backend with a bearer token kept in memory only.
+ * Authorization is enforced server-side; the UI only hides what a role cannot use.
  */
 
 const API_BASE = "/api/v1";
@@ -15,16 +16,15 @@ const state = {
   courses: [],
   currentCourse: null,
   currentLesson: null,
+  pendingReview: null,
 };
 
 let demoAccounts = {};
 
-// --- HTTP CLIENT HELPERS ---
+// --- HELPERS ---
 async function api(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
-  if (state.token) {
-    headers["Authorization"] = `Bearer ${state.token}`;
-  }
+  if (state.token) headers["Authorization"] = `Bearer ${state.token}`;
 
   const tokenAtStart = state.token;
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
@@ -40,25 +40,44 @@ async function api(path, options = {}) {
 
 function toast(msg) {
   const el = document.getElementById("toast");
-  if (!el) return;
   el.textContent = msg;
   el.classList.add("show");
   clearTimeout(window.toastTimer);
-  window.toastTimer = setTimeout(() => el.classList.remove("show"), 3000);
+  window.toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
 }
 
 function esc(s) {
-  return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+const t = key => (I18N[state.lang] || I18N.en)[key] || I18N.en[key] || key;
+const icon = name => `<svg class="ic"><use href="#i-${name}"/></svg>`;
+const STATUS_KEYS = { Pending: "stPending", Approved: "stApproved", Rejected: "stRejected" };
+const TYPE_KEYS = { Vacation: "vacation", "Advance payment": "advancePayment" };
+const statusBadge = s => `<span class="status ${esc(s).toLowerCase()}">${esc(t(STATUS_KEYS[s] || s))}</span>`;
+const typeLabel = type => esc(t(TYPE_KEYS[type] || type));
+const locale = () => ({ ru: "ru-RU", kz: "kk-KZ" }[state.lang] || "en-GB");
+const initials = name => name.split(/\s+/).slice(0, 2).map(p => p[0] || "").join("").toUpperCase();
+
+function greetingText() {
+  const hour = new Date().getHours();
+  const key = hour < 12 ? "greetMorning" : hour < 18 ? "greetAfternoon" : "greetEvening";
+  return `${t(key)}, ${state.user.full_name.split(" ")[0]}`;
 }
 
 // --- INITIALIZATION & AUTH ---
 async function initApp() {
-  // Bind listeners
+  try { state.lang = localStorage.getItem("janamen.lang") || "en"; } catch { /* storage unavailable */ }
+  document.getElementById("langSwitch").value = state.lang;
+  applyLanguage(state.lang, false);
+
   setupNavigation();
   setupRoleSwitch();
   setupLanguageSwitch();
   setupModals();
   setupAIChat();
+  setupKnowledgeForm();
+  setupHome();
 
   document.getElementById("logoutBtn").onclick = () => logout();
   document.getElementById("loginForm").addEventListener("submit", async event => {
@@ -67,10 +86,10 @@ async function initApp() {
     button.disabled = true;
     document.getElementById("loginError").textContent = "";
     try {
-      const result = await api("/auth/login", {method:"POST", body:JSON.stringify({
-        email:document.getElementById("loginEmail").value,
-        password:document.getElementById("loginPassword").value,
-      })});
+      const result = await api("/auth/login", { method: "POST", body: JSON.stringify({
+        email: document.getElementById("loginEmail").value,
+        password: document.getElementById("loginPassword").value,
+      }) });
       state.token = result.access_token;
       state.user = result.user;
       const me = await api("/me");
@@ -81,20 +100,29 @@ async function initApp() {
       updateUserUI();
       await go("home");
     } catch (error) {
-      showLogin();
+      showLogin(document.getElementById("loginEmail").value);
       document.getElementById("loginError").textContent = error.message;
     } finally {
       button.disabled = false;
     }
   });
-  setupKnowledgeForm();
+
+  document.querySelectorAll("[data-persona]").forEach(card => {
+    card.addEventListener("click", () => {
+      document.getElementById("loginEmail").value = demoAccounts[card.dataset.persona] || "";
+      document.getElementById("loginPassword").focus();
+    });
+  });
+
   try {
     const config = await api("/config");
     demoAccounts = config.demo_accounts;
-    document.getElementById("roleSwitch").hidden = !config.demo_mode;
-    document.getElementById("loginHint").textContent = config.demo_mode
-      ? "Synthetic demo. Use a test account and the demo password configured by the operator."
-      : "Use your account email and password.";
+    document.getElementById("personaWrap").hidden = !config.demo_mode;
+    document.getElementById("demoPersonas").hidden = !config.demo_mode;
+    document.querySelectorAll("[data-persona]").forEach(card => {
+      card.querySelector("[data-email]").textContent = demoAccounts[card.dataset.persona] || "";
+    });
+    document.getElementById("loginHint").textContent = t(config.demo_mode ? "loginHintDemo" : "loginHint");
     showLogin(demoAccounts.employee || "");
   } catch (error) {
     document.getElementById("loginError").textContent = error.message;
@@ -112,27 +140,25 @@ function showLogin(email = "") {
   state.pendingReview = null;
   document.getElementById("app").hidden = true;
   document.querySelectorAll(".modal-backdrop").forEach(el => el.classList.remove("open"));
-  ["homeRequests", "academyGrid", "notificationsList", "teamTable", "requestTable", "knowledgeList",
-   "knowledgeDocuments", "approvedKnowledgeList", "adminAuditTable", "chatMessages", "playerLessonsList", "playerQuizOptions", "detailModalTimeline"]
+  ["homeRequests", "homeCourseCard", "homeActivity", "academyGrid", "notificationsList", "teamTable", "requestTable",
+   "knowledgeList", "knowledgeDocuments", "approvedKnowledgeList", "adminAuditTable", "adminIntegrationsList",
+   "chatMessages", "playerLessonsList", "playerQuizOptions", "detailModalTimeline", "profCourses"]
     .forEach(id => document.getElementById(id)?.replaceChildren());
-  document.querySelectorAll('[id^="prof"], #userName, #userRole, #greeting, #citationSnippet, #playerLessonContent')
+  document.querySelectorAll('[id^="prof"], #userName, #userRole, #avatar, #greeting, #citationSnippet, #playerLessonContent')
     .forEach(el => { if (el.childElementCount === 0) el.textContent = "—"; });
-  ["detailModalTitle", "detailModalCode", "detailModalRequester", "detailModalDept", "detailModalDates",
-   "detailModalSync", "playerCourseTitle", "playerLessonTitle", "playerQuizQuestion", "playerQuizFeedback",
-   "citationDocTitle", "citationSecTitle", "homeCourseCard", "homeActivity"]
-    .forEach(id => document.getElementById(id)?.replaceChildren());
   document.querySelectorAll("#app form").forEach(form => form.reset());
   document.getElementById("loginEmail").value = email;
   document.getElementById("loginPassword").value = "";
   document.getElementById("loginGate").hidden = false;
+  document.title = "JanaМен · HR workspace";
 }
 
 async function logout(email = "") {
   try {
-    if (state.token) await api("/auth/logout", {method:"POST"});
+    if (state.token) await api("/auth/logout", { method: "POST" });
     showLogin(email);
   } catch (error) {
-    // Local data is cleared even if the network is unavailable; server token expires.
+    // Local data is cleared even if the network is unavailable; the server token expires.
     showLogin(email);
     document.getElementById("loginError").textContent = `Local sign-out complete. ${error.message}`;
   }
@@ -143,286 +169,240 @@ async function switchRole(roleKey) {
   if (email) await logout(email);
 }
 
+const ROLE_ACCESS = { manager: ["manager", "hr_admin"], hr_admin: ["hr_admin"] };
+
 function updateUserUI() {
   if (!state.user) return;
-
   const role = state.user.role;
-  const parts = state.user.full_name.split(" ");
-  const initials = parts.map(p => p[0]).join("").toUpperCase();
-
   document.getElementById("userName").textContent = state.user.full_name;
   document.getElementById("userRole").textContent = state.profile ? state.profile.position : role;
-  document.getElementById("avatar").textContent = initials;
+  document.getElementById("avatar").textContent = initials(state.user.full_name);
   document.getElementById("roleSwitch").value = role;
-
-  // Manage navigation visibility by role
-  const teamNav = document.getElementById("teamNav");
-  const adminNav = document.getElementById("adminNav");
-
-  teamNav.style.display = (role === "manager" || role === "hr_admin") ? "flex" : "none";
-  adminNav.style.display = (role === "hr_admin") ? "flex" : "none";
-
-  // If user was on a page they no longer have access to, redirect
-  if (role === "employee" && (state.page === "team" || state.page === "admin")) {
-    go("home");
-  } else if (role === "manager" && state.page === "admin") {
-    go("team");
-  }
+  // Cosmetic only: the backend returns 403 for these endpoints regardless.
+  document.querySelectorAll("[data-requires]").forEach(el => {
+    el.hidden = !ROLE_ACCESS[el.dataset.requires].includes(role);
+  });
 }
 
 // --- NAVIGATION ---
 function setupNavigation() {
-  document.querySelectorAll("[data-page]").forEach(button => {
-    button.addEventListener("click", () => go(button.dataset.page));
-  });
-
-  document.querySelectorAll("[data-goto]").forEach(el => {
-    el.addEventListener("click", () => go(el.dataset.goto));
-  });
-
+  document.querySelectorAll("[data-page]").forEach(button => button.addEventListener("click", () => go(button.dataset.page)));
+  document.querySelectorAll("[data-goto]").forEach(el => el.addEventListener("click", () => go(el.dataset.goto)));
   const menuBtn = document.getElementById("menuBtn");
-  if (menuBtn) {
-    menuBtn.addEventListener("click", () => {
-      document.getElementById("sidebar").classList.toggle("open");
-    });
-  }
+  menuBtn.addEventListener("click", () => {
+    const open = document.getElementById("navLinks").classList.toggle("open");
+    menuBtn.setAttribute("aria-expanded", String(open));
+  });
 }
 
 const pageTitles = {
-  home: "Overview",
-  profile: "My profile",
-  requests: "My requests",
-  academy: "Jana Academy",
-  assistant: "AI Jana",
-  notifications: "Notifications",
-  team: "Team & approvals",
-  admin: "HR administration",
+  home: "overview", profile: "myProfile", requests: "myRequests", academy: "janaAcademy",
+  assistant: "aiJana", notifications: "notifications", team: "teamApprovals", admin: "hrAdmin",
 };
 
 async function go(page) {
   if (!state.token) { showLogin(); return; }
-  // Check permission
-  if (page === "team" && state.user?.role === "employee") {
-    toast("Access denied: Team workspace requires a manager or HR admin role.");
+  const required = { team: "manager", admin: "hr_admin" }[page];
+  if (required && !ROLE_ACCESS[required].includes(state.user?.role)) {
+    toast(t("accessDenied"));
     return;
   }
-  if (page === "admin" && state.user?.role !== "hr_admin") {
-    toast("Access denied: HR Administration is reserved for HR administrators.");
-    return;
-  }
-
   state.page = page;
-
-  // Toggle page visibility
-  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  const targetPage = document.getElementById(`page-${page}`);
-  if (targetPage) targetPage.classList.add("active");
-
-  // Toggle nav buttons
-  document.querySelectorAll("[data-page]").forEach(b => {
-    b.classList.toggle("active", b.dataset.page === page);
-  });
-
-  // Update breadcrumb
-  const crumb = document.getElementById("crumb");
-  if (crumb) crumb.textContent = pageTitles[page] || page;
-
-  // Close mobile sidebar if open
-  document.getElementById("sidebar")?.classList.remove("open");
-
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === `page-${page}`));
+  document.querySelectorAll("[data-page]").forEach(b => b.classList.toggle("active", b.dataset.page === page));
+  document.getElementById("navLinks").classList.remove("open");
+  document.getElementById("menuBtn").setAttribute("aria-expanded", "false");
+  document.title = `${t(pageTitles[page])} · JanaМен`;
   window.scrollTo({ top: 0, behavior: "smooth" });
   await refreshCurrentPage();
 }
 
 async function refreshCurrentPage() {
-  switch (state.page) {
-    case "home":
-      await loadDashboard();
-      break;
-    case "profile":
-      await loadProfilePage();
-      break;
-    case "requests":
-      await loadRequestsPage();
-      break;
-    case "academy":
-      await loadAcademyPage();
-      break;
-    case "assistant":
-      await loadKnowledgeSummary();
-      break;
-    case "notifications":
-      await loadNotificationsPage();
-      break;
-    case "team":
-      await loadTeamPage();
-      break;
-    case "admin":
-      await loadAdminPage();
-      break;
-  }
+  const loaders = {
+    home: loadDashboard, profile: loadProfilePage, requests: loadRequestsPage, academy: loadAcademyPage,
+    assistant: loadKnowledgeSummary, notifications: loadNotificationsPage, team: loadTeamPage, admin: loadAdminPage,
+  };
+  await loaders[state.page]?.();
   await updateNotificationBadge();
 }
 
-// --- PAGE LOADERS ---
+// --- HOME ---
+function setupHome() {
+  document.getElementById("heroAskForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const input = document.getElementById("heroAskInput");
+    const question = input.value.trim();
+    if (!question) return;
+    input.value = "";
+    await go("assistant");
+    await sendAIQuery(question);
+  });
+  document.querySelectorAll("[data-role-tab]").forEach(tab => tab.addEventListener("click", () => {
+    document.querySelectorAll("[data-role-tab]").forEach(b => b.classList.toggle("active", b === tab));
+    document.querySelectorAll("[data-role-panel]").forEach(p => { p.hidden = p.dataset.rolePanel !== tab.dataset.roleTab; });
+  }));
+}
 
-// 1. DASHBOARD
+function requestRows(requests) {
+  return requests.map(r => `
+    <div class="request-row">
+      <div class="req-icon">${icon(r.type === "Vacation" ? "calendar" : "wallet")}</div>
+      <div>
+        <div class="req-title">${typeLabel(r.type)}</div>
+        <div class="req-sub">${esc(r.request_code)} · ${esc(r.period_or_details)}</div>
+      </div>
+      ${statusBadge(r.status)}
+    </div>`).join("");
+}
+
 async function loadDashboard() {
   try {
-    const data = await api("/me/dashboard");
-
-    document.getElementById("greeting").textContent = `${data.greeting} ✳`;
+    const [data, courses, notifications, requests] = await Promise.all([
+      api("/me/dashboard"), api("/courses"), api("/notifications?limit=3"), api("/requests"),
+    ]);
+    document.getElementById("greeting").textContent = greetingText();
     document.getElementById("leaveDays").textContent = data.leave_balance_days.toFixed(1);
     document.getElementById("statRequests").textContent = data.open_requests_count;
-    document.getElementById("statLearning").textContent = `${data.learning_progress_percent}%`;
+    document.getElementById("statLearning").textContent = `${Math.round(data.learning_progress_percent)}%`;
     document.getElementById("statCourses").textContent = data.assigned_courses_count;
     document.getElementById("statNotifications").textContent = data.unread_notifications_count;
 
-    const courses = (await api("/courses")).filter(c => c.assigned);
-    const nextCourse = courses.find(c => c.status !== "COMPLETED") || courses[0];
-    const homeCourse = document.getElementById("homeCourseCard");
-    homeCourse.innerHTML = nextCourse ? `<div style="width:100%"><h4>${esc(nextCourse.title)}</h4>
-      <p>${nextCourse.status === "COMPLETED" ? "Completed" : `${nextCourse.total_lessons} lessons`} · ${nextCourse.progress_percent}% complete</p>
-      <div class="progress"><span style="width:${nextCourse.progress_percent}%"></span></div>
-      <button class="text-link" onclick="openCoursePlayer(${nextCourse.id})">${nextCourse.status === "COMPLETED" ? "Review course" : "Continue learning"} →</button></div>`
-      : `<p>No courses assigned. Explore Jana Academy to enroll.</p>`;
-    const notifications = await api("/notifications?limit=1");
-    document.getElementById("homeActivity").textContent = notifications[0]?.title || "No updates yet.";
+    document.getElementById("homeRequests").innerHTML = requests.length
+      ? requestRows(requests.slice(0, 4))
+      : `<div class="empty">${esc(t("noRequests"))}</div>`;
 
-    // Load recent requests for the quick list
-    const requests = await api("/requests");
-    const listEl = document.getElementById("homeRequests");
-    if (requests && requests.length > 0) {
-      listEl.innerHTML = requests.slice(0, 3).map(r => `
-        <div class="request-row">
-          <div class="req-icon">${r.type === "Vacation" ? "◷" : "＄"}</div>
-          <div>
-            <div class="req-title">${esc(r.type)}</div>
-            <div class="req-sub">${esc(r.request_code)} · ${esc(r.period_or_details)}</div>
-          </div>
-          <span class="status ${r.status.toLowerCase()}">${r.status}</span>
-        </div>
-      `).join("");
-    } else {
-      listEl.innerHTML = `<div style="padding:15px 0;color:var(--muted)">No requests yet.</div>`;
-    }
+    const assigned = courses.filter(c => c.assigned);
+    const next = assigned.find(c => c.status !== "COMPLETED") || assigned[0];
+    const banner = document.getElementById("homeCourseCard");
+    banner.innerHTML = next ? `
+      <div>
+        <h2 class="h2">${esc(next.title)}</h2>
+        <p>Jana Academy · ${next.total_lessons} ${esc(t("lessonsUnit"))} · ${Math.round(next.progress_percent)}% ${esc(t("complete"))}</p>
+        <div class="progress"><span style="width:${next.progress_percent}%"></span></div>
+      </div>
+      <button class="btn btn-white" data-course="${next.id}">${esc(t(next.status === "COMPLETED" ? "reviewCourse" : "continueLearning"))} ${icon("arrow")}</button>`
+      : `<div><h2 class="h2">Jana Academy</h2><p>${esc(t("noCourses"))}</p></div>
+         <button class="btn btn-white" data-open-academy>${esc(t("openCatalog"))} ${icon("arrow")}</button>`;
+    banner.querySelector("[data-course]")?.addEventListener("click", e => openCoursePlayer(Number(e.currentTarget.dataset.course)));
+    banner.querySelector("[data-open-academy]")?.addEventListener("click", () => go("academy"));
+
+    document.getElementById("homeActivity").innerHTML = notifications.length
+      ? notifications.map(n => `
+        <article class="update-card">
+          <span class="notice-icon">${icon(n.type === "ACADEMY" ? "book" : n.type === "REQUEST" ? "file" : "bell")}</span>
+          <b>${esc(n.title)}</b>
+          <p>${esc(n.message)}</p>
+          <small>${esc(n.time_ago)}</small>
+        </article>`).join("")
+      : `<div class="empty">${esc(t("noNotifications"))}</div>`;
   } catch (err) {
-    console.error("Error loading dashboard", err);
+    toast(`${t("loadError")}: ${err.message}`);
   }
 }
 
-// 2. PROFILE
+// --- PROFILE ---
 async function loadProfilePage() {
   try {
     const p = await api("/me/profile");
+    document.getElementById("profAvatar").textContent = initials(p.full_name);
     document.getElementById("profName").textContent = p.full_name;
-    document.getElementById("profPosition").textContent = p.position;
+    document.getElementById("profPosition").textContent = `${p.position} · ${p.email}`;
     document.getElementById("profEmpCode").textContent = p.employee_code;
     document.getElementById("profDept").textContent = p.department;
     document.getElementById("profCompany").textContent = p.company;
-    document.getElementById("profManager").textContent = p.manager_name || "None (Department Head)";
-    document.getElementById("profHireDate").textContent = new Date(p.hire_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    document.getElementById("profManager").textContent = p.manager_name || "—";
+    document.getElementById("profHireDate").textContent = new Date(p.hire_date).toLocaleDateString(locale(), { day: "2-digit", month: "short", year: "numeric" });
     document.getElementById("profLocation").textContent = p.location;
-    document.getElementById("profLeaveBalance").textContent = `${p.leave_balance_days.toFixed(1)} days`;
-
-    // Fetch learning summary
-    document.getElementById("profLearningPct").textContent = `${p.learning_progress_percent}%`;
+    document.getElementById("profLeaveBalance").textContent = `${p.leave_balance_days.toFixed(1)} ${t("daysUnit")}`;
+    document.getElementById("profLearningPct").textContent = `${Math.round(p.learning_progress_percent)}%`;
+    document.getElementById("profCourses").innerHTML = p.courses.length ? p.courses.map(c => `
+      <div class="course-line">
+        <span class="notice-icon">${icon(c.status === "COMPLETED" ? "check" : "book")}</span>
+        <div>
+          <b>${esc(c.title)}</b>
+          <div class="req-sub">${esc(t(c.is_mandatory ? "mandatory" : "recommended"))}${c.due_date ? ` · ${esc(t("due"))} ${esc(c.due_date)}` : ""}</div>
+          <div class="progress"><span style="width:${c.progress_percent}%"></span></div>
+        </div>
+      </div>`).join("") : `<div class="empty">${esc(t("noCourses"))}</div>`;
   } catch (err) {
-    toast(`Error loading profile: ${err.message}`);
+    toast(`${t("loadError")}: ${err.message}`);
   }
 }
 
-// 3. REQUESTS
+// --- REQUESTS ---
 async function loadRequestsPage() {
-  const sf = document.getElementById("statusFilter")?.value || "";
-  const tf = document.getElementById("typeFilter")?.value || "";
-
-  let path = "/requests?";
-  if (sf && sf !== "all") path += `status=${encodeURIComponent(sf)}&`;
-  if (tf && tf !== "all") path += `type=${encodeURIComponent(tf)}&`;
-
+  const sf = document.getElementById("statusFilter").value;
+  const tf = document.getElementById("typeFilter").value;
+  const params = new URLSearchParams();
+  if (sf !== "all") params.set("status", sf);
+  if (tf !== "all") params.set("type", tf);
   try {
-    const requests = await api(path);
+    const requests = await api(`/requests?${params}`);
     const tbody = document.getElementById("requestTable");
-    if (!requests || requests.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:25px;color:var(--muted)">No requests found.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = requests.map(r => `
+    tbody.innerHTML = requests.length ? requests.map(r => `
       <tr>
-        <td>
-          <b>${esc(r.type)}</b>
-          <div class="req-sub">${esc(r.request_code)}</div>
-        </td>
+        <td><b>${typeLabel(r.type)}</b><div class="req-sub">${esc(r.request_code)}</div></td>
         <td>${esc(r.submitted_date_formatted)}</td>
-        <td>
-          ${esc(r.period_or_details)}
-          <div class="req-sub">${esc(r.reason || "No comment")}</div>
-        </td>
-        <td><span class="status ${r.status.toLowerCase()}">${r.status}</span></td>
-        <td>
-          <button class="text-link" onclick="openRequestDetailModal(${r.id})">Details ↗</button>
-        </td>
-      </tr>
-    `).join("");
+        <td>${esc(r.period_or_details)}<div class="req-sub">${esc(r.reason || "—")}</div></td>
+        <td>${statusBadge(r.status)}</td>
+        <td><button class="text-link" onclick="openRequestDetailModal(${r.id})">${esc(t("details"))} →</button></td>
+      </tr>`).join("")
+      : `<tr><td colspan="5" class="empty">${esc(t("noRequests"))}</td></tr>`;
   } catch (err) {
-    toast(`Error loading requests: ${err.message}`);
+    toast(`${t("loadError")}: ${err.message}`);
   }
 }
 
-// 4. JANA ACADEMY
+// --- JANA ACADEMY ---
 async function loadAcademyPage() {
   try {
     const courses = await api("/courses");
     state.courses = courses;
-    const grid = document.getElementById("academyGrid");
-
-    grid.innerHTML = courses.map(c => `
-      <div class="card course-tile">
-        <div class="tile-art" style="background:${c.cover_gradient}">▤</div>
-        <span class="eyebrow">${c.is_mandatory ? "MANDATORY" : "RECOMMENDED"} · ${c.duration_minutes} MIN</span>
-        <h3>${esc(c.title)}</h3>
-        <p>${esc(c.description)}</p>
-        <div class="progress"><span style="width:${c.progress_percent}%"></span></div>
-        <div class="progress-label">
-          <span>${c.progress_percent.toFixed(0)}% complete</span>
-          <span>${c.status === "COMPLETED" ? `Passed ${c.score}% ✓` : (c.assigned ? (c.due_date ? `Due ${c.due_date}` : "Assigned") : "Available to enroll")}</span>
+    document.getElementById("academyGrid").innerHTML = courses.map(c => {
+      const done = c.status === "COMPLETED";
+      const action = done ? "reviewCourse" : c.progress_percent > 0 ? "continueLearning" : c.assigned ? "startCourse" : "enroll";
+      return `
+      <article class="card course-tile ${c.is_mandatory ? "mandatory" : ""}">
+        <div class="course-art">${icon(done ? "award" : "book")}</div>
+        <div class="course-meta">
+          <span class="chip">${esc(t(c.is_mandatory ? "mandatory" : "recommended"))}</span>
+          <span class="chip">${c.duration_minutes} ${esc(t("minUnit"))}</span>
+          ${done ? `<span class="status approved">${esc(t("passed"))} ${Math.round(c.score ?? 100)}%</span>` : ""}
         </div>
-        <button class="${c.progress_percent === 100 ? 'small-btn' : 'primary'}" style="margin-top:16px" onclick="openCoursePlayer(${c.id})">
-          ${c.progress_percent === 100 ? "Review course →" : (c.progress_percent > 0 ? "Continue course →" : "Start course →")}
-        </button>
-      </div>
-    `).join("");
+        <h3 class="h4">${esc(c.title)}</h3>
+        <p>${esc(c.description)}</p>
+        <div>
+          <div class="progress"><span style="width:${c.progress_percent}%"></span></div>
+          <div class="progress-label">
+            <span>${Math.round(c.progress_percent)}% ${esc(t("complete"))}</span>
+            <span>${c.assigned ? (c.due_date ? `${esc(t("due"))} ${esc(c.due_date)}` : esc(t("assigned"))) : esc(t("availableToEnroll"))}</span>
+          </div>
+        </div>
+        <button class="btn ${done ? "btn-light" : "btn-primary"}" onclick="openCoursePlayer(${c.id})">${esc(t(action))} ${icon("arrow")}</button>
+      </article>`;
+    }).join("");
   } catch (err) {
-    toast(`Error loading academy courses: ${err.message}`);
+    toast(`${t("loadError")}: ${err.message}`);
   }
 }
 
-// 5. NOTIFICATIONS
+// --- NOTIFICATIONS ---
 async function loadNotificationsPage() {
   try {
     const notifs = await api("/notifications");
     state.notifications = notifs;
-    const listEl = document.getElementById("notificationsList");
-
-    if (!notifs || notifs.length === 0) {
-      listEl.innerHTML = `<div style="padding:20px;color:var(--muted);text-align:center">No notifications in your inbox.</div>`;
-      return;
-    }
-
-    listEl.innerHTML = notifs.map(n => `
-      <div class="notice" style="cursor:pointer" onclick="markNotificationRead(${n.id})">
-        <div class="notice-icon">${n.type === "REQUEST" ? "◷" : (n.type === "ACADEMY" ? "▧" : "✓")}</div>
-        <div style="flex:1">
+    document.getElementById("notificationsList").innerHTML = notifs.length ? notifs.map(n => `
+      <button class="notice" onclick="markNotificationRead(${n.id})">
+        <span class="notice-icon">${icon(n.type === "ACADEMY" ? "book" : n.type === "REQUEST" ? "file" : "bell")}</span>
+        <span style="flex:1">
           <b>${esc(n.title)}</b>
-          <p>${esc(n.message)} · <span style="opacity:0.8">${esc(n.time_ago)}</span></p>
-        </div>
-        ${!n.is_read ? `<span class="dot" style="position:static;margin:6px 0 0 8px"></span>` : ""}
-      </div>
-    `).join("");
+          <p>${esc(n.message)} · ${esc(n.time_ago)}</p>
+        </span>
+        ${n.is_read ? "" : `<span class="unread-dot" aria-label="unread"></span>`}
+      </button>`).join("")
+      : `<div class="empty">${esc(t("noNotifications"))}</div>`;
   } catch (err) {
-    toast(`Error loading notifications: ${err.message}`);
+    toast(`${t("loadError")}: ${err.message}`);
   }
 }
 
@@ -432,159 +412,128 @@ async function markNotificationRead(id) {
     await loadNotificationsPage();
     await updateNotificationBadge();
   } catch (err) {
-    console.error(err);
+    toast(err.message);
   }
 }
 
 async function markAllNotificationsRead() {
   try {
     await api("/notifications/read-all", { method: "POST" });
-    toast("All notifications marked as read.");
+    toast(t("allRead"));
     await loadNotificationsPage();
     await updateNotificationBadge();
   } catch (err) {
-    toast(`Error: ${err.message}`);
+    toast(err.message);
   }
 }
 
 async function updateNotificationBadge() {
   try {
-    const counts = await api("/notifications/unread-count");
-    const unread = counts.unread;
-    const dot = document.getElementById("notifDot");
-    if (dot) dot.style.display = unread > 0 ? "block" : "none";
-    const navBadge = document.getElementById("navNotifCount");
-    if (navBadge) {
-      navBadge.textContent = unread;
-      navBadge.style.display = unread > 0 ? "inline-block" : "none";
-    }
-  } catch (e) {
-    // silently ignore badge refresh error
+    const { unread } = await api("/notifications/unread-count");
+    const badge = document.getElementById("navNotifCount");
+    badge.textContent = unread;
+    badge.hidden = unread === 0;
+  } catch {
+    // badge refresh is best-effort
   }
 }
 
-// 6. MANAGER PORTAL
+// --- MANAGER ---
 async function loadTeamPage() {
   try {
-    const requests = await api("/manager/requests?status=Pending");
-    const teamTable = document.getElementById("teamTable");
-    document.getElementById("teamScope").textContent = state.user.role === "hr_admin" ? "Company" : "Direct reports";
-    const members = await api("/manager/team");
+    const [requests, members] = await Promise.all([api("/manager/requests?status=Pending"), api("/manager/team")]);
+    document.getElementById("teamScope").textContent = t(state.user.role === "hr_admin" ? "scopeCompany" : "scopeDirect");
     document.getElementById("teamCount").textContent = members.length;
     document.getElementById("teamPendingStat").textContent = requests.length;
-
-    if (!requests || requests.length === 0) {
-      teamTable.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:25px;color:var(--muted)">No pending requests from your team.</td></tr>`;
-      document.getElementById("teamPendingBadge").textContent = "0 pending";
-      return;
-    }
-
-    document.getElementById("teamPendingBadge").textContent = `${requests.length} pending review`;
-
-    teamTable.innerHTML = requests.map(r => `
+    document.getElementById("teamPendingBadge").textContent = `${requests.length} ${t("pendingUnit")}`;
+    document.getElementById("teamTable").innerHTML = requests.length ? requests.map(r => `
       <tr>
-        <td>
-          <b>${esc(r.user_name)}</b>
-          <div class="req-sub">${esc(r.department)}</div>
+        <td><b>${esc(r.user_name)}</b><div class="req-sub">${esc(r.department)}</div></td>
+        <td>${typeLabel(r.type)}<div class="req-sub">${esc(r.request_code)}</div></td>
+        <td>${esc(r.period_or_details)}<div class="req-sub">${esc(r.reason || "—")}</div></td>
+        <td>${statusBadge(r.status)}</td>
+        <td style="white-space:nowrap">
+          <button class="small-btn primary" onclick="reviewRequestPrompt(${r.id}, 'approve')">${esc(t("approve"))}</button>
+          <button class="small-btn danger" onclick="reviewRequestPrompt(${r.id}, 'reject')">${esc(t("reject"))}</button>
+          <button class="text-link" onclick="openRequestDetailModal(${r.id})">${esc(t("details"))}</button>
         </td>
-        <td>${esc(r.type)}</td>
-        <td>
-          ${esc(r.period_or_details)}
-          <div class="req-sub">${esc(r.reason || "No comment")}</div>
-        </td>
-        <td><span class="status pending">Pending</span></td>
-        <td>
-          <button class="small-btn primary" onclick="reviewRequestPrompt(${r.id}, 'approve')">Approve</button>
-          <button class="small-btn danger" style="margin-left:4px" onclick="reviewRequestPrompt(${r.id}, 'reject')">Decline</button>
-        </td>
-      </tr>
-    `).join("");
-
-    // Load team members count
-    const teamMembers = await api("/manager/team");
-    document.getElementById("teamCount").textContent = teamMembers.length;
-    document.getElementById("teamPendingStat").textContent = requests.length;
+      </tr>`).join("")
+      : `<tr><td colspan="5" class="empty">${esc(t("noPending"))}</td></tr>`;
   } catch (err) {
-    toast(`Error loading manager portal: ${err.message}`);
+    toast(`${t("loadError")}: ${err.message}`);
   }
 }
 
 function reviewRequestPrompt(requestId, action) {
-  state.pendingReview = {requestId, action};
-  document.getElementById("reviewTitle").textContent = action === "approve" ? "Approve request" : "Decline request";
+  state.pendingReview = { requestId, action };
+  const approve = action === "approve";
+  document.getElementById("reviewTitle").textContent = t(approve ? "approveRequest" : "declineRequest");
   document.getElementById("reviewComment").value = "";
-  document.getElementById("submitReview").textContent = action === "approve" ? "Confirm approval" : "Confirm rejection";
+  document.getElementById("submitReview").textContent = t(approve ? "confirmApproval" : "confirmRejection");
   document.getElementById("reviewModal").classList.add("open");
 }
 
-// 7. HR ADMIN PORTAL
+// --- HR ADMIN ---
 async function loadAdminPage() {
   try {
-    const summary = await api("/admin/summary");
+    const [summary, chunks, documents, adapters, logs] = await Promise.all([
+      api("/admin/summary"), api("/admin/knowledge"), api("/admin/knowledge/documents"),
+      api("/admin/integrations"), api("/admin/audit?limit=15"),
+    ]);
     document.getElementById("adminEmployeeCount").textContent = summary.active_accounts;
-    // Load Knowledge Sources
-    const chunks = await api("/admin/knowledge");
     document.getElementById("adminKnowledgeCount").textContent = chunks.length;
-    const kList = document.getElementById("knowledgeList");
-    kList.innerHTML = chunks.map(c => `
-      <div class="notice">
-        <div class="notice-icon">▤</div>
-        <div style="flex:1">
-          <b>${esc(c.document_title)} · ${esc(c.section_title)}</b><p>${c.is_approved ? "Approved" : "Draft"}${c.is_synthetic ? " · Synthetic example" : ""}</p>
-          <p>${esc(c.content.substring(0, 140))}...</p>
-        </div>
-      </div>
-    `).join("");
 
-    const documents = await api("/admin/knowledge/documents");
+    document.getElementById("knowledgeList").innerHTML = chunks.map(c => `
+      <div class="notice">
+        <span class="notice-icon">${icon("file")}</span>
+        <div style="flex:1">
+          <b>${esc(c.document_title)} · ${esc(c.section_title)}</b>
+          <p>${c.is_approved ? "Approved" : "Draft"}${c.is_synthetic ? " · Synthetic example" : ""}</p>
+          <p>${esc(c.content.substring(0, 140))}…</p>
+        </div>
+      </div>`).join("");
+
     const documentList = document.getElementById("knowledgeDocuments");
-    documentList.innerHTML = documents.map(doc => `<div class="notice"><div style="flex:1">
-      <b>${esc(doc.title)} · v${esc(doc.version)}</b>
-      <p>${doc.is_synthetic ? "Synthetic example · " : ""}${doc.is_approved ? "Approved" : "Draft"} · ${doc.is_active ? "Active" : "Inactive"}</p>
-      ${!doc.is_approved && doc.is_active ? `<button class="small-btn" data-approve-document="${doc.id}">Approve reviewed source</button>` : ""}
-      ${doc.is_active ? `<button class="small-btn" data-deactivate-document="${doc.id}">Deactivate</button>` : ""}
-    </div></div>`).join("");
+    documentList.innerHTML = documents.map(doc => `
+      <div class="notice">
+        <span class="notice-icon">${icon("book")}</span>
+        <div style="flex:1">
+          <b>${esc(doc.title)} · v${esc(doc.version)}</b>
+          <p>${doc.is_synthetic ? "Synthetic example · " : ""}${doc.is_approved ? "Approved" : "Draft"} · ${doc.is_active ? "Active" : "Inactive"}</p>
+          ${!doc.is_approved && doc.is_active ? `<button class="small-btn primary" data-approve-document="${doc.id}">Approve reviewed source</button>` : ""}
+          ${doc.is_active ? `<button class="small-btn" data-deactivate-document="${doc.id}">Deactivate</button>` : ""}
+        </div>
+      </div>`).join("");
     documentList.querySelectorAll("[data-approve-document], [data-deactivate-document]").forEach(button => {
       button.addEventListener("click", async () => {
         try {
           const id = button.dataset.approveDocument || button.dataset.deactivateDocument;
-          await api(`/admin/knowledge/documents/${id}`, {method:"PATCH", body:JSON.stringify(
-            button.dataset.approveDocument ? {is_approved:true} : {is_active:false})});
+          await api(`/admin/knowledge/documents/${id}`, { method: "PATCH", body: JSON.stringify(
+            button.dataset.approveDocument ? { is_approved: true } : { is_active: false }) });
           await loadAdminPage();
         } catch (error) { toast(error.message); }
       });
     });
 
-    // Load Integrations Telemetry
-    const adapters = await api("/admin/integrations");
-    const integList = document.getElementById("adminIntegrationsList");
-    integList.innerHTML = adapters.map(a => `
+    document.getElementById("adminIntegrationsList").innerHTML = adapters.map(a => `
       <div class="notice">
-        <div class="notice-icon">↔</div>
+        <span class="notice-icon">${icon("link")}</span>
         <div style="flex:1">
-          <b>${esc(a.adapter_name)}</b>
-          <span class="status approved" style="margin-left:8px;font-size:9.5px">${a.status}</span>
+          <b>${esc(a.adapter_name)}</b> <span class="status pending">${esc(a.status)}</span>
           <p>${esc(a.notes)}</p>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">
-            <b>Endpoint:</b> <code>${esc(a.endpoint_template)}</code> · <b>Mode:</b> ${a.mode}
-          </div>
+          <p class="small"><b>Endpoint:</b> <code>${esc(a.endpoint_template)}</code> · <b>Mode:</b> ${esc(a.mode)}</p>
         </div>
-      </div>
-    `).join("");
+      </div>`).join("");
 
-    // Load Audit Log
-    const logs = await api("/admin/audit?limit=10");
-    const auditTable = document.getElementById("adminAuditTable");
-    auditTable.innerHTML = logs.map(l => `
+    document.getElementById("adminAuditTable").innerHTML = logs.map(l => `
       <tr>
         <td><code>${esc(l.action)}</code></td>
         <td>${esc(l.actor_name)}</td>
         <td>${esc(l.target_type || "—")}: ${esc(l.target_id || "—")}</td>
-        <td><small>${esc(new Date(l.timestamp).toLocaleTimeString())}</small></td>
-      </tr>
-    `).join("");
+        <td>${esc(new Date(l.timestamp).toLocaleTimeString(locale()))}</td>
+      </tr>`).join("");
   } catch (err) {
-    toast(`Error loading admin portal: ${err.message}`);
+    toast(`${t("loadError")}: ${err.message}`);
   }
 }
 
@@ -595,12 +544,12 @@ function setupKnowledgeForm() {
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
     try {
-      const doc = await api("/admin/knowledge/documents", {method:"POST", body:JSON.stringify({
-        title:form.elements.title.value, is_synthetic:form.elements.synthetic.checked,
-      })});
-      await api("/admin/knowledge", {method:"POST", body:JSON.stringify({document_id:doc.id,
-        section_title:form.elements.section.value, content:form.elements.content.value,
-        access_level:form.elements.access.value})});
+      const doc = await api("/admin/knowledge/documents", { method: "POST", body: JSON.stringify({
+        title: form.elements.title.value, is_synthetic: form.elements.synthetic.checked,
+      }) });
+      await api("/admin/knowledge", { method: "POST", body: JSON.stringify({ document_id: doc.id,
+        section_title: form.elements.section.value, content: form.elements.content.value,
+        access_level: form.elements.access.value }) });
       form.reset();
       toast("Draft saved. Review its text, then approve it for AI retrieval.");
       await loadAdminPage();
@@ -611,152 +560,129 @@ function setupKnowledgeForm() {
 
 // --- MODALS & WORKFLOWS ---
 function setupModals() {
-  document.getElementById("cancelReview").onclick = () => document.getElementById("reviewModal").classList.remove("open");
+  const closeAll = () => document.querySelectorAll(".modal-backdrop").forEach(m => m.classList.remove("open"));
+  document.querySelectorAll(".modal-backdrop").forEach(backdrop => {
+    backdrop.addEventListener("click", e => { if (e.target === backdrop) backdrop.classList.remove("open"); });
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeAll(); });
+  ["closeModal", "cancelModal", "closeDetailModal", "closeCourseModal", "closeCitationModal", "cancelReview"].forEach(id => {
+    document.getElementById(id).addEventListener("click", () => document.getElementById(id).closest(".modal-backdrop").classList.remove("open"));
+  });
+
   document.getElementById("reviewForm").addEventListener("submit", async event => {
     event.preventDefault();
     if (!state.pendingReview) return;
-    const {requestId, action} = state.pendingReview;
+    const { requestId, action } = state.pendingReview;
     const button = document.getElementById("submitReview");
     button.disabled = true;
     try {
-      const result = await api(`/requests/${requestId}/${action}`, {method:"POST", body:JSON.stringify({
-        action, comment:document.getElementById("reviewComment").value.trim() || null,
-      })});
+      const result = await api(`/requests/${requestId}/${action}`, { method: "POST", body: JSON.stringify({
+        action, comment: document.getElementById("reviewComment").value.trim() || null,
+      }) });
       document.getElementById("reviewModal").classList.remove("open");
       state.pendingReview = null;
-      toast(`${result.request_code} ${result.status.toLowerCase()}`);
-      await loadTeamPage();
-      await updateNotificationBadge();
+      toast(`${result.request_code}: ${t(STATUS_KEYS[result.status] || result.status)}`);
+      await refreshCurrentPage();
     } catch (error) { toast(error.message); }
     finally { button.disabled = false; }
   });
 
-  // New Request Modal
+  const reqType = document.getElementById("reqType");
+  const syncRequestType = () => {
+    const isAdvance = reqType.value === "Advance payment";
+    document.getElementById("reqAmountGroup").hidden = !isAdvance;
+    document.getElementById("reqEndGroup").hidden = isAdvance;
+    document.getElementById("reqAmount").required = isAdvance;
+    document.getElementById("reqEnd").required = !isAdvance;
+  };
+  reqType.addEventListener("change", syncRequestType);
+  syncRequestType();
+
   document.querySelectorAll('[data-action="new-request"]').forEach(b => {
     b.addEventListener("click", () => {
+      if (b.dataset.type) reqType.value = b.dataset.type;
+      syncRequestType();
       document.getElementById("requestModal").classList.add("open");
+      document.getElementById("reqStart").focus();
     });
   });
 
-  const closeModal = () => document.getElementById("requestModal").classList.remove("open");
-  document.getElementById("closeModal").onclick = closeModal;
-  document.getElementById("cancelModal").onclick = closeModal;
-
-  // Toggle amount field if Advance Payment is selected
-  document.getElementById("reqType").addEventListener("change", e => {
-    const isAdv = e.target.value === "Advance payment";
-    document.getElementById("reqAmountGroup").style.display = isAdv ? "grid" : "none";
-    document.getElementById("reqEndGroup").style.display = isAdv ? "none" : "grid";
-    document.getElementById("reqAmount").required = isAdv;
-  });
-
-  // Submit request form
   document.getElementById("requestForm").addEventListener("submit", async e => {
     e.preventDefault();
-    const type = document.getElementById("reqType").value;
-    const startDate = document.getElementById("reqStart").value;
-    const endDate = document.getElementById("reqEnd").value;
-    const amountVal = document.getElementById("reqAmount").value;
+    const type = reqType.value;
+    const amount = document.getElementById("reqAmount").value;
     const reason = document.getElementById("reqReason").value.trim();
-
-    const payload = {
-      type,
-      start_date: startDate,
-      end_date: type === "Vacation" && endDate ? endDate : null,
-      amount: type === "Advance payment" && amountVal ? parseFloat(amountVal) : null,
-      reason: reason || null,
-    };
-
+    const submit = e.target.querySelector('button[type="submit"]');
+    submit.disabled = true;
     try {
-      const res = await api("/requests", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-
-      toast(`Request ${res.request_code} successfully created!`);
-      closeModal();
+      const res = await api("/requests", { method: "POST", body: JSON.stringify({
+        type,
+        start_date: document.getElementById("reqStart").value,
+        end_date: type === "Vacation" ? document.getElementById("reqEnd").value || null : null,
+        amount: type === "Advance payment" && amount ? parseFloat(amount) : null,
+        reason: reason || null,
+      }) });
+      toast(`${res.request_code} — ${t("requestCreated")}`);
+      document.getElementById("requestModal").classList.remove("open");
       e.target.reset();
-      document.getElementById("reqType").dispatchEvent(new Event("change"));
-      await loadDashboard();
-      if (state.page === "requests") await loadRequestsPage();
+      syncRequestType();
+      await refreshCurrentPage();
     } catch (err) {
-      toast(`Submission failed: ${err.message}`);
+      toast(`${t("submitFailed")}: ${err.message}`);
+    } finally {
+      submit.disabled = false;
     }
   });
-
-  // Request detail modal close
-  document.getElementById("closeDetailModal").onclick = () => {
-    document.getElementById("requestDetailModal").classList.remove("open");
-  };
-
-  // Course player modal close
-  document.getElementById("closeCourseModal").onclick = () => {
-    document.getElementById("coursePlayerModal").classList.remove("open");
-  };
-
-  // Citation modal close
-  document.getElementById("closeCitationModal").onclick = () => {
-    document.getElementById("citationModal").classList.remove("open");
-  };
 }
 
-// Request detail viewer modal
 async function openRequestDetailModal(id) {
   try {
     const r = await api(`/requests/${id}`);
-    document.getElementById("detailModalTitle").textContent = `${r.request_code} · ${r.type}`;
+    document.getElementById("detailModalTitle").textContent = `${r.request_code} · ${t(TYPE_KEYS[r.type] || r.type)}`;
     document.getElementById("detailModalCode").textContent = r.request_code;
-    document.getElementById("detailModalStatus").innerHTML = `<span class="status ${r.status.toLowerCase()}">${r.status}</span>`;
+    document.getElementById("detailModalStatus").innerHTML = statusBadge(r.status);
     document.getElementById("detailModalRequester").textContent = r.user_name;
     document.getElementById("detailModalDept").textContent = r.department;
     document.getElementById("detailModalDates").textContent = r.period_or_details;
-    document.getElementById("detailModalSync").textContent = r.external_sync_id || "Documentolog is unconnected; no external registration";
-
-    // Build timeline of events
-    const timeline = document.getElementById("detailModalTimeline");
-    timeline.innerHTML = r.events.map(ev => `
+    document.getElementById("detailModalSync").textContent = r.external_sync_id || t("notRegistered");
+    document.getElementById("detailModalTimeline").innerHTML = r.events.map(ev => `
       <div class="activity">
-        <span class="activity-dot" style="${ev.event_type === 'APPROVED' ? 'background:var(--green)' : (ev.event_type === 'REJECTED' ? 'background:var(--red)' : '')}"></span>
+        <span class="activity-dot ${ev.event_type === "APPROVED" ? "ok" : ev.event_type === "REJECTED" ? "bad" : ""}"></span>
         <div>
-          <b>${esc(ev.event_type)} by ${esc(ev.actor_name)}</b>
-          <p>${esc(ev.comment || '')} · <span style="font-size:10px">${new Date(ev.created_at).toLocaleString()}</span></p>
+          <b>${esc(ev.event_type)} · ${esc(ev.actor_name)}</b>
+          <p>${esc(ev.comment || "")}${ev.comment ? " · " : ""}${esc(new Date(ev.created_at).toLocaleString(locale()))}</p>
         </div>
-      </div>
-    `).join("");
-
+      </div>`).join("");
     document.getElementById("requestDetailModal").classList.add("open");
   } catch (err) {
-    toast(`Error opening request details: ${err.message}`);
+    toast(err.message);
   }
 }
 
-// Course Player Modal with interactive quiz
+// --- COURSE PLAYER ---
+function renderCourse(course) {
+  state.currentCourse = course;
+  document.getElementById("playerCourseTitle").textContent = course.title;
+  document.getElementById("playerProgressBar").style.width = `${course.progress_percent}%`;
+  document.getElementById("playerProgressLabel").textContent = `${Math.round(course.progress_percent)}% ${t("complete")}`;
+  const currentId = state.currentLesson?.id ?? course.current_lesson_id;
+  document.getElementById("playerLessonsList").innerHTML = course.lessons.map(l => `
+    <button class="${l.id === currentId ? "current" : ""}" data-lesson="${l.id}" onclick="loadLessonInPlayer(${l.id})">
+      <span>${esc(l.title)}</span><span class="done">${l.is_completed ? "✓" : "○"}</span>
+    </button>`).join("");
+}
+
 async function openCoursePlayer(courseId) {
   try {
     let course = await api(`/courses/${courseId}`);
-    if (!course.assigned) course = await api(`/courses/${courseId}/enroll`, {method:"POST"});
-    state.currentCourse = course;
-
-    document.getElementById("playerCourseTitle").textContent = course.title;
-    document.getElementById("playerProgressBar").style.width = `${course.progress_percent}%`;
-    document.getElementById("playerProgressLabel").textContent = `${course.progress_percent.toFixed(0)}% complete`;
-
-    // Render lessons list
-    const lessonsList = document.getElementById("playerLessonsList");
-    lessonsList.innerHTML = course.lessons.map(l => `
-      <button class="small-btn ${l.id === course.current_lesson_id ? 'primary' : ''}" style="width:100%;justify-content:space-between;margin-bottom:6px" onclick="loadLessonInPlayer(${l.id})">
-        <span>${esc(l.title)}</span>
-        <span>${l.is_completed ? "✓" : "○"}</span>
-      </button>
-    `).join("");
-
-    if (course.current_lesson_id) {
-      await loadLessonInPlayer(course.current_lesson_id);
-    }
-
+    if (!course.assigned) course = await api(`/courses/${courseId}/enroll`, { method: "POST" });
+    state.currentLesson = null;
+    renderCourse(course);
+    const firstLesson = course.current_lesson_id || course.lessons[0]?.id;
+    if (firstLesson) await loadLessonInPlayer(firstLesson);
     document.getElementById("coursePlayerModal").classList.add("open");
   } catch (err) {
-    toast(`Error opening course: ${err.message}`);
+    toast(err.message);
   }
 }
 
@@ -764,201 +690,138 @@ async function loadLessonInPlayer(lessonId) {
   try {
     const lesson = await api(`/courses/lessons/${lessonId}`);
     state.currentLesson = lesson;
-
+    document.querySelectorAll("#playerLessonsList [data-lesson]").forEach(b => b.classList.toggle("current", Number(b.dataset.lesson) === lesson.id));
     document.getElementById("playerLessonTitle").textContent = lesson.title;
     document.getElementById("playerLessonContent").textContent = lesson.content_markdown;
-
-    // Quiz container
     const quizBox = document.getElementById("playerQuizBox");
-    if (lesson.quiz_question && lesson.quiz_options.length > 0) {
-      quizBox.style.display = "block";
+    quizBox.hidden = !(lesson.quiz_question && lesson.quiz_options.length);
+    document.getElementById("playerQuizFeedback").hidden = true;
+    if (!quizBox.hidden) {
       document.getElementById("playerQuizQuestion").textContent = lesson.quiz_question;
-      const opts = document.getElementById("playerQuizOptions");
-      opts.innerHTML = lesson.quiz_options.map((opt, idx) => `
-        <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:10px;cursor:pointer;margin-bottom:6px">
-          <input type="radio" name="lessonQuiz" value="${idx}">
-          <span>${esc(opt)}</span>
-        </label>
-      `).join("");
-      document.getElementById("playerQuizFeedback").style.display = "none";
-    } else {
-      quizBox.style.display = "none";
+      document.getElementById("playerQuizOptions").innerHTML = lesson.quiz_options.map((opt, idx) => `
+        <label class="quiz-option"><input type="radio" name="lessonQuiz" value="${idx}"><span>${esc(opt)}</span></label>`).join("");
     }
   } catch (err) {
-    toast(`Error loading lesson: ${err.message}`);
+    toast(err.message);
   }
 }
 
 async function submitLessonQuiz() {
   if (!state.currentLesson) return;
   const selected = document.querySelector('input[name="lessonQuiz"]:checked');
-  if (!selected) {
-    toast("Please select an answer option.");
-    return;
-  }
-
-  const answerIdx = parseInt(selected.value, 10);
+  if (!selected) { toast(t("pickAnswer")); return; }
   try {
     const res = await api(`/courses/lessons/${state.currentLesson.id}/quiz`, {
-      method: "POST",
-      body: JSON.stringify({ answer_index: answerIdx }),
+      method: "POST", body: JSON.stringify({ answer_index: parseInt(selected.value, 10) }),
     });
-
     const fb = document.getElementById("playerQuizFeedback");
-    fb.style.display = "block";
-    fb.className = res.passed ? "status approved" : "status rejected";
+    fb.hidden = false;
+    fb.className = res.passed ? "ok" : "bad";
     fb.textContent = res.explanation;
-
-    // Update progress
-    document.getElementById("playerProgressBar").style.width = `${res.new_progress_percent}%`;
-    document.getElementById("playerProgressLabel").textContent = `${res.new_progress_percent.toFixed(0)}% complete`;
-
-    if (res.course_completed) {
-      toast("🎉 Congratulations! You have successfully completed this course!");
-    }
-
-    // Refresh academy page in background
-    if (state.page === "academy") await loadAcademyPage();
-    await loadDashboard();
+    renderCourse(await api(`/courses/${state.currentCourse.id}`));
+    if (res.course_completed) toast(t("courseCompleted"));
+    await refreshCurrentPage();
   } catch (err) {
-    toast(`Quiz error: ${err.message}`);
+    toast(err.message);
   }
 }
 
+// --- AI JANA ---
 async function loadKnowledgeSummary() {
   try {
     const documents = await api("/ai/documents");
     document.getElementById("approvedKnowledgeList").innerHTML = documents.length
-      ? documents.map(doc => `<div class="notice"><div><b>${esc(doc.title)}</b><p>v${esc(doc.version)} · ${doc.is_synthetic ? "Synthetic example" : "Approved source"}</p></div></div>`).join("")
-      : "<p>No approved sources are available for your account.</p>";
+      ? documents.map(doc => `<div class="notice"><span class="notice-icon">${icon("file")}</span><div><b>${esc(doc.title)}</b><p>v${esc(doc.version)} · ${doc.is_synthetic ? "Synthetic example" : "Approved source"}</p></div></div>`).join("")
+      : `<p class="muted">${esc(t("noSources"))}</p>`;
   } catch (error) { toast(error.message); }
 }
 
-// --- AI JANA CHAT ---
-function setupAIChat() {
-  const form = document.getElementById("chatForm");
-  const input = document.getElementById("chatInput");
+function resetChat() {
+  document.getElementById("chatMessages").innerHTML = `<div class="message">${esc(t("aiHello"))}<small>AI Jana</small></div>`;
+}
 
-  form.addEventListener("submit", async e => {
+function setupAIChat() {
+  const input = document.getElementById("chatInput");
+  document.getElementById("chatForm").addEventListener("submit", async e => {
     e.preventDefault();
     const q = input.value.trim();
     if (!q) return;
     input.value = "";
     await sendAIQuery(q);
   });
-
-  document.querySelectorAll("[data-question]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      await sendAIQuery(btn.dataset.question);
-    });
-  });
-
-  document.getElementById("clearChat").onclick = () => {
-    document.getElementById("chatMessages").innerHTML = `
-      <div class="message">
-        Hi! I'm AI Jana, your corporate HR companion. Ask me anything about vacations, leave balances, working hours, or HR policies.
-        <small>AI Jana · Knowledge-Grounded</small>
-      </div>
-    `;
-  };
+  document.querySelectorAll("[data-question]").forEach(btn => btn.addEventListener("click", () => sendAIQuery(btn.dataset.question)));
+  document.getElementById("clearChat").onclick = resetChat;
+  resetChat();
 }
 
 async function sendAIQuery(question) {
   const container = document.getElementById("chatMessages");
-
-  // Append user bubble
   const userBubble = document.createElement("div");
   userBubble.className = "message user";
   userBubble.textContent = question;
-  container.appendChild(userBubble);
-  container.scrollTop = container.scrollHeight;
-
-  // Placeholder bot bubble
   const botBubble = document.createElement("div");
   botBubble.className = "message";
-  botBubble.innerHTML = `<i>Checking verified HR knowledge base…</i>`;
-  container.appendChild(botBubble);
+  botBubble.innerHTML = `<i>${esc(t("aiThinking"))}</i>`;
+  container.append(userBubble, botBubble);
   container.scrollTop = container.scrollHeight;
 
   try {
-    const res = await api("/ai/chat", {
-      method: "POST",
-      body: JSON.stringify({ question }),
-    });
-
+    const res = await api("/ai/chat", { method: "POST", body: JSON.stringify({ question }) });
     let html = `<div style="white-space:pre-wrap">${esc(res.answer)}</div>`;
-
     if (res.sources?.length) {
-      html += '<div class="citation-buttons">' + res.sources.map((source, index) =>
-        `<button class="source-pill" type="button" data-source-index="${index}">📖 ${esc(source.document_title)} · ${esc(source.section_title)}</button>`
-      ).join("") + '</div>';
+      html += `<div class="citation-buttons">${res.sources.map((source, index) =>
+        `<button class="source-pill" type="button" data-source-index="${index}">${icon("file")}${esc(source.document_title)} · ${esc(source.section_title)}</button>`).join("")}</div>`;
     }
-
-    // Fallback guidance badge
-    if (res.answer_status === "fallback") {
+    if (res.answer_status !== "grounded") {
       botBubble.classList.add("fallback");
-      html += `
-        <div style="margin-top:10px;padding:8px 12px;background:var(--surface);border-left:3px solid var(--orange);border-radius:6px;font-size:11.5px">
-          <b>Safe Fallback:</b> ${esc(res.escalation_guidance)}
-        </div>
-      `;
+      if (res.escalation_guidance) html += `<div class="fallback-note"><b>${esc(t("safeFallback"))}:</b> ${esc(res.escalation_guidance)}</div>`;
     }
-
-    html += `<small>AI Jana · Status: ${res.answer_status} · Response time: ${res.processing_time_ms} ms</small>`;
+    html += `<small>AI Jana · ${esc(res.answer_status)} · ${Math.round(res.processing_time_ms)} ms</small>`;
     botBubble.innerHTML = html;
     botBubble.querySelectorAll("[data-source-index]").forEach(button => {
       const source = res.sources[Number(button.dataset.sourceIndex)];
       button.addEventListener("click", async () => {
         try {
           const full = await api(`/ai/sources/${source.chunk_id}`);
-          showCitationModal(`${full.document_title} · v${full.version}`, full.section_title,
-            `${full.is_synthetic ? "Synthetic example; not official HR policy.\n\n" : ""}${full.content}`);
+          document.getElementById("citationDocTitle").textContent = `${full.document_title} · v${full.version}`;
+          document.getElementById("citationSecTitle").textContent = full.section_title;
+          document.getElementById("citationSnippet").textContent =
+            `${full.is_synthetic ? "Synthetic example; not official HR policy.\n\n" : ""}${full.content}`;
+          document.getElementById("citationModal").classList.add("open");
         } catch (error) { toast(error.message); }
       });
     });
   } catch (err) {
-    botBubble.innerHTML = `<span style="color:var(--red)">Error: ${esc(err.message)}</span>`;
+    botBubble.innerHTML = `<span style="color:var(--error)">${esc(err.message)}</span>`;
   }
-
   container.scrollTop = container.scrollHeight;
 }
 
-function showCitationModal(docTitle, secTitle, snippet) {
-  document.getElementById("citationDocTitle").textContent = docTitle;
-  document.getElementById("citationSecTitle").textContent = secTitle;
-  document.getElementById("citationSnippet").textContent = snippet;
-  document.getElementById("citationModal").classList.add("open");
-}
-
-// --- LANGUAGE & ROLE SWITCHERS ---
+// --- LANGUAGE & PERSONA ---
 function setupRoleSwitch() {
-  const sel = document.getElementById("roleSwitch");
-  sel.addEventListener("change", async e => {
-    await switchRole(e.target.value);
-  });
+  document.getElementById("roleSwitch").addEventListener("change", e => switchRole(e.target.value));
 }
 
 function setupLanguageSwitch() {
-  const sel = document.getElementById("langSwitch");
-  if (!sel) return;
-  sel.addEventListener("change", e => {
-    state.lang = e.target.value;
-    applyLanguage(state.lang);
+  document.getElementById("langSwitch").addEventListener("change", e => {
+    applyLanguage(e.target.value, true);
+    if (state.token) refreshCurrentPage();
   });
 }
 
-function applyLanguage(lang) {
-  const dict = I18N[lang] || I18N.en;
+function applyLanguage(lang, announce) {
+  state.lang = I18N[lang] ? lang : "en";
+  try { localStorage.setItem("janamen.lang", state.lang); } catch { /* storage unavailable */ }
+  const dict = I18N[state.lang];
   document.querySelectorAll("[data-i18n]").forEach(el => {
-    const key = el.dataset.i18n;
-    if (dict[key]) {
-      if (el.hasAttribute("placeholder")) el.placeholder = dict[key];
-      else el.textContent = dict[key];
-    }
+    const text = dict[el.dataset.i18n] || I18N.en[el.dataset.i18n];
+    if (!text) return;
+    if (el.hasAttribute("placeholder")) el.placeholder = text;
+    else el.textContent = text;
   });
-  document.documentElement.lang = lang === "kz" ? "kk" : lang;
-  toast(`Language changed to ${lang.toUpperCase()}`);
+  document.documentElement.lang = state.lang === "kz" ? "kk" : state.lang;
+  if (state.user) document.title = `${t(pageTitles[state.page])} · JanaМен`;
+  if (announce) toast(t("langChanged"));
 }
 
-// Start application when DOM is ready
 document.addEventListener("DOMContentLoaded", initApp);

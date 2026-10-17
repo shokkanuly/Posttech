@@ -45,6 +45,7 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-[]}
       AI_PROVIDER: ${AI_PROVIDER:-grounded_knowledge}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_DATA_SHARING_APPROVED: ${GEMINI_DATA_SHARING_APPROVED:-false}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       # Labour Code RK art. 90: public holidays inside a vacation are not charged.
       # Fixed-date public holidays 2026–2027; HR can replace the list in .env.

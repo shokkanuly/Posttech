@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     AI_RETRIEVAL_MODEL_PATH: str = ""
     AI_CONFIDENCE_THRESHOLD: float = Field(default=0.8, ge=0.0, le=1.0)
     GEMINI_API_KEY: str = Field(default="", repr=False)
+    # Operator approval applies to the knowledge text sent externally, not employee queries.
+    GEMINI_DATA_SHARING_APPROVED: bool = False
     GEMINI_MODEL: str = Field(default="gemini-3.8-flash", pattern=r"^[a-z0-9.\-]{3,64}$")
     GEMINI_TIMEOUT_SECONDS: float = Field(default=12.0, gt=0, le=60)
     MAX_ADVANCE_AMOUNT: float = Field(default=1_000_000, gt=0, allow_inf_nan=False)

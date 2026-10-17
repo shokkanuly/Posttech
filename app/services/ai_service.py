@@ -26,6 +26,7 @@ from app.retrieval_ranker import load_relevance_model, relevance_features
 from app.schemas.ai import AIChatRequest, AIChatResponse, SourceCitation
 from app.services import ml_retrieval
 from app.services.audit_service import audit_service
+from app.services.knowledge_conflicts import has_conflicting_numeric_claims
 
 # ponytail: Latin→Cyrillic first-pass transliteration, enough to match seeded names
 # (Timur → тимур) in Russian questions. Use a name-alias table for real HR data.
@@ -772,7 +773,7 @@ class AIService:
                     "chunk": chunk,
                 }
             )
-        result = gemini.generate_grounded_answer(question, passages, target_lang)
+        result = gemini.generate_grounded_answer(passages, target_lang)
         if result is None:
             return None, "unavailable"
         verified = cls.verify_llm_answer(result, passages)
@@ -845,9 +846,22 @@ class AIService:
         else:
             ranked = cls.rank_chunks(db, question, user.role, language=effective_language)
             similarity = {chunk.id: sim for chunk, _cov, sim in ranked}
-            chunks = cls.strict_matches(question, ranked, language=effective_language)
+            # Check every eligible passage before the two-citation limit or model reranking.
+            conflicting = has_conflicting_numeric_claims(
+                text["content"]
+                for chunk, coverage, _sim in ranked
+                if coverage >= settings.AI_CONFIDENCE_THRESHOLD
+                and (text := source_text(chunk, effective_language)) is not None
+            )
+            chunks = (
+                []
+                if conflicting
+                else cls.strict_matches(question, ranked, language=effective_language)
+            )
             llm_answer = None
-            if gemini.enabled():
+            if conflicting:
+                llm_status = "conflicting_sources"
+            elif gemini.enabled():
                 verified, llm_status = cls.answer_with_llm(
                     question, ranked, language=effective_language
                 )

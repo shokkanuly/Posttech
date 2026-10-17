@@ -1,0 +1,12 @@
+{
+  "services_logs_scanned": [
+    "web",
+    "gateway",
+    "integration-worker",
+    "db"
+  ],
+  "secret_values_detected_by_name": [],
+  "payload_markers_detected": [],
+  "gateway_internal_network": true,
+  "gateway_published_ports": []
+}

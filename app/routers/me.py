@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.integrations.profile_sync import profile_metadata
 from app.localization import LocalizedRoute
 from app.models.academy import Enrollment
 from app.models.enums import RequestStatus, UserRole
@@ -61,7 +62,7 @@ def get_my_profile(current_user: User = Depends(get_current_user), db: Session =
         hire_date=profile.hire_date if profile else current_user.created_at.date(),
         leave_balance_days=profile.leave_balance_days if profile else 0.0,
         location=profile.location if profile else "Almaty, Kazakhstan",
-        is_official_hr_data=False,
+        **profile_metadata(db, profile),
         learning_progress_percent=academy_service.get_user_overall_learning_progress(
             db, current_user.id
         ),

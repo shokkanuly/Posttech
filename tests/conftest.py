@@ -18,6 +18,10 @@ os.environ.update(
     AI_PROVIDER="grounded_knowledge",
     AI_RETRIEVAL_MODE="lexical",
     GEMINI_API_KEY="",
+    INTEGRATION_GATEWAY_URL="",
+    INTEGRATION_OUTBOUND_KEY_ID="",
+    INTEGRATION_OUTBOUND_KEY="",
+    INTEGRATION_INBOUND_KEYS="{}",
 )
 
 import pytest

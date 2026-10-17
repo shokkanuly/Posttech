@@ -23,6 +23,10 @@ class EmployeeProfileResponse(BaseModel):
     leave_balance_days: float
     location: str
     data_source: str = "Local HR records; 1C is unconnected"
+    source_mode: str = "LOCAL"
+    synced_at: Optional[UTCDateTime] = None
+    as_of: Optional[UTCDateTime] = None
+    is_stale: bool = False
     learning_progress_percent: float = 0
     courses: list[CourseResponse] = Field(default_factory=list)
     is_official_hr_data: bool = False

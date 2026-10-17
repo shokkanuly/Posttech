@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, contains_eager, joinedload
 
 from app.database import get_db
-from app.integrations.documentolog import documentolog_adapter
-from app.integrations.one_c_zup import one_c_adapter
+from app.integrations.profile_sync import sync_profiles
+from app.integrations.telemetry import integrations
 from app.localization import LocalizedRoute
 from app.models.audit import AuditEvent
 from app.models.enums import RequestStatus, UserRole
+from app.models.integration import IntegrationOutbox, IntegrationReview
 from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
 from app.models.request import Request
 from app.models.user import User
@@ -102,8 +103,51 @@ def assign_course(
 
 
 @router.get("/integrations", response_model=list[AdapterTelemetry])
-def get_admin_integrations(current_user: User = Depends(admin)):
-    return [one_c_adapter.get_telemetry(), documentolog_adapter.get_telemetry()]
+def get_admin_integrations(current_user: User = Depends(admin), db: Session = Depends(get_db)):
+    return integrations(db)
+
+
+@router.post("/integrations/refresh")
+def refresh_hr_snapshots(
+    current_user: User = Depends(admin), db: Session = Depends(get_db)
+) -> dict:
+    return sync_profiles(db, force=True)
+
+
+@router.get("/integrations/queue")
+def integration_queue(
+    page: Page, current_user: User = Depends(admin), db: Session = Depends(get_db)
+) -> list[dict]:
+    rows = (
+        db.query(IntegrationOutbox)
+        .filter(IntegrationOutbox.status.in_(["FAILED", "DEAD"]))
+        .order_by(IntegrationOutbox.id.desc())
+        .offset(page.offset)
+        .limit(page.limit)
+        .all()
+    )
+    return [
+        {
+            "request_code": row.request.request_code,
+            "status": row.status,
+            "error_code": row.last_error,
+            "mode": row.request.integration_mode or "UNCONNECTED",
+        }
+        for row in rows
+    ]
+
+
+@router.get("/integrations/reviews")
+def profile_reviews(
+    page: Page, current_user: User = Depends(admin), db: Session = Depends(get_db)
+) -> list[dict]:
+    return [
+        {"employee_code": row.employee_code, "reason": row.reason}
+        for row in db.query(IntegrationReview)
+        .order_by(IntegrationReview.employee_code)
+        .offset(page.offset)
+        .limit(page.limit)
+    ]
 
 
 @router.get("/audit", response_model=list[AuditResponse])

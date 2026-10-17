@@ -1,0 +1,46 @@
+[
+  {
+    "employee_code": "JP-10201",
+    "full_name": "Synthetic Manager",
+    "company": "Jana Post Kazakhstan \u2014 MOCK",
+    "department": "Synthetic Operations",
+    "position": "Synthetic specialist",
+    "manager_employee_code": null,
+    "hire_date": "2022-03-14",
+    "leave_balance_days": 24,
+    "as_of": "2026-10-17T09:00:00Z"
+  },
+  {
+    "employee_code": "JP-10428",
+    "full_name": "Synthetic Employee",
+    "company": "Jana Post Kazakhstan \u2014 MOCK",
+    "department": "Synthetic Operations",
+    "position": "Synthetic specialist",
+    "manager_employee_code": "JP-10201",
+    "hire_date": "2022-03-14",
+    "leave_balance_days": 18.5,
+    "as_of": "2026-10-17T09:00:00Z"
+  },
+  {
+    "employee_code": "DEMO-MGR-001",
+    "full_name": "Synthetic Demo Manager",
+    "company": "Jana Post Kazakhstan \u2014 MOCK",
+    "department": "Synthetic Operations",
+    "position": "Synthetic specialist",
+    "manager_employee_code": null,
+    "hire_date": "2022-03-14",
+    "leave_balance_days": 24,
+    "as_of": "2026-10-17T09:00:00Z"
+  },
+  {
+    "employee_code": "DEMO-EMP-001",
+    "full_name": "Synthetic Demo Employee",
+    "company": "Jana Post Kazakhstan \u2014 MOCK",
+    "department": "Synthetic Operations",
+    "position": "Synthetic specialist",
+    "manager_employee_code": "DEMO-MGR-001",
+    "hire_date": "2022-03-14",
+    "leave_balance_days": 24,
+    "as_of": "2026-10-17T09:00:00Z"
+  }
+]

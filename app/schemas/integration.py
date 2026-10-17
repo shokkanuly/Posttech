@@ -3,6 +3,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
+from app.schemas.common import UTCDateTime
+
 
 class AdapterTelemetry(BaseModel):
     adapter_name: str
@@ -10,9 +12,13 @@ class AdapterTelemetry(BaseModel):
     mode: str = "Mock Adapter (Synthetic Architecture Boundary)"
     endpoint_template: str
     synced_records_count: int
-    last_sync: Optional[datetime] = None
+    last_sync: Optional[UTCDateTime] = None
     supported_operations: List[str]
     notes: str
+    pending_count: int = 0
+    failed_count: int = 0
+    last_success: Optional[UTCDateTime] = None
+    last_error: Optional[str] = None
 
 
 class DocumentologSyncResponse(BaseModel):

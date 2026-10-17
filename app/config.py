@@ -45,8 +45,12 @@ class Settings(BaseSettings):
     INTEGRATION_TLS_CERT: str = ""
     INTEGRATION_TLS_KEY: str = Field(default="", repr=False)
     INTEGRATION_TLS_CA: str = ""
+    INTEGRATION_SYNC_INTERVAL_SECONDS: int = Field(default=900, ge=60, le=86400)
+    INTEGRATION_REFRESH_COOLDOWN_SECONDS: int = Field(default=60, ge=10, le=3600)
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore", hide_input_in_errors=True
+    )
 
     @model_validator(mode="after")
     def validate_security(self):

@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING
 
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, true
 from sqlalchemy import Date as SQLDate
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -39,8 +39,15 @@ class Request(Base):
     external_sync_id: Mapped[str | None] = mapped_column(
         String(100), nullable=True
     )  # Reference to Documentolog/1C
-    # Forward-only gateway progress: QUEUED, ORDER_CREATED, SIGNING, SIGNED or SIGN_REJECTED.
+    # Separate from employee-facing approval: PENDING/SENT/REGISTERED/FAILED/DEAD.
     integration_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    integration_mode: Mapped[str | None] = mapped_column(String(20))
+    gateway_job_id: Mapped[str | None] = mapped_column(String(36))
+    integration_completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    charged_leave_days: Mapped[float | None] = mapped_column(Float)
+    leave_balance_confirmed: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=true()
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

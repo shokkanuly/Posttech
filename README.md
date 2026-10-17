@@ -169,7 +169,7 @@ curl http://127.0.0.1:8000/health
 2. В боковом меню появится раздел **Команда и согласования** (Team & approvals).
 3. Перейдите в раздел; в списке ожидающих заявок отобразится запрос от Аружан.
 4. Нажмите **Одобрить** (Approve) и введите комментарий `"Одобрено, хорошего отдыха"`.
-5. Статус меняется на **Approved**, заявке присваивается номер внешней регистрации Documentolog (`DOCLOG-2026-1045`).
+5. Статус меняется на **Approved**. По умолчанию интеграция выключена и внешнего номера нет. В отдельно включённом MOCK-шлюзе асинхронно появляется `MOCK-DOC-…`; это синтетическая ссылка, без регистрации в реальном Documentolog.
 
 ### Шаг 5: Уведомление сотруднику и списание дней отпуска
 1. Переключитесь обратно на **Аружан С.**
@@ -251,7 +251,7 @@ python smoke_test.py
 | **Gemini Flash для AI Jana** | **Реализовано, выключено по умолчанию** | `AI_PROVIDER=gemini` + `GEMINI_API_KEY`. Модель получает только утверждённые фрагменты; весь ответ проверяется на дословное совпадение с цитатами, при сбое — извлекающий ответ. |
 | **Справочник сотрудников и карточка** | **Полностью реализовано** | Руководитель видит только свою команду, HR — всех (проверка на сервере). ФИО, компания, должность, подразделение, остаток, использовано, на рассмотрении, доступно; история отпусков и обучение. В очереди согласований виден остаток после одобрения. |
 | **Расчёт дней отпуска** | **Реализовано (локальный календарь)** | Календарные дни минус явно заданные HR даты LEAVE_EXCLUDED_DATES. 1С не подключена. |
-| **PostgreSQL** | **Полностью реализовано** | Отдельный docker-compose.postgres.yml для PostgreSQL 17; SQLite остаётся по умолчанию. Проверки: docs/LOCAL_MERGE_REPORT.md. |
+| **PostgreSQL** | **Полностью реализовано** | Основной docker-compose.yml использует PostgreSQL 17; SQLite поддерживается для локального запуска. Проверки: docs/LOCAL_MERGE_REPORT.md. |
 | **Правила заявок** | **Полностью реализовано** | Нельзя подать задним числом или более чем на год вперёд; отпуска не пересекаются; дни в ожидающих заявках резервируются; сумма аванса ограничена `MAX_ADVANCE_AMOUNT`. |
 | **Уведомления** | **Полностью реализовано** | Сохранение в БД, счетчики непрочитанных, отметка о прочтении. |
 | **Журнал аудита** | **Полностью реализовано** | Журнал приложения `audit_events` (без защиты от изменений администратором БД) (действие, инициатор, объект, таймстемп). |
@@ -265,7 +265,7 @@ python smoke_test.py
 
 ## 8. Архитектурные границы интеграций
 
-Проект подключения через отдельный интеграционный шлюз (схемы, потоки, безопасность, надёжность): [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). Фундамент на стороне JanaМен уже в коде: подпись HMAC, outbox в транзакции одобрения, воркер с повторами, приём подписанных callback. Включается переменной `INTEGRATION_GATEWAY_URL`. Сам шлюз не реализован.
+Проект подключения через отдельный интеграционный шлюз (схемы, потоки, безопасность, надёжность): [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). Фундамент на стороне JanaМен уже в коде: подпись HMAC, outbox в транзакции одобрения, воркер с повторами, приём подписанных callback. Включается переменной `INTEGRATION_GATEWAY_URL`. Отдельный FastAPI-шлюз теперь реализован только в режиме **MOCK**: постоянные задания, подписанные callback и синтетические снимки 1С. Реальные системы не подключены.
 
 ### 1. 1С:ЗУП (ЗУП 3.1 — Зарплата и управление персоналом)
 - **Роль**: Мастер-система для учета кадров, оргструктуры и накопленного баланса отпусков.
@@ -348,3 +348,16 @@ JANAMEN_BASE_URL=http://127.0.0.1:8000 python smoke_test.py
 ```
 
 Ограничения: один сервер/организация, SQLite, ограничение входа хранится в памяти процесса, нет SSO/сброса пароля/ротации refresh-токенов. Для внешнего доступа нужен HTTPS. Суммы авансов пока хранятся как Float и не используются для платежей. Старые тексты источников не архивируются; номер редакции предотвращает открытие нового текста под старой цитатой. Docker и другие ОС требуют отдельной проверки.
+
+## MOCK integration gateway — separate FastAPI service
+
+Implemented canonical contracts, signing, durable jobs, callbacks, profile snapshots and the HR operational card: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). **MOCK only; no live 1C/Documentolog API, registration, payment or signature.**
+
+```bash
+python -m app.gateway.configure_mock
+docker compose --env-file .env.gateway --profile integrations up --build -d
+```
+
+The helper creates a new ignored mode0600 environment with generated directional keys, without printing or overwriting credentials. The gateway has no host port and runs only on an internal Compose network. Web startup and approvals never depend on gateway health. Empty `INTEGRATION_GATEWAY_URL` preserves the disabled behavior. The optional profile uses private-network HTTP plus HMAC for the local MOCK demonstration; production mTLS deployment is not claimed.
+
+Application schema head: `0006_gateway_runtime`. The separate gateway owns its own persistent SQLite job store. HR sees real pending/failed counts, last success, mapping issues and a rate-limited snapshot refresh. Profiles retain their last read-only MOCK snapshot during outages. [Current implementation and executed checks](docs/GATEWAY_IMPLEMENTATION_REPORT.md).

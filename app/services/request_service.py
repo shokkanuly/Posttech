@@ -59,7 +59,11 @@ class RequestService:
         )
         for r in rows:
             key = "used_days" if r.status == RequestStatus.APPROVED else "pending_days"
-            summary[r.user_id][key] += cls._calculate_calendar_days(r.start_date, r.end_date)
+            summary[r.user_id][key] += (
+                r.charged_leave_days
+                if r.status == RequestStatus.APPROVED and r.charged_leave_days is not None
+                else cls._calculate_calendar_days(r.start_date, r.end_date)
+            )
         return summary
 
     @staticmethod
@@ -102,9 +106,16 @@ class RequestService:
             reviewer_name=reviewer_name,
             review_comment=req.review_comment,
             external_sync_id=req.external_sync_id,
+            external_ref=req.external_sync_id,
+            sync_status=req.integration_status or "NOT_REQUIRED",
+            integration_mode=req.integration_mode,
             submitted_date_formatted=cls._format_submitted_date(req.created_at),
             period_or_details=cls._format_period_or_details(req),
-            vacation_days=cls._calculate_calendar_days(req.start_date, req.end_date)
+            vacation_days=(
+                req.charged_leave_days
+                if req.charged_leave_days is not None
+                else cls._calculate_calendar_days(req.start_date, req.end_date)
+            )
             if req.type == RequestType.VACATION
             else None,
             created_at=req.created_at,
@@ -425,11 +436,18 @@ class RequestService:
                 raise HTTPException(400, "Insufficient leave balance at approval")
 
         db.refresh(req)
+        if new_status == RequestStatus.APPROVED and req.type == RequestType.VACATION:
+            req.charged_leave_days = days
+            req.leave_balance_confirmed = False
         if new_status == RequestStatus.APPROVED and settings.INTEGRATION_GATEWAY_URL:
             # Transactional outbox: the delivery task commits with the approval or not at all.
-            req.integration_status = "QUEUED"
-            outbox.enqueue(db, req, "ONE_C_ORDER")
-        if new_status == RequestStatus.APPROVED and settings.ENABLE_MOCK_INTEGRATIONS:
+            req.integration_status = "PENDING"
+            outbox.enqueue(db, req)
+        if (
+            new_status == RequestStatus.APPROVED
+            and settings.ENABLE_MOCK_INTEGRATIONS
+            and not settings.INTEGRATION_GATEWAY_URL
+        ):
             # Pure local simulation, never an external document registration.
             simulated = documentolog_adapter.register_approved_request(
                 req.request_code, req.type.value, req.user.full_name

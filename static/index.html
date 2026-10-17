@@ -306,7 +306,7 @@
           <h1 class="h2">Profile</h1>
           <p class="muted">Official HR data is read-only. Changes go through HR.</p>
         </div>
-        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg><span>Read-only · 1C:ZUP unconnected</span></span>
+        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg><span id="profSource">Read-only · 1C:ZUP unconnected</span></span>
       </div>
       <div class="grid profile-grid">
         <div class="card">
@@ -563,10 +563,15 @@
       <div class="card">
         <div class="section-head">
           <h3 class="h4">Enterprise integration boundaries</h3>
-          <span class="status pending">Unconnected</span>
+          <span class="status pending" id="adminIntegrationMode">UNCONNECTED</span>
         </div>
-        <p class="muted">1C:ZUP and Documentolog are unconnected. HR fields remain read-only.</p>
+        <p class="muted" id="adminIntegrationNote">1C:ZUP and Documentolog are unconnected. HR fields remain read-only.</p>
+        <button class="small-btn" id="refreshHrSnapshots">Refresh HR snapshots</button>
         <div id="adminIntegrationsList"></div>
+        <h4 class="h4">Failed deliveries</h4>
+        <div id="adminIntegrationQueue"></div>
+        <h4 class="h4">Profile mapping review</h4>
+        <div id="adminIntegrationReviews"></div>
       </div>
       <div class="grid lower">
         <div class="card">

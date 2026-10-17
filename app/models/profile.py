@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, Float, ForeignKey, Integer, String
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -30,6 +30,11 @@ class EmployeeProfile(Base):
     hire_date: Mapped[date] = mapped_column(Date, nullable=False)
     leave_balance_days: Mapped[float] = mapped_column(Float, default=24.0, nullable=False)
     location: Mapped[str] = mapped_column(String(255), default="Almaty, Kazakhstan", nullable=False)
+
+    source_mode: Mapped[str] = mapped_column(String(20), default="LOCAL", server_default="LOCAL")
+    source_balance_days: Mapped[float | None] = mapped_column(Float)
+    source_as_of: Mapped[datetime | None] = mapped_column(DateTime)
+    synced_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     # Relationships
     user: Mapped[User] = relationship("User", back_populates="profile", foreign_keys=[user_id])

@@ -1,6 +1,6 @@
 # JanaМен architecture
 
-The original frontend is retained. The backend is a single FastAPI application with Pydantic contracts, domain services, SQLAlchemy 2 typed models, Alembic migrations, and SQLite persistence. SQLite is the validated target; no PostgreSQL deployment is claimed.
+The original frontend is retained. The core is a modular FastAPI application with Pydantic contracts, domain services, SQLAlchemy2 models and Alembic migrations. PostgreSQL17 is the Compose database; SQLite remains supported locally. An optional separately running FastAPI gateway and app worker implement only the canonical MOCK integration contract.
 
 File-based source bundles under `knowledge/` are schema-validated and imported atomically as drafts by an active HR operator. Source approval remains an explicit existing HR workflow. Optional `AI_RETRIEVAL_MODE=ml` applies a learned linear relevance ranker after database approval/activity/role/language filters and the evidence-coverage gate. Training is offline under `ml/`; runtime loads bounded JSON coefficients and imports no training library. Default lexical retrieval and exact source citations remain the same. See `knowledge/README.md` and `ml/README.md`.
 
@@ -10,12 +10,16 @@ flowchart LR
   API --> Identity[JWT signature + persisted active session]
   Identity --> Scope[Database roles and record scope]
   Scope --> Services[Requests / Academy / Notifications / Knowledge]
-  Services --> DB[(SQLite + Alembic)]
+  Services --> DB[(PostgreSQL / SQLite + Alembic)]
   Services --> Audit[Minimal audit events]
   Audit --> DB
   Scope --> AI[Approved and active role-filtered retrieval]
   AI --> DB
-  Services -. local optional simulation .-> Adapters[Unconnected 1C / Documentolog boundaries]
+  Services --> Outbox[Transactional outbox]
+  Worker[App integration worker] --> Outbox
+  Worker --> Gateway[Separate durable MOCK gateway]
+  Gateway --> Connectors[MOCK 1C snapshots / MOCK Documentolog]
+  Gateway --> Callback[Signed callback to app]
 ```
 
 Authentication is bearer-only. Passwords use PBKDF2-SHA256 with a per-hash random salt and 600,000 iterations; legacy 100,000-iteration hashes are verified and upgraded on login. JWTs require subject, session ID, issuance and expiry. Authorization loads the active session and current database user; a client role or JWT role claim grants no authority. Logout revokes only the current session. The browser retains its token only in memory and clears personal screen state on logout/401.
@@ -38,7 +42,7 @@ Authentication is bearer-only. Passwords use PBKDF2-SHA256 with a per-hash rando
 
 Only profile read endpoints exist. Local provisioning is an operator operation. Employees see their own requests and notifications. Managers may read/review direct reports and read their own requests, but cannot review their own request. HR has deployment-wide scope and still cannot self-review. There is one organization per deployment.
 
-Request creation derives ownership from authentication and allocates the public code from the database identity in a separate `REQ-N...` namespace. Approval/rejection performs a conditional update from Pending. An approved vacation also performs a conditional balance debit requiring sufficient balance. History, notifications and audit are committed in that same transaction. Any error rolls the entire transaction back. A repeated or competing review returns 409; insufficient current leave returns 400. Leave uses inclusive calendar days; pending requests do not reserve balance. No payroll or external document action occurs.
+Request creation derives ownership from authentication and allocates the public code from the database identity in a separate `REQ-N...` namespace. Approval/rejection performs a conditional update from Pending. An approved vacation also performs a conditional balance debit requiring sufficient balance. History, notifications and audit are committed in that same transaction. Any error rolls the entire transaction back. A repeated or competing review returns 409; insufficient current leave returns 400. Leave uses inclusive calendar days; pending requests reserve available days. New approvals freeze charged days and a provisional balance adjustment. Optional gateway work is asynchronous; no payroll or real external document action occurs.
 
 Catalog reads do not enroll users. Self-enrollment and HR assignment are explicit and unique. Quiz submissions obtain an enrollment write lock before reading/updating progress, validate the answer index, persist pass/completion, calculate progress and result from actual lessons, and issue completion notification once. All assigned enrollments participate in dashboard averages.
 
@@ -48,7 +52,7 @@ All API errors use one redacted contract and a generated request ID. Unexpected 
 
 Migrations are explicit and forward-only. Startup verifies the current revision. Baseline adoption checks complete legacy tables/columns. Upgrades add sessions, approval fields and learning uniqueness without deleting user rows; partial schemas and duplicate records stop for operator review. Legacy documents require approval and legacy bearer tokens require a new login. The source database was only read for migration rehearsal; a SQLite backup copy was migrated and checked separately.
 
-The two integration classes are extension boundaries with UNCONNECTED status, zero synced records and no last-sync claim. Neither credentials nor a guessed external API specification is supplied. Optional Documentolog reference generation is a local MOCK simulation only. Real connections require approved documentation, credentials, mapping, error/retry design and separate integration tests. The gateway design is in [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). Its JanaМен-side foundation exists but stays off unless `INTEGRATION_GATEWAY_URL` is set: approval writes an `integration_outbox` task in the same transaction, a worker delivers it with HMAC-SHA256 signatures over mTLS, and gateway callbacks are accepted only with a valid signature and an unseen nonce (`integration_nonces`). The gateway itself is not built.
+The standalone integration gateway and app worker are now implemented as an optional durable **MOCK-only** Compose profile. The switch remains `INTEGRATION_GATEWAY_URL`. Approval atomically stores a minimal immutable canonical outbox payload; the worker submits `/v1/documents`, validates the asynchronous acknowledgement and reconciles through job status. Gateway jobs, nonces, mock documents and callback retries persist independently. The existing signed callback route updates registration metadata/history/one notification; employee-facing approval remains Approved. A scheduled signed 1C snapshot flow matches existing profiles by employee code, retains stale snapshots on failure and exposes HR mapping review. HR telemetry comes from persisted counts and success timestamps. See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) for the current contract, schema0006 and network diagram. The local MOCK network uses HTTP plus HMAC; no live enterprise connectivity or active production mTLS is claimed.
 
 See `docs/API_CONTRACT.md` for HTTP schemas and `docs/IMPLEMENTATION_REPORT.md` for validation and remaining limitations. Alembic’s connection-sharing approach follows its [official cookbook](https://alembic.sqlalchemy.org/en/latest/cookbook.html).
 

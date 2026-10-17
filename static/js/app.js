@@ -108,6 +108,16 @@ async function initApp() {
   setupRoleSwitch();
   setupLanguageSwitch();
   setupModals();
+  document.getElementById("refreshHrSnapshots").addEventListener("click", async event => {
+    event.target.disabled = true;
+    try {
+      const result = await api("/admin/integrations/refresh", { method: "POST" });
+      if (result.status === "unavailable") toast("Gateway unavailable; last snapshot retained.");
+      if (result.status === "disabled") toast("Integration gateway is disabled.");
+      await loadAdminPage();
+    } catch (error) { toast(error.message); }
+    finally { event.target.disabled = false; }
+  });
   setupAIChat();
   setupKnowledgeForm();
   setupHome();
@@ -355,6 +365,10 @@ async function loadProfilePage() {
     document.getElementById("profAvatar").textContent = initials(p.full_name);
     document.getElementById("profName").textContent = p.full_name;
     document.getElementById("profPosition").textContent = p.position;
+    document.getElementById("profSource").textContent = p.source_mode === "MOCK" ? "MOCK · Read-only" : "Read-only · 1C:ZUP unconnected";
+    const source = document.getElementById("profSource");
+    if (p.as_of) source.textContent += ` · ${I18n.t("Data as of")}: ${formatDate(p.as_of)}`;
+    if (p.is_stale) source.textContent += ` · ${I18n.t("Stale snapshot")}`;
     document.getElementById("profEmpCode").textContent = p.employee_code;
     document.getElementById("profDept").textContent = p.department;
     document.getElementById("profCompany").textContent = p.company;
@@ -621,10 +635,11 @@ function reviewRequestPrompt(requestId, action) {
 // --- HR ADMIN ---
 async function loadAdminPage() {
   try {
-    const [summary, chunks, documents, adapters, logs, requests, members] = await Promise.all([
+    const [summary, chunks, documents, adapters, logs, requests, members, queue, reviews] = await Promise.all([
       api("/admin/summary"), apiAll("/admin/knowledge"), apiAll("/admin/knowledge/documents"),
       api("/admin/integrations"), api("/admin/audit?limit=15"),
       apiAll("/manager/requests?status=Pending"), apiAll("/manager/team"),
+      apiAll("/admin/integrations/queue"), apiAll("/admin/integrations/reviews"),
     ]);
     const byUser = Object.fromEntries(members.map(m => [m.user_id, m]));
     renderDirectory("adminDirectory", members);
@@ -683,6 +698,11 @@ async function loadAdminPage() {
       });
     });
 
+    const mockMode = adapters.some(a => a.mode === "MOCK");
+    document.getElementById("adminIntegrationMode").textContent = mockMode ? "MOCK" : "UNCONNECTED";
+    document.getElementById("adminIntegrationNote").textContent = mockMode ? "MOCK connectors only. No live enterprise connection." : "1C:ZUP and Documentolog are unconnected. HR fields remain read-only.";
+    document.getElementById("adminIntegrationQueue").innerHTML = queue.length ? queue.map(q => `<p><code>${esc(q.request_code)}</code> · <span>${esc(q.mode)}</span> · <span>${esc(q.status)}</span> · <code>${esc(q.error_code)}</code></p>`).join("") : `<p class="muted">No failed deliveries.</p>`;
+    document.getElementById("adminIntegrationReviews").innerHTML = reviews.length ? reviews.map(r => `<p><code>${esc(r.employee_code)}</code> · <code>${esc(r.reason)}</code></p>`).join("") : `<p class="muted">No mapping issues.</p>`;
     document.getElementById("adminIntegrationsList").innerHTML = adapters.map(a => `
       <div class="notice">
         <span class="notice-icon">${icon("link")}</span>
@@ -690,6 +710,9 @@ async function loadAdminPage() {
           <b>${esc(a.adapter_name)}</b> <span class="status pending">${esc(a.status)}</span>
           <p>${esc(a.notes)}</p>
           <p class="small"><b>Endpoint:</b> <code>${esc(a.endpoint_template)}</code> · <b>Mode:</b> ${esc(a.mode)}</p>
+          <p><span>Pending deliveries</span>: ${Number(a.pending_count)} · <span>Failed deliveries</span>: ${Number(a.failed_count)}</p>
+          <p><span>Last success</span>: ${a.last_success ? esc(formatDate(a.last_success)) + " " + esc(formatTime(a.last_success)) : "—"}</p>
+          ${a.last_error ? `<p><code>${esc(a.last_error)}</code></p>` : ""}
         </div>
       </div>`).join("");
 
@@ -821,7 +844,9 @@ async function openRequestDetailModal(id) {
     document.getElementById("detailModalRequester").textContent = r.user_name;
     document.getElementById("detailModalDept").textContent = r.department;
     document.getElementById("detailModalDates").textContent = formatPeriod(r);
-    document.getElementById("detailModalSync").textContent = r.external_sync_id || I18n.t("Documentolog is unconnected; no external registration");
+    document.getElementById("detailModalSync").textContent = r.external_sync_id
+      ? `${r.integration_mode === "MOCK" || r.external_sync_id.startsWith("MOCK-") ? "MOCK · " : ""}${r.external_sync_id}`
+      : r.sync_status && r.sync_status !== "NOT_REQUIRED" ? I18n.t(r.sync_status) : I18n.t("Documentolog is unconnected; no external registration");
     document.getElementById("detailModalTimeline").innerHTML = r.events.map(ev => `
       <div class="activity">
         <span class="activity-dot ${ev.event_type === "APPROVED" ? "ok" : ev.event_type === "REJECTED" ? "bad" : ""}"></span>

@@ -97,35 +97,50 @@ function formatPeriod(request) {
 }
 
 // Every day of a vacation, marked: weekends are charged, public holidays are not (server rule).
-function renderLeaveCalendar(cal) {
-  const byDay = Object.fromEntries(cal.days.map(d => [d.day, d]));
+// booked: the employee's other active vacations, outlined so their exact dates are visible.
+function renderLeaveCalendar(cal, booked = []) {
+  const days = cal ? cal.days : [];
+  const byDay = Object.fromEntries(days.map(d => [d.day, d]));
   const kindLabel = { workday: "Working day", weekend: "Weekend", holiday: "Public holiday" };
+  const bookedOn = iso => booked.find(b => b.start_date <= iso && iso <= (b.end_date || b.start_date));
+  const monthKeys = new Set(days.map(d => d.day.slice(0, 7)));
+  booked.forEach(b => {
+    for (const d = new Date(`${b.start_date}T12:00:00Z`); d <= new Date(`${b.end_date || b.start_date}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 1)) {
+      monthKeys.add(d.toISOString().slice(0, 7));
+    }
+  });
   const monthNames = state.lang === "kz"
     ? ["Қаңтар", "Ақпан", "Наурыз", "Сәуір", "Мамыр", "Маусым", "Шілде", "Тамыз", "Қыркүйек", "Қазан", "Қараша", "Желтоқсан"]
     : ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-  const months = [...new Set(cal.days.map(d => d.day.slice(0, 7)))].map(ym => {
+  const months = [...monthKeys].sort().map(ym => {
     const [year, month] = ym.split("-").map(Number);
     const lead = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
     const total = new Date(Date.UTC(year, month, 0)).getUTCDate();
     const cells = Array.from({ length: total }, (_, i) => {
-      const d = byDay[`${ym}-${String(i + 1).padStart(2, "0")}`];
-      return d ? `<span class="cal-day ${d.kind}" title="${esc(d.holiday || kindLabel[d.kind])}">${i + 1}</span>` : `<span class="cal-day">${i + 1}</span>`;
+      const iso = `${ym}-${String(i + 1).padStart(2, "0")}`;
+      const d = byDay[iso];
+      const b = bookedOn(iso);
+      const classes = ["cal-day", d?.kind, b && "booked"].filter(Boolean).join(" ");
+      const title = [d && (d.holiday || kindLabel[d.kind]), b && `${b.request_code} · ${b.status}`].filter(Boolean).join(" · ");
+      return `<span class="${classes}"${title ? ` title="${esc(title)}"` : ""}>${i + 1}</span>`;
     });
     return `<div class="cal-month"><b data-verbatim>${monthNames[month - 1]} ${year}</b><div class="cal-grid">
       ${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(w => `<span class="cal-wd">${w}</span>`).join("")}
       ${"<span></span>".repeat(lead)}${cells.join("")}</div></div>`;
   }).join("");
-  const holidays = cal.days.filter(d => d.kind === "holiday")
+  const holidays = days.filter(d => d.kind === "holiday")
     .map(d => `<li><span data-verbatim>${esc(formatDate(d.day))}</span> — <span>${esc(d.holiday)}</span></li>`).join("");
+  const plans = booked.map(b => `<li><b data-verbatim>${esc(formatPeriod(b))}</b> · <span data-verbatim>${esc(b.request_code)}</span> · <span>${esc(b.status)}</span></li>`).join("");
   const num = value => Math.round(Number(value) * 10) / 10;
   return `<div class="leave-cal">
-    <div class="cal-summary">
+    ${cal ? `<div class="cal-summary">
       <span><span>Calendar days</span> <b>${cal.days.length}</b></span>
       <span class="weekend"><span>Weekends (charged)</span> <b>${cal.weekend_days}</b></span>
       <span class="holiday"><span>Public holidays (not charged)</span> <b>${cal.holiday_days}</b></span>
       <span class="charged"><span>Will be charged</span> <b>${num(cal.charged_days)}</b></span>
-    </div>
-    <div class="cal-legend"><span><i class="workday"></i><span>Working day</span></span><span><i class="weekend"></i><span>Weekend</span></span><span><i class="holiday"></i><span>Public holiday</span></span></div>
+    </div>` : ""}
+    ${plans ? `<div class="cal-plans"><b>Your planned vacations</b><ul>${plans}</ul></div>` : ""}
+    <div class="cal-legend"><span><i class="workday"></i><span>Working day</span></span><span><i class="weekend"></i><span>Weekend</span></span><span><i class="holiday"></i><span>Public holiday</span></span>${plans ? `<span><i class="booked"></i><span>Your vacation</span></span>` : ""}</div>
     <div class="cal-months">${months}</div>
     ${holidays ? `<ul class="cal-holidays">${holidays}</ul>` : ""}
     <p class="muted small">Annual leave is counted in calendar days: weekends are charged, public holidays are not.</p>
@@ -843,20 +858,34 @@ function setupModals() {
   const reqCalendar = document.getElementById("reqCalendar");
   const reqSubmit = document.querySelector('#requestForm button[type="submit"]');
   let previewSeq = 0;
+  // The employee's pending/approved vacations still ahead, shown before any date is picked.
+  const loadBookedLeave = async () => {
+    try {
+      const today = isoDay(0);
+      state.bookedLeave = (await apiAll("/requests?type=Vacation"))
+        .filter(r => r.status !== "Rejected" && (r.end_date || r.start_date) >= today)
+        .sort((a, b) => a.start_date.localeCompare(b.start_date));
+    } catch { state.bookedLeave = []; }
+  };
   const previewLeave = async () => {
     const start = reqStart.value;
     const end = reqEnd.value || start;
     const seq = ++previewSeq;
+    const booked = reqType.value === "Vacation" ? state.bookedLeave || [] : [];
+    const picked = Boolean(start && end >= start);
     reqSubmit.disabled = false;
-    reqCalendar.hidden = !(reqType.value === "Vacation" && start && end >= start);
+    reqCalendar.hidden = reqType.value !== "Vacation" || (!picked && !booked.length);
     if (reqCalendar.hidden) return;
+    if (!picked) { reqCalendar.innerHTML = renderLeaveCalendar(null, booked); return; }
     try {
       const cal = await api(`/requests/leave-calendar?start_date=${start}&end_date=${end}`);
       if (seq !== previewSeq) return;
       const short = cal.charged_days > cal.available_days;
-      reqCalendar.innerHTML = renderLeaveCalendar(cal) + `<p class="cal-balance ${short ? "bad" : ""}">
-        <span>Available days</span>: <b>${Math.round(cal.available_days * 10) / 10}</b>${short ? ` · <span>Not enough leave days for these dates</span>` : ""}</p>`;
-      reqSubmit.disabled = short;
+      const overlap = booked.filter(b => b.start_date <= end && (b.end_date || b.start_date) >= start);
+      reqCalendar.innerHTML = renderLeaveCalendar(cal, booked) + `<p class="cal-balance ${short ? "bad" : ""}">
+        <span>Available days</span>: <b>${Math.round(cal.available_days * 10) / 10}</b>${short ? ` · <span>Not enough leave days for these dates</span>` : ""}</p>
+        ${overlap.length ? `<p class="cal-balance bad"><span>These dates overlap your vacation</span>: <span data-verbatim>${esc(overlap.map(b => `${formatPeriod(b)} (${b.request_code})`).join(", "))}</span></p>` : ""}`;
+      reqSubmit.disabled = short || overlap.length > 0;
     } catch { reqCalendar.hidden = true; }
   };
   [reqStart, reqEnd, reqType].forEach(el => el.addEventListener("change", previewLeave));
@@ -867,7 +896,8 @@ function setupModals() {
       reqStart.min = reqEnd.min = isoDay(0);
       reqStart.max = reqEnd.max = isoDay(365);
       syncRequestType();
-      previewLeave();
+      reqCalendar.hidden = true;
+      loadBookedLeave().then(previewLeave);
       document.getElementById("requestModal").classList.add("open");
       document.getElementById("reqStart").focus();
     });

@@ -1,0 +1,71 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 776B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.14-slim
+#2 ...
+
+#3 [auth] library/python:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.14-slim
+#2 DONE 3.4s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 234B done
+#4 DONE 0.0s
+
+#5 [ 1/12] FROM docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+#5 resolve docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 141.99kB 0.0s done
+#6 DONE 0.0s
+
+#7 [ 3/12] RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+#7 CACHED
+
+#8 [ 4/12] COPY requirements.txt .
+#8 CACHED
+
+#9 [ 2/12] WORKDIR /app
+#9 CACHED
+
+#10 [ 5/12] RUN pip install --no-cache-dir -r requirements.txt
+#10 CACHED
+
+#11 [ 6/12] COPY app/ ./app/
+#11 DONE 0.1s
+
+#12 [ 7/12] COPY migrations/ ./migrations/
+#12 DONE 0.0s
+
+#13 [ 8/12] COPY alembic.ini .
+#13 DONE 0.0s
+
+#14 [ 9/12] COPY static/ ./static/
+#14 DONE 0.0s
+
+#15 [10/12] COPY knowledge/ ./knowledge/
+#15 DONE 0.0s
+
+#16 [11/12] COPY ml/ ./ml/
+#16 DONE 0.0s
+
+#17 [12/12] RUN useradd --uid 10001 --create-home janamen && mkdir -p /data && chown -R janamen:janamen /app /data
+#17 DONE 0.3s
+
+#18 exporting to image
+#18 exporting layers
+#18 exporting layers 0.2s done
+#18 exporting manifest sha256:398f6aaa31a2e353d8119bfc93aa0a64b24bb5f130a786f55c3428a29df6888e
+#18 exporting manifest sha256:398f6aaa31a2e353d8119bfc93aa0a64b24bb5f130a786f55c3428a29df6888e done
+#18 exporting config sha256:88d18921ac5828df63dbbc71c6222150f0b99f8c55df6abafbd5e3b3acd1e2b6 done
+#18 exporting attestation manifest sha256:d6c2f419fd66f1b87054dc39ec00b993e25d5cd66cb5b99ac48c38cd459d8fa8 done
+#18 exporting manifest list sha256:edffbb6beaf0b75b94015d46a20e11c174d9be4c54825c89144781717a9f4092 done
+#18 naming to docker.io/library/janamen-strict-audit:local done
+#18 unpacking to docker.io/library/janamen-strict-audit:local 0.1s done
+#18 DONE 0.3s

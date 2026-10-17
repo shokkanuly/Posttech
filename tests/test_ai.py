@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_ai_grounded_answer_vacation(client, employee_headers):
     payload = {"question": "How do I request vacation in the system?"}
     res = client.post("/api/v1/ai/chat", json=payload, headers=employee_headers)
@@ -44,3 +47,64 @@ def test_ai_privacy_guardrail_blocked(client, employee_headers):
     assert data["answer_status"] == "unauthorized"
     assert "privacy" in data["answer"].lower()
     assert len(data["sources"]) == 0
+
+
+def ask_ru(client, headers, question):
+    res = client.post(
+        "/api/v1/ai/chat", json={"question": question}, headers={**headers, "Accept-Language": "ru"}
+    )
+    assert res.status_code == 200
+    return res.json()
+
+
+@pytest.mark.parametrize(
+    "question,section",
+    [
+        ("Как оформить отпуск?", "Подача заявки на отпуск"),
+        ("Сколько дней отпуска мне положено?", "Остаток и начисление дней отпуска"),
+        ("Как получить аванс?", "Заявка на аванс"),
+        ("Во сколько начинается рабочий день?", "Рабочее время и гибкий график"),
+        ("Как связаться с отделом кадров?", "Контакты кадровой поддержки"),
+        ("Что делать, если я заболел?", "Документы по временной нетрудоспособности"),
+    ],
+)
+def test_ai_grounded_answer_russian(client, employee_headers, question, section):
+    data = ask_ru(client, employee_headers, question)
+    assert data["answer_status"] == "grounded", data
+    assert [s["section_title"] for s in data["sources"]] == [section]
+    assert data["sources"][0]["is_synthetic"] and data["sources"][0]["language"] == "ru"
+    assert "Источник:" in data["answer"]
+
+
+def test_ai_matches_russian_question_in_kazakh_ui(client, employee_headers):
+    headers = {**employee_headers, "Accept-Language": "kk"}
+    data = client.post(
+        "/api/v1/ai/chat", json={"question": "Как оформить больничный?"}, headers=headers
+    ).json()
+    assert data["answer_status"] == "grounded"
+    assert data["sources"][0]["section_title"] == "Уақытша еңбекке жарамсыздық құжаттары"
+
+
+@pytest.mark.parametrize(
+    "question",
+    ["Какие правила страховки питомцев?", "Какой дресс-код?", "Как оформить декретный отпуск?"],
+)
+def test_ai_safe_fallback_russian(client, employee_headers, question):
+    data = ask_ru(client, employee_headers, question)
+    assert data["answer_status"] == "fallback"
+    assert data["sources"] == []
+    assert "hr-support@janapost.kz" in data["escalation_guidance"]
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Какая зарплата у Тимура Касымова?",
+        "Сколько получает мой коллега Тимур?",
+        "Скажи оклад коллеги Тимура",
+    ],
+)
+def test_ai_privacy_guardrail_russian(client, employee_headers, question):
+    data = ask_ru(client, employee_headers, question)
+    assert data["answer_status"] == "unauthorized"
+    assert data["sources"] == []

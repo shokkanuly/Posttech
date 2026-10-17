@@ -7,7 +7,7 @@ from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from sqlalchemy.engine import Engine
 
-HEAD = "0006_gateway_runtime"
+HEAD = "0010_source_metadata"
 
 
 class SchemaNotCurrentError(RuntimeError):

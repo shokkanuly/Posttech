@@ -24,12 +24,13 @@ from app.gateway.connectors import (
     MockOneC,
     TemporaryConnectorError,
 )
-from app.gateway.models import GatewayBase, GatewayJob, GatewayNonce, utcnow
+from app.gateway.models import GatewayJob, GatewayNonce, utcnow
 from app.integrations import signing
 from app.integrations.contracts import (
     BACKOFF_SECONDS,
     DocumentRequest,
     JobStatus,
+    RecoveryCommand,
     RegistrationResult,
 )
 
@@ -48,6 +49,7 @@ def status_for(job: GatewayJob) -> JobStatus:
             mode="MOCK",
             occurred_at=aware(job.updated_at),
             error_code=job.error_code,
+            recovery_key=job.recovery_key,
         )
     )
 
@@ -73,8 +75,45 @@ class GatewayRuntime:
         self.documentolog = MockDocumentolog(config)
 
     def initialize(self) -> None:
-        # This isolated gateway owns its v1 schema, never the JanaMen application's tables.
-        GatewayBase.metadata.create_all(self.engine)
+        from app.gateway.migrate import upgrade_schema
+
+        upgrade_schema(self.engine)
+
+    def retry(self, key: str, command: RecoveryCommand) -> JobStatus:
+        with self.sessions() as db:
+            job = db.query(GatewayJob).filter_by(idempotency_key=key).with_for_update().first()
+            if job is None:
+                raise HTTPException(404, "Job not found")
+            if command.gateway_job_id != job.id:
+                raise HTTPException(409, "Recovery job mismatch")
+            if job.recovery_key == command.recovery_key or job.status == "REGISTERED":
+                return status_for(job)
+            if job.status != "DEAD":
+                raise HTTPException(409, "Only exhausted transient jobs can be retried")
+            claimed = db.execute(
+                update(GatewayJob)
+                .where(GatewayJob.id == job.id, GatewayJob.status == "DEAD")
+                .values(
+                    status="PENDING",
+                    attempts=0,
+                    recovery_key=command.recovery_key,
+                    next_attempt_at=utcnow(),
+                    updated_at=utcnow(),
+                    error_code=None,
+                    lease_token=None,
+                    lease_until=None,
+                    callback_status="WAITING",
+                    callback_attempts=0,
+                    callback_lease_until=None,
+                    callback_lease_token=None,
+                ),
+                execution_options={"synchronize_session": False},
+            )
+            if cast(CursorResult, claimed).rowcount != 1:
+                raise HTTPException(409, "Recovery state changed")
+            db.commit()
+            db.refresh(job)
+            return status_for(job)
 
     def remember_nonce(self, nonce: str) -> None:
         now = utcnow()
@@ -248,8 +287,10 @@ class GatewayRuntime:
                 db.query(GatewayJob)
                 .filter_by(id=job_id, callback_lease_token=token)
                 .with_for_update()
-                .one()
+                .first()
             )
+            if job is None:
+                return True  # An authorized new generation superseded this in-flight callback.
             job.callback_attempts += 1
             job.callback_lease_token = None
             job.callback_lease_until = None

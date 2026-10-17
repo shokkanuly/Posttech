@@ -61,6 +61,7 @@ class JobStatus(Contract):
     external_ref: str | None = Field(default=None, pattern=r"^MOCK-DOC-[a-f0-9]{32}$")
     occurred_at: AwareDatetime
     error_code: str | None = Field(default=None, pattern=r"^[A-Z0-9_]{1,40}$")
+    recovery_key: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
 
     @model_validator(mode="after")
     def registration_has_reference(self):
@@ -72,6 +73,11 @@ class JobStatus(Contract):
 class RegistrationResult(JobStatus):
     nonce: str = Field(pattern=r"^[A-Za-z0-9_-]{16,64}$")
     status: Literal["REGISTERED", "FAILED", "DEAD"]
+
+
+class RecoveryCommand(Contract):
+    gateway_job_id: JobId
+    recovery_key: str = Field(pattern=r"^[a-f0-9]{32}$")
 
 
 class EmployeeSnapshot(Contract):

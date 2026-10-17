@@ -31,6 +31,7 @@ class GatewayJob(GatewayBase):
     lease_until: Mapped[datetime | None] = mapped_column(DateTime)
     external_ref: Mapped[str | None] = mapped_column(String(100))
     error_code: Mapped[str | None] = mapped_column(String(40))
+    recovery_key: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     callback_status: Mapped[str] = mapped_column(String(12), default="WAITING", index=True)

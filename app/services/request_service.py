@@ -1,4 +1,7 @@
+import hashlib
+import json
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from typing import List, Optional, cast
 from uuid import uuid4
 
@@ -99,7 +102,7 @@ class RequestService:
             type=req.type,
             start_date=req.start_date,
             end_date=req.end_date,
-            amount=req.amount,
+            amount=float(req.amount) if req.amount is not None else None,
             reason=req.reason,
             status=req.status,
             reviewer_id=req.reviewer_id,
@@ -142,7 +145,12 @@ class RequestService:
 
     @classmethod
     def create_request(
-        cls, db: Session, user: User, payload: RequestCreate, ip_address: Optional[str] = None
+        cls,
+        db: Session,
+        user: User,
+        payload: RequestCreate,
+        ip_address: Optional[str] = None,
+        idempotency_key: str | None = None,
     ) -> Request:
         # 1. Validate Vacation Balance if applicable
         # Serialize reservations for this employee on both SQLite and PostgreSQL.
@@ -160,6 +168,23 @@ class RequestService:
         )
         if not profile:
             raise HTTPException(409, "An HR profile is required before submitting a request")
+        canonical = payload.model_dump(mode="json")
+        canonical["amount"] = (
+            str(payload.amount.quantize(Decimal("0.01"))) if payload.amount is not None else None
+        )
+        canonical["reason"] = payload.reason or None
+        submission_hash = hashlib.sha256(
+            json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        if idempotency_key:
+            existing = (
+                db.query(Request).filter_by(user_id=user.id, submission_key=idempotency_key).first()
+            )
+            if existing:
+                if existing.submission_hash != submission_hash:
+                    raise HTTPException(409, "Submission key already used with different content")
+                db.commit()
+                return existing
         assigned_reviewer = (
             db.query(User)
             .filter(
@@ -234,8 +259,10 @@ class RequestService:
             type=payload.type,
             start_date=payload.start_date,
             end_date=payload.end_date,
-            amount=float(payload.amount) if payload.amount is not None else None,
+            amount=payload.amount,
             reason=payload.reason,
+            submission_key=idempotency_key,
+            submission_hash=submission_hash if idempotency_key else None,
             status=RequestStatus.PENDING,
             external_sync_id=None,
         )

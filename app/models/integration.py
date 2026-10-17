@@ -33,6 +33,9 @@ class IntegrationOutbox(Base):
     gateway_job_id: Mapped[str | None] = mapped_column(String(36))
     sent_at: Mapped[datetime | None] = mapped_column(DateTime)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    retry_key: Mapped[str | None] = mapped_column(String(32))
+    recovery_key: Mapped[str | None] = mapped_column(String(32))
     request: Mapped[Request] = relationship("Request")
 
 

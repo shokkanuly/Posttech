@@ -1,9 +1,21 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, true
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    true,
+)
 from sqlalchemy import Date as SQLDate
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -14,6 +26,7 @@ from app.models.enums import RequestEventType, RequestStatus, RequestType
 
 class Request(Base):
     __tablename__ = "requests"
+    __table_args__ = (UniqueConstraint("user_id", "submission_key", name="uq_request_submission"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     request_code: Mapped[str] = mapped_column(
@@ -25,10 +38,12 @@ class Request(Base):
     type: Mapped[RequestType] = mapped_column(SQLEnum(RequestType), nullable=False)
     start_date: Mapped[date] = mapped_column(SQLDate, nullable=False)
     end_date: Mapped[date | None] = mapped_column(SQLDate, nullable=True)
-    amount: Mapped[float | None] = mapped_column(
-        Float, nullable=True
+    amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), nullable=True
     )  # For advance payments (e.g., KZT)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    submission_key: Mapped[str | None] = mapped_column(String(80))
+    submission_hash: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[RequestStatus] = mapped_column(
         SQLEnum(RequestStatus), default=RequestStatus.PENDING, nullable=False, index=True
     )

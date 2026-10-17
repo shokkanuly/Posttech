@@ -1,0 +1,242 @@
+{
+  "model": "LogisticRegression over four query/source relevance features",
+  "synthetic_only": true,
+  "minimum_query_coverage": 0.8,
+  "threshold": 0.8,
+  "split_sizes": {
+    "train": 58,
+    "validation": 20,
+    "test": 22
+  },
+  "training_pairs": 366,
+  "manifest": {
+    "train_sha256": "33f3d72842812f8217796e96dd842ef403412c99fd86252e493d7f3220171513",
+    "validation_sha256": "589b2a3d52a7c3db2f9657633ce01c959973a70b4cc2eb600af6178cd84152be",
+    "test_sha256": "47546767d4a3c76078281cc5b711b18779bb17bba74bc2c78b5d3433986d8a6f",
+    "scikit_learn_version": "1.9.1",
+    "corpus_sha256": "089698c16e43c18767a3928bb7d2f50cda8d89624a50cc3ce09d7bf8c0020d0f"
+  },
+  "validation": {
+    "counts": {
+      "examples": 20,
+      "status_correct": 14,
+      "grounded": 16,
+      "top1_correct": 10,
+      "accepted": 10,
+      "accepted_correct": 10,
+      "fallback": 2,
+      "fallback_correct": 2,
+      "private": 2,
+      "private_correct": 2
+    },
+    "status_accuracy": 0.7,
+    "grounded_top1_recall": 0.625,
+    "accepted_source_precision": 1.0,
+    "fallback_accuracy": 1.0,
+    "privacy_refusal_rate": 1.0,
+    "errors": [
+      {
+        "id": "balance-4-ru",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      },
+      {
+        "id": "balance-4-kk",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      },
+      {
+        "id": "advance-4-kk",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      },
+      {
+        "id": "notifications-4-ru",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      },
+      {
+        "id": "notifications-4-kk",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      },
+      {
+        "id": "knowledge-4-kk",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      }
+    ]
+  },
+  "test": {
+    "counts": {
+      "examples": 22,
+      "status_correct": 14,
+      "grounded": 16,
+      "top1_correct": 8,
+      "accepted": 8,
+      "accepted_correct": 8,
+      "fallback": 4,
+      "fallback_correct": 4,
+      "private": 2,
+      "private_correct": 2
+    },
+    "status_accuracy": 0.6364,
+    "grounded_top1_recall": 0.5,
+    "accepted_source_precision": 1.0,
+    "fallback_accuracy": 1.0,
+    "privacy_refusal_rate": 1.0,
+    "errors": [
+      {
+        "id": "vacation-5-ru",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      },
+      {
+        "id": "vacation-5-kk",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      },
+      {
+        "id": "advance-5-ru",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      },
+      {
+        "id": "profile-5-ru",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      },
+      {
+        "id": "profile-5-kk",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      },
+      {
+        "id": "approvals-5-kk",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      },
+      {
+        "id": "knowledge-5-ru",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      },
+      {
+        "id": "knowledge-5-kk",
+        "expected": "grounded",
+        "actual": "fallback",
+        "top_source": null
+      }
+    ]
+  },
+  "test_by_language": {
+    "ru": {
+      "counts": {
+        "examples": 11,
+        "status_correct": 7,
+        "grounded": 8,
+        "top1_correct": 4,
+        "accepted": 4,
+        "accepted_correct": 4,
+        "fallback": 2,
+        "fallback_correct": 2,
+        "private": 1,
+        "private_correct": 1
+      },
+      "status_accuracy": 0.6364,
+      "grounded_top1_recall": 0.5,
+      "accepted_source_precision": 1.0,
+      "fallback_accuracy": 1.0,
+      "privacy_refusal_rate": 1.0,
+      "errors": [
+        {
+          "id": "vacation-5-ru",
+          "expected": "grounded",
+          "actual": "fallback",
+          "top_source": null
+        },
+        {
+          "id": "advance-5-ru",
+          "expected": "grounded",
+          "actual": "fallback",
+          "top_source": null
+        },
+        {
+          "id": "profile-5-ru",
+          "expected": "grounded",
+          "actual": "fallback",
+          "top_source": null
+        },
+        {
+          "id": "knowledge-5-ru",
+          "expected": "grounded",
+          "actual": "fallback",
+          "top_source": null
+        }
+      ]
+    },
+    "kk": {
+      "counts": {
+        "examples": 11,
+        "status_correct": 7,
+        "grounded": 8,
+        "top1_correct": 4,
+        "accepted": 4,
+        "accepted_correct": 4,
+        "fallback": 2,
+        "fallback_correct": 2,
+        "private": 1,
+        "private_correct": 1
+      },
+      "status_accuracy": 0.6364,
+      "grounded_top1_recall": 0.5,
+      "accepted_source_precision": 1.0,
+      "fallback_accuracy": 1.0,
+      "privacy_refusal_rate": 1.0,
+      "errors": [
+        {
+          "id": "vacation-5-kk",
+          "expected": "grounded",
+          "actual": "fallback",
+          "top_source": null
+        },
+        {
+          "id": "profile-5-kk",
+          "expected": "grounded",
+          "actual": "fallback",
+          "top_source": null
+        },
+        {
+          "id": "approvals-5-kk",
+          "expected": "grounded",
+          "actual": "fallback",
+          "top_source": null
+        },
+        {
+          "id": "knowledge-5-kk",
+          "expected": "grounded",
+          "actual": "fallback",
+          "top_source": null
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Small synthetic demonstration dataset; not a production quality estimate.",
+    "Lexical coverage remains mandatory; this is not semantic embedding search.",
+    "No real company policy or personal HR data is used."
+  ]
+}

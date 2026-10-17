@@ -1,0 +1,42 @@
+{
+  "verified_date": "2026-10-17",
+  "tests": {
+    "python -m pytest -q": "283 passed, 1 upstream TestClient warning, 151.76 seconds",
+    "python -m pytest -q tests/test_knowledge_files_and_ml.py": "17 passed, 1 upstream warning",
+    "trained-model authenticated API integration": "1 passed, 1 upstream warning, 2.18 seconds",
+    "node --test tests/frontend_localization.test.cjs": "5 passed"
+  },
+  "checks": {
+    "ruff check .": "passed",
+    "ruff format --check .": "95 files formatted",
+    "python -m mypy app ml --check-untyped-defs": "63 source files passed",
+    "python -m pip check": "no broken requirements",
+    "git diff --check": "passed"
+  },
+  "data": {
+    "assistant_rules": 12,
+    "synthetic_documents": 8,
+    "localized_passages": 16,
+    "train_queries": 58,
+    "validation_queries": 20,
+    "test_queries": 22,
+    "training_pairs": 366
+  },
+  "model_evaluation": {
+    "grounded_test_correct": 2,
+    "grounded_test_total": 16,
+    "fallback_correct": 4,
+    "fallback_total": 4,
+    "privacy_correct": 2,
+    "privacy_total": 2,
+    "default_mode": "lexical",
+    "ml_mode": "optional experimental reranking"
+  },
+  "dependency_audit": {
+    "checked_exact_pins": 48,
+    "advisory_matches": 0,
+    "report": "dependency-audit.json"
+  },
+  "platform": "Python 3.14, macOS; Docker build not run",
+  "original_database_and_env_match_prior_checksums": true
+}

@@ -1,0 +1,131 @@
+{
+  "$defs": {
+    "AnswerRule": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{2,60}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "ru": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Ru",
+          "type": "string"
+        },
+        "kk": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Kk",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ru",
+        "kk"
+      ],
+      "title": "AnswerRule",
+      "type": "object"
+    },
+    "SourceRequirements": {
+      "additionalProperties": false,
+      "properties": {
+        "approved": {
+          "const": true,
+          "title": "Approved",
+          "type": "boolean"
+        },
+        "active": {
+          "const": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "role_filtered": {
+          "const": true,
+          "title": "Role Filtered",
+          "type": "boolean"
+        },
+        "exact_quotes": {
+          "const": true,
+          "title": "Exact Quotes",
+          "type": "boolean"
+        },
+        "revision_and_language_citations": {
+          "const": true,
+          "title": "Revision And Language Citations",
+          "type": "boolean"
+        },
+        "employee_records_excluded": {
+          "const": true,
+          "title": "Employee Records Excluded",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "approved",
+        "active",
+        "role_filtered",
+        "exact_quotes",
+        "revision_and_language_citations",
+        "employee_records_excluded"
+      ],
+      "title": "SourceRequirements",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source_requirements": {
+      "$ref": "#/$defs/SourceRequirements"
+    },
+    "rules": {
+      "items": {
+        "$ref": "#/$defs/AnswerRule"
+      },
+      "maxItems": 50,
+      "minItems": 1,
+      "title": "Rules",
+      "type": "array"
+    },
+    "privacy_restricted_terms": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "title": "Privacy Restricted Terms",
+      "type": "array"
+    },
+    "privacy_sensitive_terms": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Privacy Sensitive Terms",
+      "type": "array"
+    },
+    "privacy_other_person_markers": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Privacy Other Person Markers",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "source_requirements",
+    "rules",
+    "privacy_restricted_terms"
+  ],
+  "title": "AssistantRules",
+  "type": "object"
+}

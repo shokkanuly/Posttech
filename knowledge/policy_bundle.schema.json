@@ -1,0 +1,251 @@
+{
+  "$defs": {
+    "DocumentCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "category": {
+          "default": "HR Policy",
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "version": {
+          "default": "1.0",
+          "maxLength": 20,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "is_synthetic": {
+          "default": false,
+          "title": "Is Synthetic",
+          "type": "boolean"
+        },
+        "language": {
+          "default": "en",
+          "enum": [
+            "en",
+            "ru",
+            "kk"
+          ],
+          "title": "Language",
+          "type": "string"
+        },
+        "translations": {
+          "additionalProperties": {
+            "$ref": "#/$defs/DocumentTranslation"
+          },
+          "propertyNames": {
+            "enum": [
+              "en",
+              "ru",
+              "kk"
+            ]
+          },
+          "title": "Translations",
+          "type": "object"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "DocumentCreate",
+      "type": "object"
+    },
+    "DocumentTranslation": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "category": {
+          "default": "HR Policy",
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "DocumentTranslation",
+      "type": "object"
+    },
+    "FileSection": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "pattern": "^[a-z][a-z0-9_-]{1,60}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "section_title": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Section Title",
+          "type": "string"
+        },
+        "content": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tags"
+        },
+        "access_level": {
+          "default": "all",
+          "enum": [
+            "all",
+            "employee",
+            "manager",
+            "hr_admin"
+          ],
+          "title": "Access Level",
+          "type": "string"
+        },
+        "translations": {
+          "additionalProperties": {
+            "$ref": "#/$defs/SourceTranslation"
+          },
+          "propertyNames": {
+            "enum": [
+              "en",
+              "ru",
+              "kk"
+            ]
+          },
+          "title": "Translations",
+          "type": "object"
+        }
+      },
+      "required": [
+        "key",
+        "section_title",
+        "content"
+      ],
+      "title": "FileSection",
+      "type": "object"
+    },
+    "SourceTranslation": {
+      "additionalProperties": false,
+      "properties": {
+        "section_title": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Section Title",
+          "type": "string"
+        },
+        "content": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        }
+      },
+      "required": [
+        "section_title",
+        "content"
+      ],
+      "title": "SourceTranslation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "bundle_id": {
+      "pattern": "^[a-z][a-z0-9_-]{2,80}$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "kind": {
+      "default": "document",
+      "enum": [
+        "document",
+        "template"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "provenance": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Provenance",
+      "type": "string"
+    },
+    "document": {
+      "$ref": "#/$defs/DocumentCreate"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/FileSection"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "title": "Sections",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "provenance",
+    "document",
+    "sections"
+  ],
+  "title": "PolicyBundle",
+  "type": "object"
+}

@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, contains_eager, joinedload
 
 from app.database import get_db
+from app.integrations.contracts import Code
+from app.integrations.outbox import aware
 from app.integrations.profile_sync import sync_profiles
+from app.integrations.recovery import can_retry, queue_retry, resolve_review
 from app.integrations.telemetry import integrations
 from app.localization import LocalizedRoute
 from app.models.audit import AuditEvent
@@ -14,7 +17,7 @@ from app.models.user import User
 from app.pagination import Page
 from app.schemas.academy import CourseDetailResponse, EnrollmentCreate
 from app.schemas.common import AdminSummaryResponse, AuditResponse, DatabaseID
-from app.schemas.integration import AdapterTelemetry
+from app.schemas.integration import AdapterTelemetry, ResolveProfileReview, RetryDelivery
 from app.schemas.knowledge import (
     DocumentCreate,
     DocumentPatch,
@@ -128,6 +131,9 @@ def integration_queue(
     )
     return [
         {
+            "id": row.id,
+            "retry_count": row.retry_count,
+            "can_retry": can_retry(row),
             "request_code": row.request.request_code,
             "status": row.status,
             "error_code": row.last_error,
@@ -142,12 +148,36 @@ def profile_reviews(
     page: Page, current_user: User = Depends(admin), db: Session = Depends(get_db)
 ) -> list[dict]:
     return [
-        {"employee_code": row.employee_code, "reason": row.reason}
+        {
+            "employee_code": row.employee_code,
+            "reason": row.reason,
+            "observed_at": aware(row.observed_at).isoformat(),
+        }
         for row in db.query(IntegrationReview)
         .order_by(IntegrationReview.employee_code)
         .offset(page.offset)
         .limit(page.limit)
     ]
+
+
+@router.post("/integrations/queue/{task_id}/retry")
+def retry_integration(
+    task_id: DatabaseID,
+    payload: RetryDelivery,
+    current_user: User = Depends(admin),
+    db: Session = Depends(get_db),
+):
+    return queue_retry(db, task_id, payload.expected_retry_count, current_user, payload.reason)
+
+
+@router.post("/integrations/reviews/{employee_code}/resolve")
+def resolve_profile_review(
+    employee_code: Code,
+    payload: ResolveProfileReview,
+    current_user: User = Depends(admin),
+    db: Session = Depends(get_db),
+):
+    return resolve_review(db, employee_code, payload, current_user)
 
 
 @router.get("/audit", response_model=list[AuditResponse])

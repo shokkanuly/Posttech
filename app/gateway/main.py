@@ -21,6 +21,7 @@ from app.integrations.contracts import (
     EmployeeSnapshot,
     GatewayHealth,
     JobStatus,
+    RecoveryCommand,
 )
 from app.middleware import RequestBodyLimitMiddleware
 
@@ -104,6 +105,10 @@ def create_app(config: GatewaySettings | None = None) -> FastAPI:
             if job is None:
                 raise HTTPException(404, "Job not found")
             return status_for(job)
+
+    @app.post("/v1/documents/{idempotency_key}/retry", response_model=JobStatus)
+    def retry_document(idempotency_key: str, payload: RecoveryCommand):
+        return runtime.retry(idempotency_key, payload)
 
     @app.get("/v1/employees", response_model=EmployeePage)
     def employees(updated_since: AwareDatetime | None = None):

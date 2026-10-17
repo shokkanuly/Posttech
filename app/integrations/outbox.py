@@ -4,6 +4,7 @@ INTEGRATION_GATEWAY_URL is the switch. Approval and the immutable outbound snaps
 commit together. Network delivery and reconciliation happen only in this CLI worker.
 """
 
+import json
 import random
 import ssl
 import time
@@ -128,7 +129,7 @@ def _get(path: str) -> tuple[int, dict]:
     return gateway_request("GET", path)
 
 
-def apply_result(db: Session, result: JobStatus) -> bool:
+def apply_result(db: Session, result: JobStatus, *, authorized_recovery: bool = False) -> bool:
     """Callback and reconciliation use this same atomic, idempotent state transition."""
     if result.status not in {"REGISTERED", "FAILED", "DEAD"}:
         raise HTTPException(422, "A terminal registration result is required")
@@ -140,6 +141,24 @@ def apply_result(db: Session, result: JobStatus) -> bool:
     )
     if task is None or task.operation != "REGISTER_DOCUMENT":
         raise HTTPException(404, "Integration job not found")
+    # Serialize against HR commands even on SQLite, where FOR UPDATE is ignored.
+    # While recovery is queued, callbacks wait for worker reconciliation to accept
+    # the generation. An old terminal callback must never cancel that durable intent.
+    claimed = db.execute(
+        update(IntegrationOutbox)
+        .where(
+            IntegrationOutbox.id == task.id,
+            IntegrationOutbox.retry_key.is_(None),
+            IntegrationOutbox.recovery_key == result.recovery_key,
+        )
+        .values(status=IntegrationOutbox.status),
+        execution_options={"synchronize_session": False},
+    )
+    if cast(CursorResult, claimed).rowcount != 1:
+        raise HTTPException(409, "Recovery is pending or result generation changed")
+    db.refresh(task)
+    if result.recovery_key != task.recovery_key:
+        raise HTTPException(409, "Result belongs to a superseded recovery generation")
     req = task.request
     if req.status != RequestStatus.APPROVED or (
         req.gateway_job_id and req.gateway_job_id != result.gateway_job_id
@@ -150,6 +169,8 @@ def apply_result(db: Session, result: JobStatus) -> bool:
     allowed: ColumnElement[bool] = Request.integration_status.in_(["PENDING", "SENT"])
     if result.status == "REGISTERED":
         allowed = or_(allowed, Request.integration_status == "DEAD")
+        if authorized_recovery:
+            allowed = or_(allowed, Request.integration_status == "FAILED")
     elif result.status == "DEAD":
         allowed = or_(
             allowed, (Request.integration_status == "DEAD") & Request.gateway_job_id.is_(None)
@@ -180,6 +201,7 @@ def apply_result(db: Session, result: JobStatus) -> bool:
             result.external_ref,
         ):
             raise HTTPException(409, "Conflicting terminal registration result")
+        task.status = "DONE" if result.status == "REGISTERED" else result.status
         return False
     task.gateway_job_id = result.gateway_job_id
     task.status = "DONE" if result.status == "REGISTERED" else result.status
@@ -239,6 +261,38 @@ def _fail(db: Session, task: IntegrationOutbox, code: int, reason: str) -> None:
         )
 
 
+def recover_delivery(task: IntegrationOutbox, send: Send, get: Get) -> tuple[int, dict]:
+    """Reconcile before replay. Never replace a known job missing from gateway storage."""
+    path = "/v1/documents/" + task.idempotency_key
+    code, data = get(path)
+    if code == 404:
+        if task.gateway_job_id:
+            return 409, {}  # An operator must investigate possible lost gateway storage.
+        return send(
+            "/v1/documents",
+            DocumentRequest.model_validate(task.payload)
+            .model_dump_json(exclude_none=True)
+            .encode(),
+            task.idempotency_key,
+        )
+    if code != 200:
+        return code, data
+    try:
+        result = JobStatus.model_validate(data)
+    except ValidationError:
+        return 502, {}
+    if result.idempotency_key != task.idempotency_key or (
+        task.gateway_job_id and result.gateway_job_id != task.gateway_job_id
+    ):
+        return 409, {}
+    if result.status == "DEAD":
+        body = json.dumps(
+            {"gateway_job_id": result.gateway_job_id, "recovery_key": task.retry_key}
+        ).encode()
+        return send(path + "/retry", body, task.idempotency_key)
+    return code, data
+
+
 def dispatch_one(db: Session, send: Send | None = None, get: Get | None = None) -> bool:
     if not settings.INTEGRATION_GATEWAY_URL:
         return False
@@ -246,6 +300,7 @@ def dispatch_one(db: Session, send: Send | None = None, get: Get | None = None) 
     now = datetime.now(timezone.utc)
     task = (
         db.query(IntegrationOutbox)
+        .populate_existing()
         .filter(
             IntegrationOutbox.status.in_(["PENDING", "SENT"]),
             IntegrationOutbox.next_attempt_at <= now,
@@ -269,7 +324,10 @@ def dispatch_one(db: Session, send: Send | None = None, get: Get | None = None) 
         db.commit()
         return True
     # Recover a job after a lost response/restart by its stable key; POST itself is idempotent.
-    if task.status == "SENT":
+    recovering = bool(task.retry_key)
+    if recovering:
+        code, data = recover_delivery(task, send, get)
+    elif task.status == "SENT":
         code, data = get("/v1/documents/" + task.idempotency_key)
     else:
         code, data = send(
@@ -289,25 +347,26 @@ def dispatch_one(db: Session, send: Send | None = None, get: Get | None = None) 
     if 200 <= code < 300 and result is None:
         _fail(db, task, 502, "INVALID_ACK")
     elif result:
+        task.retry_key = None
+        task.recovery_key = result.recovery_key
         task.last_error = None
         task.attempts = 0
         task.gateway_job_id = result.gateway_job_id
         # A callback can win this race; never regress its terminal result to SENT.
         db.refresh(task.request)
         if result.status in {"REGISTERED", "FAILED", "DEAD"}:
-            apply_result(db, result)
+            apply_result(db, result, authorized_recovery=recovering)
         else:
             task.status = "SENT"
             task.sent_at = task.sent_at or now
             task.next_attempt_at = now + timedelta(seconds=30)
             task.request.gateway_job_id = result.gateway_job_id
             task.request.integration_mode = result.mode
-            if task.request.integration_status == "PENDING":
+            if task.request.integration_status in {"PENDING", "FAILED", "DEAD"}:
                 task.request.integration_status = "SENT"
     elif code == 404 and task.status == "SENT":
-        # Gateway storage unavailable/replaced: resubmit same immutable contract and key.
-        task.status = "PENDING"
-        _fail(db, task, 503, "JOB_NOT_FOUND")
+        # Losing an accepted job store is an operator incident, not a new submission.
+        _fail(db, task, 409, "JOB_NOT_FOUND")
     else:
         _fail(db, task, code, f"HTTP_{code}" if code else "NETWORK")
     audit_service.log_event(

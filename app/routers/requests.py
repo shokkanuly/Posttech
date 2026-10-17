@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi import Request as FastAPIRequest
 from sqlalchemy.orm import Session
 
@@ -49,11 +49,16 @@ def list_requests(
 def create_request(
     payload: RequestCreate,
     request: FastAPIRequest,
+    idempotency_key: str | None = Header(
+        default=None, min_length=16, max_length=80, pattern=r"^[A-Za-z0-9_-]+$"
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     ip_addr = request.client.host if request.client else None
-    new_req = request_service.create_request(db, current_user, payload, ip_address=ip_addr)
+    new_req = request_service.create_request(
+        db, current_user, payload, ip_address=ip_addr, idempotency_key=idempotency_key
+    )
     return request_service.to_response(new_req)
 
 

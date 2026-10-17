@@ -1,9 +1,22 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
-from app.schemas.common import UTCDateTime
+from app.schemas.common import BodyDatabaseID, UTCDateTime
+
+
+class RetryDelivery(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    expected_retry_count: int = Field(ge=0, strict=True)
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class ResolveProfileReview(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    observed_at: AwareDatetime
+    user_id: BodyDatabaseID | None = None
+    reason: str = Field(min_length=3, max_length=500)
 
 
 class AdapterTelemetry(BaseModel):

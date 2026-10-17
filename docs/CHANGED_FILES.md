@@ -1,8 +1,8 @@
 # Files changed
 
-Cumulative manifest relative to `c6077b0`, the feature baseline preceding implementation commits in the current Git history. Existing user commits and pre-existing working changes were preserved. This manifest includes the initial MVP, backend hardening, RU/KK localization and demo provisioning. See [backend changes and reasons](BACKEND_UPGRADE_REPORT.md) and [latest localization and demo changes](LOCALIZATION_AND_DEMO.md).
+Cumulative manifest relative to `c6077b0`. Includes the MVP, backend hardening, RU/KK localization, demo accounts, file-based AI/ML work, and local worktree integration. See [local merge report](LOCAL_MERGE_REPORT.md) for incoming updates, confirmed fixes, validation and limits.
 
-110 files differ from that baseline or are new. Original ignored `.env` and `janamen.db` were not changed.
+160 files differ from that baseline or are new. Original ignored `.env` and `janamen.db` were not changed. Independent nested worktrees are excluded.
 
 - `.dockerignore`
 - `.env.example`
@@ -12,6 +12,8 @@ Cumulative manifest relative to `c6077b0`, the feature baseline preceding implem
 - `README.md`
 - `alembic.ini`
 - `app/__init__.py`
+- `app/ai_rules.py`
+- `app/benchmark.py`
 - `app/config.py`
 - `app/create_user.py`
 - `app/database.py`
@@ -19,7 +21,9 @@ Cumulative manifest relative to `c6077b0`, the feature baseline preceding implem
 - `app/errors.py`
 - `app/integrations/__init__.py`
 - `app/integrations/documentolog.py`
+- `app/integrations/gemini.py`
 - `app/integrations/one_c_zup.py`
+- `app/knowledge_files.py`
 - `app/localization.py`
 - `app/main.py`
 - `app/middleware.py`
@@ -35,6 +39,7 @@ Cumulative manifest relative to `c6077b0`, the feature baseline preceding implem
 - `app/models/user.py`
 - `app/pagination.py`
 - `app/provision_demo.py`
+- `app/retrieval_ranker.py`
 - `app/routers/__init__.py`
 - `app/routers/academy.py`
 - `app/routers/admin.py`
@@ -55,15 +60,18 @@ Cumulative manifest relative to `c6077b0`, the feature baseline preceding implem
 - `app/schemas/profile.py`
 - `app/schemas/request.py`
 - `app/seed.py`
+- `app/seed_scale.py`
 - `app/services/__init__.py`
 - `app/services/academy_service.py`
 - `app/services/ai_service.py`
 - `app/services/audit_service.py`
 - `app/services/auth_service.py`
 - `app/services/knowledge_service.py`
+- `app/services/ml_retrieval.py`
 - `app/services/notification_service.py`
 - `app/services/request_service.py`
 - `dependency_audit.py`
+- `docker-compose.postgres.yml`
 - `docker-compose.yml`
 - `docs/API_CONTRACT.md`
 - `docs/BACKEND_UPGRADE_REPORT.md`
@@ -72,15 +80,19 @@ Cumulative manifest relative to `c6077b0`, the feature baseline preceding implem
 - `docs/IMPLEMENTATION_PLAN.md`
 - `docs/IMPLEMENTATION_REPORT.md`
 - `docs/LOCALIZATION_AND_DEMO.md`
+- `docs/LOCAL_MERGE_REPORT.md`
 - `docs/evidence/backend-citation-verified.jpg`
 - `docs/evidence/backend-migration-rehearsal.json`
 - `docs/evidence/backend-revision-approved.jpg`
 - `docs/evidence/backend-tests.txt`
 - `docs/evidence/backend-upgrade-smoke.txt`
+- `docs/evidence/benchmark-postgresql.json`
 - `docs/evidence/clean-start-smoke.txt`
 - `docs/evidence/dependency-audit-before.json`
 - `docs/evidence/dependency-audit.json`
 - `docs/evidence/hr-approved-source.jpg`
+- `docs/evidence/local-merge-checks.json`
+- `docs/evidence/local-merge-kazakh.png`
 - `docs/evidence/localization-kazakh-source.jpg`
 - `docs/evidence/localization-role-smoke.json`
 - `docs/evidence/localization-russian-admin.jpg`
@@ -89,13 +101,44 @@ Cumulative manifest relative to `c6077b0`, the feature baseline preceding implem
 - `docs/evidence/mobile-manager-390.jpg`
 - `docs/evidence/source-citation.jpg`
 - `docs/openapi.json`
+- `knowledge/README.md`
+- `knowledge/assistant_rules.json`
+- `knowledge/assistant_rules.schema.json`
+- `knowledge/documents/advance.json`
+- `knowledge/documents/approvals.json`
+- `knowledge/documents/balance.json`
+- `knowledge/documents/knowledge.json`
+- `knowledge/documents/learning.json`
+- `knowledge/documents/notifications.json`
+- `knowledge/documents/profile.json`
+- `knowledge/documents/vacation.json`
+- `knowledge/policy_bundle.schema.json`
+- `knowledge/templates/policy.ru-kk.template.json`
 - `migrations/env.py`
 - `migrations/versions/0001_baseline.py`
 - `migrations/versions/0002_sessions_and_approvals.py`
 - `migrations/versions/0003_knowledge_revisions.py`
 - `migrations/versions/0004_source_translations.py`
+- `ml/MODEL_CARD.md`
+- `ml/README.md`
+- `ml/__init__.py`
+- `ml/data.py`
+- `ml/data/query.schema.json`
+- `ml/data/test.jsonl`
+- `ml/data/train.jsonl`
+- `ml/data/validation.jsonl`
+- `ml/evaluate.py`
+- `ml/reports/baseline.json`
+- `ml/reports/dependency-audit.json`
+- `ml/reports/merge-evaluation.json`
+- `ml/reports/verification.json`
+- `ml/retrieval.py`
+- `ml/search.py`
+- `ml/train.py`
+- `ml/validate.py`
 - `pyproject.toml`
 - `requirements-dev.txt`
+- `requirements-ml.txt`
 - `requirements.txt`
 - `smoke_test.py`
 - `static/css/style.css`
@@ -105,12 +148,19 @@ Cumulative manifest relative to `c6077b0`, the feature baseline preceding implem
 - `static/locales/catalog.json`
 - `tests/conftest.py`
 - `tests/frontend_localization.test.cjs`
+- `tests/test_ai.py`
+- `tests/test_ai_gemini.py`
 - `tests/test_api_matrix.py`
 - `tests/test_auth.py`
 - `tests/test_backend_hardening.py`
 - `tests/test_e2e_journey.py`
+- `tests/test_employee_directory.py`
+- `tests/test_knowledge_files_and_ml.py`
 - `tests/test_localization.py`
+- `tests/test_merge_regressions.py`
 - `tests/test_migrations.py`
 - `tests/test_reliability.py`
+- `tests/test_request_rules.py`
 - `tests/test_requests.py`
 - `tests/test_security.py`
+- `tests/test_seed_scale.py`

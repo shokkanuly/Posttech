@@ -3748,6 +3748,145 @@
         }
       }
     },
+    "/api/v1/manager/team/{user_id}": {
+      "get": {
+        "tags": [
+          "Manager Portal"
+        ],
+        "summary": "Get Team Member",
+        "operationId": "get_team_member_api_v1_manager_team__user_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "exclusiveMinimum": 0,
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/admin/knowledge/documents": {
       "get": {
         "tags": [
@@ -5467,6 +5606,11 @@
             ],
             "title": "Escalation Guidance"
           },
+          "engine": {
+            "type": "string",
+            "title": "Engine",
+            "default": "extractive"
+          },
           "processing_time_ms": {
             "type": "number",
             "title": "Processing Time Ms"
@@ -6155,6 +6299,112 @@
         ],
         "title": "DocumentTranslation"
       },
+      "EmployeeDetailResponse": {
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "employee_code": {
+            "type": "string",
+            "title": "Employee Code"
+          },
+          "department": {
+            "type": "string",
+            "title": "Department"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "leave_balance_days": {
+            "type": "number",
+            "title": "Leave Balance Days"
+          },
+          "hire_date": {
+            "type": "string",
+            "title": "Hire Date"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company",
+            "default": ""
+          },
+          "manager_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Name"
+          },
+          "used_days": {
+            "type": "number",
+            "title": "Used Days",
+            "default": 0
+          },
+          "pending_days": {
+            "type": "number",
+            "title": "Pending Days",
+            "default": 0
+          },
+          "available_days": {
+            "type": "number",
+            "title": "Available Days",
+            "default": 0
+          },
+          "learning_progress_percent": {
+            "type": "number",
+            "title": "Learning Progress Percent",
+            "default": 0
+          },
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "requests": {
+            "items": {
+              "$ref": "#/components/schemas/RequestResponse"
+            },
+            "type": "array",
+            "title": "Requests"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/CourseResponse"
+            },
+            "type": "array",
+            "title": "Courses"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryItem"
+            },
+            "type": "array",
+            "title": "History"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "full_name",
+          "employee_code",
+          "department",
+          "position",
+          "leave_balance_days",
+          "hire_date",
+          "location"
+        ],
+        "title": "EmployeeDetailResponse",
+        "description": "A team member's HR card for their manager or HR: profile, leave, requests, learning."
+      },
       "EmployeeProfileResponse": {
         "properties": {
           "id": {
@@ -6402,6 +6652,62 @@
           "version"
         ],
         "title": "HealthResponse"
+      },
+      "HistoryItem": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "request",
+              "learning"
+            ],
+            "title": "Kind"
+          },
+          "event": {
+            "type": "string",
+            "title": "Event"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "kind",
+          "event",
+          "reference"
+        ],
+        "title": "HistoryItem",
+        "description": "One dated fact in an employee's history: a request decision or a learning step."
       },
       "KnowledgeChunkCreate": {
         "properties": {
@@ -7428,6 +7734,17 @@
             "type": "string",
             "title": "Period Or Details"
           },
+          "vacation_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vacation Days"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -7643,6 +7960,17 @@
             "type": "string",
             "title": "Period Or Details"
           },
+          "vacation_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vacation Days"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -7759,6 +8087,17 @@
           "is_synthetic": {
             "type": "boolean",
             "title": "Is Synthetic"
+          },
+          "relevance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relevance"
           }
         },
         "type": "object",
@@ -7827,6 +8166,42 @@
           "hire_date": {
             "type": "string",
             "title": "Hire Date"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company",
+            "default": ""
+          },
+          "manager_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Name"
+          },
+          "used_days": {
+            "type": "number",
+            "title": "Used Days",
+            "default": 0
+          },
+          "pending_days": {
+            "type": "number",
+            "title": "Pending Days",
+            "default": 0
+          },
+          "available_days": {
+            "type": "number",
+            "title": "Available Days",
+            "default": 0
+          },
+          "learning_progress_percent": {
+            "type": "number",
+            "title": "Learning Progress Percent",
+            "default": 0
           }
         },
         "type": "object",

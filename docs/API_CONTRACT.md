@@ -31,6 +31,8 @@ Errors retain a string `detail` for compatibility and add `error: {code, message
 | GET `/requests/{id}` | request and immutable application history | Owner, direct manager, or HR; positive ID |
 | POST `/requests/{id}/approve`, `/reject` | optional `{action?,comment?}` → detailed request | Manager direct reports or HR; no self-review; action must agree with route; only Pending can transition; conditional database update prevents duplicate actions |
 | GET `/manager/requests`, `/manager/team` | queue/team, optional status | Direct reports for manager, company scope for HR |
+| GET `/manager/team` fields | company, position, department, manager, balance, `used_days`, `pending_days`, `available_days`, learning % | Same scope; days use the 1C:ZUP calendar rule (public holidays not charged) |
+| GET `/manager/team/{user_id}` | employee HR card: profile, leave figures, request history with `vacation_days`, assigned courses | Direct report for manager, any employee for HR; out-of-scope and missing both return 404 |
 | GET `/notifications/unread-count` | `{unread}` independent of list limit | Current user only |
 | GET `/notifications` | bounded limit → own notifications | Owner scope |
 | PATCH `/notifications/{id}` | `{is_read:boolean}` → notification | Owner scope; supports read and unread |
@@ -58,3 +60,16 @@ Academy score means percentage of lessons successfully passed, not a claim about
 AI is deterministic retrieval of exact approved source text, without an external model. A source must cover the meaningful question terms; repeated generic keywords cannot increase confidence. Unsupported details return fallback even when the broad topic exists. Source references use real chunk/document IDs and versions. Demo documents are explicitly synthetic examples, not official company policy. Audit stores source IDs, answer status and a question hash, not the question or answer.
 
 Configuration: development can use an ephemeral signing key; production requires a strong environment secret, disables demo mode/seeding, and permits only explicitly configured cross-origin access. SQLite is the tested MVP database. 1C and Documentolog remain unconnected boundaries. Migration upgrade is explicit (`python -m app.migrate` or `alembic upgrade head`), with tests for empty and legacy databases; startup checks the revision and fails with actionable guidance if migrations are missing.
+
+Optional retrieval reranking: `AI_RETRIEVAL_MODE=ml` with a locally trained `AI_RETRIEVAL_MODEL_PATH` loads bounded JSON coefficients. Approval/activity/role/language filters and minimum evidence coverage apply before ranking. A missing or invalid artifact falls back to the existing lexical retrieval. The model changes no HTTP schemas, identity rules, source IDs, revisions or language checks. File bundles are imported by an active HR operator as drafts and require the existing explicit approval flow. See `../knowledge/README.md` and `../ml/README.md`.
+
+
+## Интеграция локальных обновлений — 17.10.2026
+
+- `GET /api/v1/manager/team?limit=100&offset=0`: добавлены компания, руководитель, использованные/ожидающие/доступные дни и прогресс обучения.
+- `GET /api/v1/manager/team/{user_id}`: кадровая карточка, последние 100 заявок, назначенные курсы и последние 300 событий. Только непосредственный руководитель или HR; вне области доступа — одинаковый 404. Сотрудник — 403.
+- `POST /api/v1/requests`: даты не раньше текущей даты Алматы; начало и окончание не позднее `REQUEST_HORIZON_DAYS`. Аванс ограничен `MAX_ADVANCE_AMOUNT`. Пересечение действующих отпусков — 409, недостаточный остаток с учётом резервов — 400. Конкурирующие резервы сериализованы.
+- `vacation_days`: календарные дни минус `LEAVE_EXCLUDED_DATES`, если HR явно настроил исключения; источник не является 1С.
+- `POST /api/v1/ai/chat`: дополнительно `engine` и `sources[].relevance`. Gemini выключен по умолчанию. При включении допускает только точные цитаты из доступных источников на выбранном языке и не обходит пороги поиска.
+
+Пример: `GET /api/v1/manager/team/8` с `Authorization: Bearer <TOKEN>` и `Accept-Language: kk-KZ`. Идентификатор берите из списка команды; фиксированный ID в примере не даёт прав.

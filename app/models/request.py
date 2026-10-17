@@ -39,6 +39,8 @@ class Request(Base):
     external_sync_id: Mapped[str | None] = mapped_column(
         String(100), nullable=True
     )  # Reference to Documentolog/1C
+    # Forward-only gateway progress: QUEUED, ORDER_CREATED, SIGNING, SIGNED or SIGN_REJECTED.
+    integration_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

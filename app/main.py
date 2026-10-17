@@ -19,6 +19,7 @@ from app.routers.academy import router as academy_router
 from app.routers.admin import router as admin_router
 from app.routers.ai import router as ai_router
 from app.routers.auth import router as auth_router
+from app.routers.internal import router as internal_router
 from app.routers.manager import router as manager_router
 from app.routers.me import router as me_router
 from app.routers.notifications import router as notifications_router
@@ -93,6 +94,7 @@ app.include_router(notifications_router, prefix=api_v1_prefix)
 app.include_router(ai_router, prefix=api_v1_prefix)
 app.include_router(manager_router, prefix=api_v1_prefix)
 app.include_router(admin_router, prefix=api_v1_prefix)
+app.include_router(internal_router, prefix=api_v1_prefix)
 
 # Mount Static assets
 static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")

@@ -1,9 +1,11 @@
 from datetime import date
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.academy import CourseResponse
+from app.schemas.common import TeamMemberResponse, UTCDateTime
+from app.schemas.request import RequestResponse
 
 
 class EmployeeProfileResponse(BaseModel):
@@ -40,3 +42,23 @@ class DashboardStatsResponse(BaseModel):
     learning_progress_percent: float
     assigned_courses_count: int
     unread_notifications_count: int
+
+
+class HistoryItem(BaseModel):
+    """One dated fact in an employee's history: a request decision or a learning step."""
+
+    at: UTCDateTime
+    kind: Literal["request", "learning"]
+    event: str  # SUBMITTED / APPROVED / REJECTED / LESSON_PASSED / COURSE_COMPLETED
+    reference: str  # request code or course title
+    detail: Optional[str] = None  # comment or lesson title
+    actor: Optional[str] = None
+
+
+class EmployeeDetailResponse(TeamMemberResponse):
+    """A team member's HR card for their manager or HR: profile, leave, requests, learning."""
+
+    location: str
+    requests: list[RequestResponse] = Field(default_factory=list)
+    courses: list[CourseResponse] = Field(default_factory=list)
+    history: list[HistoryItem] = Field(default_factory=list)

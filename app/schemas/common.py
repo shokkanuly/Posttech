@@ -55,6 +55,12 @@ class TeamMemberResponse(BaseModel):
     position: str
     leave_balance_days: float
     hire_date: str
+    company: str = ""
+    manager_name: str | None = None
+    used_days: float = 0  # approved vacation days
+    pending_days: float = 0  # days in pending vacation requests (reserved)
+    available_days: float = 0  # balance minus reserved days
+    learning_progress_percent: float = 0
 
 
 class AuditResponse(BaseModel):

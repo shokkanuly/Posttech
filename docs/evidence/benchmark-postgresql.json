@@ -1,0 +1,101 @@
+{
+  "base_url": "http://127.0.0.1:8611",
+  "rounds": 30,
+  "endpoints": [
+    {
+      "role": "employee",
+      "call": "GET /api/v1/me/dashboard",
+      "rows": null,
+      "p50_ms": 11.0,
+      "p95_ms": 17.1,
+      "max_ms": 40.9
+    },
+    {
+      "role": "employee",
+      "call": "GET /api/v1/requests",
+      "rows": 3,
+      "p50_ms": 7.4,
+      "p95_ms": 9.5,
+      "max_ms": 11.1
+    },
+    {
+      "role": "employee",
+      "call": "GET /api/v1/notifications",
+      "rows": 3,
+      "p50_ms": 6.1,
+      "p95_ms": 9.7,
+      "max_ms": 19.0
+    },
+    {
+      "role": "employee",
+      "call": "GET /api/v1/courses",
+      "rows": 2,
+      "p50_ms": 8.5,
+      "p95_ms": 11.8,
+      "max_ms": 16.2
+    },
+    {
+      "role": "employee",
+      "call": "POST /api/v1/ai/chat",
+      "rows": null,
+      "p50_ms": 23.5,
+      "p95_ms": 29.4,
+      "max_ms": 37.0
+    },
+    {
+      "role": "manager",
+      "call": "GET /api/v1/manager/team",
+      "rows": 12,
+      "p50_ms": 9.7,
+      "p95_ms": 12.7,
+      "max_ms": 13.3
+    },
+    {
+      "role": "manager",
+      "call": "GET /api/v1/manager/team/3",
+      "rows": null,
+      "p50_ms": 20.5,
+      "p95_ms": 32.2,
+      "max_ms": 36.2
+    },
+    {
+      "role": "manager",
+      "call": "GET /api/v1/manager/requests",
+      "rows": 31,
+      "p50_ms": 9.9,
+      "p95_ms": 12.9,
+      "max_ms": 13.8
+    },
+    {
+      "role": "hr_admin",
+      "call": "GET /api/v1/manager/team",
+      "rows": 100,
+      "p50_ms": 22.5,
+      "p95_ms": 28.1,
+      "max_ms": 29.6
+    },
+    {
+      "role": "hr_admin",
+      "call": "GET /api/v1/manager/requests",
+      "rows": 100,
+      "p50_ms": 17.1,
+      "p95_ms": 26.5,
+      "max_ms": 33.7
+    },
+    {
+      "role": "hr_admin",
+      "call": "GET /api/v1/admin/audit",
+      "rows": 100,
+      "p50_ms": 13.2,
+      "p95_ms": 15.4,
+      "max_ms": 16.2
+    }
+  ],
+  "burst": {
+    "requests": 400,
+    "workers": 16,
+    "seconds": 4.71,
+    "requests_per_second": 84.9,
+    "errors": 0
+  }
+}

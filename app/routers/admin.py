@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session, contains_eager
+from sqlalchemy.orm import Session, contains_eager, joinedload
 
 from app.database import get_db
 from app.integrations.documentolog import documentolog_adapter
@@ -114,6 +114,7 @@ def get_audit_trail(
 ):
     events = (
         db.query(AuditEvent)
+        .options(joinedload(AuditEvent.actor))  # one query, not one per row
         .order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc())
         .offset(page.offset)
         .limit(page.limit)

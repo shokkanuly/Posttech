@@ -1,4 +1,5 @@
 import secrets
+from datetime import date
 from typing import Literal
 
 from pydantic import Field, model_validator
@@ -16,8 +17,19 @@ class Settings(BaseSettings):
     DEMO_MODE: bool = False
     DEMO_PASSWORD: str = Field(default="", repr=False)
     ALLOWED_ORIGINS: list[str] = []
-    AI_PROVIDER: Literal["grounded_knowledge"] = "grounded_knowledge"
+    # "gemini" adds LLM phrasing on top of retrieval; every answer is still verified
+    # against the cited sources and falls back to extractive text when it is not.
+    AI_PROVIDER: Literal["grounded_knowledge", "gemini"] = "grounded_knowledge"
+    # "ml" re-ranks coverage-approved passages with the trained JSON model (ml/README.md).
+    AI_RETRIEVAL_MODE: Literal["lexical", "ml"] = "lexical"
+    AI_RETRIEVAL_MODEL_PATH: str = ""
     AI_CONFIDENCE_THRESHOLD: float = Field(default=0.8, ge=0.0, le=1.0)
+    GEMINI_API_KEY: str = Field(default="", repr=False)
+    GEMINI_MODEL: str = Field(default="gemini-3.8-flash", pattern=r"^[a-z0-9.\-]{3,64}$")
+    GEMINI_TIMEOUT_SECONDS: float = Field(default=12.0, gt=0, le=60)
+    MAX_ADVANCE_AMOUNT: float = Field(default=1_000_000, gt=0, allow_inf_nan=False)
+    LEAVE_EXCLUDED_DATES: list[date] = Field(default_factory=list, max_length=1000)
+    REQUEST_HORIZON_DAYS: int = Field(default=365, ge=1, le=730)
     HR_SUPPORT_EMAIL: str = "hr-support@janapost.kz"
     ENABLE_MOCK_INTEGRATIONS: bool = False
     MAX_REQUEST_BODY_BYTES: int = Field(default=262144, ge=65536, le=1048576)
@@ -28,6 +40,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_security(self):
+        if self.AI_RETRIEVAL_MODE == "ml" and not self.AI_RETRIEVAL_MODEL_PATH:
+            raise ValueError("ML retrieval requires AI_RETRIEVAL_MODEL_PATH")
         # Legacy configurations used unnormalised keyword scores. Keep a safe floor.
         self.AI_CONFIDENCE_THRESHOLD = max(0.75, self.AI_CONFIDENCE_THRESHOLD)
         insecure = len(self.SECRET_KEY) < 32 or any(

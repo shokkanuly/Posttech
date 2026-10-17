@@ -2,7 +2,9 @@
 
 import os
 import tempfile
+from datetime import date
 from pathlib import Path
+from uuid import uuid4
 
 os.environ.update(
     ENVIRONMENT="test",
@@ -13,6 +15,9 @@ os.environ.update(
     + str(Path(tempfile.gettempdir()) / "janamen-unused-test-bootstrap.db"),
     ENABLE_MOCK_INTEGRATIONS="false",
     AI_CONFIDENCE_THRESHOLD="0.8",
+    AI_PROVIDER="grounded_knowledge",
+    AI_RETRIEVAL_MODE="lexical",
+    GEMINI_API_KEY="",
 )
 
 import pytest
@@ -25,26 +30,49 @@ from app.database import get_db
 from app.main import app
 from app.migrate import upgrade_database
 from app.seed import seed_database
+from app.services import request_service as request_service_module
 from app.services.auth_service import login_limiter
+
+
+@pytest.fixture(autouse=True)
+def fixed_business_date(monkeypatch):
+    """Request rules reject past dates; pin "today" so dated scenarios never expire."""
+    monkeypatch.setattr(request_service_module, "request_today", lambda: date(2026, 10, 15))
 
 
 @pytest.fixture
 def db_engine(tmp_path):
-    engine = create_engine(
-        "sqlite:///" + str(tmp_path / "test.db"),
-        connect_args={"check_same_thread": False, "timeout": 15},
-    )
+    # TEST_DATABASE_URL=postgresql+psycopg://... runs the whole suite on PostgreSQL;
+    # Each test owns a unique schema; existing schemas are never dropped.
+    postgres_url = os.environ.get("TEST_DATABASE_URL", "")
+    if postgres_url.startswith("postgresql"):
+        schema = "janamen_test_" + uuid4().hex
+        admin_engine = create_engine(postgres_url)
+        with admin_engine.begin() as connection:
+            connection.exec_driver_sql(f'CREATE SCHEMA "{schema}"')
+        engine = create_engine(postgres_url, connect_args={"options": f"-csearch_path={schema}"})
+    else:
+        engine = create_engine(
+            "sqlite:///" + str(tmp_path / "test.db"),
+            connect_args={"check_same_thread": False, "timeout": 15},
+        )
 
-    @event.listens_for(engine, "connect")
-    def pragmas(connection, _record):
-        connection.execute("PRAGMA foreign_keys=ON")
-        connection.execute("PRAGMA busy_timeout=15000")
+        @event.listens_for(engine, "connect")
+        def pragmas(connection, _record):
+            connection.execute("PRAGMA foreign_keys=ON")
+            connection.execute("PRAGMA busy_timeout=15000")
 
-    upgrade_database(engine)
-    with sessionmaker(bind=engine)() as session:
-        seed_database(session)
-    yield engine
-    engine.dispose()
+    try:
+        upgrade_database(engine)
+        with sessionmaker(bind=engine)() as session:
+            seed_database(session)
+        yield engine
+    finally:
+        engine.dispose()
+        if postgres_url.startswith("postgresql"):
+            with admin_engine.begin() as connection:
+                connection.exec_driver_sql(f'DROP SCHEMA "{schema}" CASCADE')
+            admin_engine.dispose()
 
 
 @pytest.fixture

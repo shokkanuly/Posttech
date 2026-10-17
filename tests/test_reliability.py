@@ -204,9 +204,26 @@ def test_concurrent_duplicate_approval(client, employee_headers, manager_headers
     assert db_session.query(EmployeeProfile).filter_by(user_id=3).one().leave_balance_days == 16.5
 
 
-def test_concurrent_approvals_cannot_overdraw(client, employee_headers, manager_headers):
-    a = create_request(client, employee_headers, end_date="2026-11-15")
-    b = create_request(client, employee_headers, start_date="2026-12-01", end_date="2026-12-15")
+def test_concurrent_approvals_cannot_overdraw(
+    client, employee_headers, manager_headers, db_session
+):
+    # Submission now reserves pending days, so overlapping claims on the balance can only
+    # come from legacy rows or balance changes; insert them directly to test approval.
+    owner = db_session.query(User).filter_by(email="aruzhan@janapost.kz").one()
+    rows = [
+        Request(
+            request_code=f"REQ-RACE-{index}",
+            user_id=owner.id,
+            type="Vacation",
+            start_date=datetime(2026, month, 1).date(),
+            end_date=datetime(2026, month, 15).date(),
+            status=RequestStatus.PENDING,
+        )
+        for index, month in enumerate((11, 12))
+    ]
+    db_session.add_all(rows)
+    db_session.commit()
+    a, b = (row.id for row in rows)
     with ThreadPoolExecutor(2) as executor:
         statuses = list(
             executor.map(

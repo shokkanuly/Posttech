@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-17",
+  "sqlite": {
+    "passed": 339,
+    "seconds": 107.09
+  },
+  "postgresql": {
+    "passed": 339,
+    "seconds": 155.79
+  },
+  "frontend_localization_passed": 5,
+  "regressions": 12,
+  "mypy_source_files": 67,
+  "ruff_python_files": 104,
+  "dependency_pins_checked": 50,
+  "advisory_matches": 0,
+  "browser_console_errors": 0,
+  "mobile_viewport_width": 319,
+  "mobile_document_width": 319,
+  "gemini_live_calls": 0,
+  "git_committed": false,
+  "git_pushed": false
+}

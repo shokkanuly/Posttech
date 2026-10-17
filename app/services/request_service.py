@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, cast
 from uuid import uuid4
 
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
 from app.integrations.documentolog import documentolog_adapter
+from app.integrations.one_c_zup import one_c_adapter
 from app.models.enums import (
     NotificationType,
     RequestEventType,
@@ -28,15 +29,37 @@ from app.schemas.request import (
 from app.services.audit_service import audit_service
 from app.services.notification_service import notification_service
 
+KAZAKHSTAN = timezone(timedelta(hours=5))  # single national time zone since March 2024
+
+
+def request_today() -> date:
+    """Business date for request rules; tests pin it so fixed dates never expire."""
+    return datetime.now(KAZAKHSTAN).date()
+
 
 class RequestService:
     @staticmethod
     def _calculate_calendar_days(start_date: date, end_date: Optional[date]) -> float:
-        if not end_date or start_date == end_date:
-            return 1.0
-        # Calculate inclusive days
-        delta = (end_date - start_date).days + 1
-        return max(1.0, float(delta))
+        # Local calendar with explicitly configured exclusions; 1C is unconnected.
+        return one_c_adapter.vacation_days(start_date, end_date)
+
+    @classmethod
+    def leave_summary(cls, db: Session, user_ids: list[int]) -> dict[int, dict[str, float]]:
+        """Approved (used) and pending vacation days per employee, by the same day rule."""
+        summary = {uid: {"used_days": 0.0, "pending_days": 0.0} for uid in user_ids}
+        rows = (
+            db.query(Request)
+            .filter(
+                Request.user_id.in_(user_ids),
+                Request.type == RequestType.VACATION,
+                Request.status.in_([RequestStatus.PENDING, RequestStatus.APPROVED]),
+            )
+            .all()
+        )
+        for r in rows:
+            key = "used_days" if r.status == RequestStatus.APPROVED else "pending_days"
+            summary[r.user_id][key] += cls._calculate_calendar_days(r.start_date, r.end_date)
+        return summary
 
     @staticmethod
     def _format_submitted_date(dt: datetime) -> str:
@@ -80,6 +103,9 @@ class RequestService:
             external_sync_id=req.external_sync_id,
             submitted_date_formatted=cls._format_submitted_date(req.created_at),
             period_or_details=cls._format_period_or_details(req),
+            vacation_days=cls._calculate_calendar_days(req.start_date, req.end_date)
+            if req.type == RequestType.VACATION
+            else None,
             created_at=req.created_at,
             updated_at=req.updated_at,
         )
@@ -107,7 +133,19 @@ class RequestService:
         cls, db: Session, user: User, payload: RequestCreate, ip_address: Optional[str] = None
     ) -> Request:
         # 1. Validate Vacation Balance if applicable
-        profile = db.query(EmployeeProfile).filter(EmployeeProfile.user_id == user.id).first()
+        # Serialize reservations for this employee on both SQLite and PostgreSQL.
+        # An UPDATE locks the row until commit, before checking balance or overlaps.
+        db.execute(
+            update(EmployeeProfile)
+            .where(EmployeeProfile.user_id == user.id)
+            .values(leave_balance_days=EmployeeProfile.leave_balance_days)
+        )
+        profile = (
+            db.query(EmployeeProfile)
+            .populate_existing()
+            .filter(EmployeeProfile.user_id == user.id)
+            .first()
+        )
         if not profile:
             raise HTTPException(409, "An HR profile is required before submitting a request")
         assigned_reviewer = (
@@ -130,12 +168,48 @@ class RequestService:
             .all()
         )
         review_destination = "your manager" if assigned_reviewer else "HR"
+        current = request_today()
+        if payload.start_date < current:
+            raise HTTPException(422, "Start date cannot be in the past")
+        if (payload.end_date or payload.start_date) > current + timedelta(
+            days=settings.REQUEST_HORIZON_DAYS
+        ):
+            raise HTTPException(422, "Request dates exceed the configured planning horizon")
+        if (
+            payload.type == RequestType.ADVANCE_PAYMENT
+            and payload.amount is not None
+            and float(payload.amount) > settings.MAX_ADVANCE_AMOUNT
+        ):
+            raise HTTPException(422, "Advance amount exceeds the allowed maximum")
         if payload.type == RequestType.VACATION:
             days_needed = cls._calculate_calendar_days(payload.start_date, payload.end_date)
-            if profile.leave_balance_days < days_needed:
+            if days_needed == 0:
+                raise HTTPException(422, "The selected dates are excluded from the leave calendar")
+            active_vacations = (
+                db.query(Request)
+                .filter(
+                    Request.user_id == user.id,
+                    Request.type == RequestType.VACATION,
+                    Request.status.in_([RequestStatus.PENDING, RequestStatus.APPROVED]),
+                )
+                .all()
+            )
+            new_end = payload.end_date or payload.start_date
+            if any(
+                r.start_date <= new_end and (r.end_date or r.start_date) >= payload.start_date
+                for r in active_vacations
+            ):
+                raise HTTPException(409, "These dates overlap another active vacation request")
+            # Pending requests are reserved, so the balance cannot be promised twice.
+            reserved = sum(
+                cls._calculate_calendar_days(r.start_date, r.end_date)
+                for r in active_vacations
+                if r.status == RequestStatus.PENDING
+            )
+            if profile.leave_balance_days - reserved < days_needed:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Insufficient leave balance. You requested {days_needed:.1f} days, but only have {profile.leave_balance_days:.1f} days available.",
+                    detail=f"Insufficient leave balance. You requested {days_needed:.1f} days, but only have {max(0.0, profile.leave_balance_days - reserved):.1f} days available.",
                 )
 
         # The final code is allocated from the database identity in a new namespace.

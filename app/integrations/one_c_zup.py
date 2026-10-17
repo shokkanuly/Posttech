@@ -1,5 +1,11 @@
-"""Future 1C boundary. No employee data is fetched or verified externally."""
+"""Unconnected 1C boundary. Leave exclusions are explicit local HR configuration.
 
+No production calendar or official policy is fetched from 1C.
+"""
+
+from datetime import date
+
+from app.config import settings
 from app.schemas.integration import AdapterTelemetry
 
 
@@ -15,6 +21,14 @@ class OneCZupAdapter:
             supported_operations=[],
             notes="Profiles and leave balances are local records. No 1C credentials, API documentation or connection is configured.",
         )
+
+    @staticmethod
+    def vacation_days(start: date, end: date | None) -> float:
+        """Calendar days minus explicitly configured excluded dates."""
+        last = end or start
+        span = (last - start).days + 1
+        excluded = sum(start <= day <= last for day in set(settings.LEAVE_EXCLUDED_DATES))
+        return float(max(span - excluded, 0))
 
 
 one_c_adapter = OneCZupAdapter()

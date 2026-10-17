@@ -64,6 +64,7 @@ class RequestResponse(BaseModel):
     external_sync_id: Optional[str] = None
     submitted_date_formatted: str
     period_or_details: str
+    vacation_days: Optional[float] = None  # chargeable days under the configured local calendar
     created_at: UTCDateTime
     updated_at: UTCDateTime
 

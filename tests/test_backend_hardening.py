@@ -321,7 +321,7 @@ def test_unavailable_manager_routes_notification_to_hr(
     response = client.post(
         "/api/v1/requests",
         headers=employee_headers,
-        json={"type": "Vacation", "start_date": "2027-01-01"},
+        json={"type": "Vacation", "start_date": "2027-01-11"},
     )
     assert response.status_code == 201
     code = response.json()["request_code"]

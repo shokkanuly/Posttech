@@ -22,7 +22,7 @@ OPERATIONS = [
     (
         "POST",
         "/api/v1/requests",
-        {"type": "Vacation", "start_date": "2027-01-01", "end_date": "2027-01-02"},
+        {"type": "Vacation", "start_date": "2027-01-11", "end_date": "2027-01-12"},
         201,
         "employee",
     ),
@@ -56,6 +56,7 @@ OPERATIONS = [
     ("GET", "/api/v1/ai/documents", None, 200, "employee"),
     ("GET", "/api/v1/manager/requests", None, 200, "manager"),
     ("GET", "/api/v1/manager/team", None, 200, "manager"),
+    ("GET", "/api/v1/manager/team/{user_id}", None, 200, "manager"),
     ("GET", "/api/v1/admin/knowledge/documents", None, 200, "hr_admin"),
     (
         "POST",
@@ -105,6 +106,7 @@ IDS = {
     "notification_id": 1,
     "chunk_id": 1,
     "document_id": 1,
+    "user_id": 1,
 }
 PROTECTED = [case for case in OPERATIONS if case[4] != "public"]
 
@@ -148,7 +150,7 @@ def test_each_operation_has_a_working_authorized_request(client, case):
             else {"Authorization": "Bearer " + login(client, "aruzhan@janapost.kz")}
         )
         created = client.post(
-            "/api/v1/requests", headers=owner, json={"type": "Vacation", "start_date": "2027-01-01"}
+            "/api/v1/requests", headers=owner, json={"type": "Vacation", "start_date": "2027-01-11"}
         )
         assert created.status_code == 201
         ids["request_id"] = created.json()["id"]
@@ -156,6 +158,8 @@ def test_each_operation_has_a_working_authorized_request(client, case):
         ids["notification_id"] = client.get("/api/v1/notifications", headers=headers).json()[0][
             "id"
         ]
+    if "{user_id}" in path:
+        ids["user_id"] = client.get("/api/v1/manager/team", headers=headers).json()[0]["user_id"]
     response = client.request(method, path.format(**ids), headers=headers, json=payload)
     assert response.status_code == expected, response.text
     assert response.headers["Cache-Control"] == "no-store"

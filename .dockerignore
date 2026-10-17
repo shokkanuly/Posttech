@@ -7,3 +7,9 @@ __pycache__
 .pytest_cache
 .mypy_cache
 .ruff_cache
+ml/artifacts
+
+# Independent local worktrees
+gallant-meninsky-5b66b7/
+posttech-hackathon-frontend-bed507/
+.claude/

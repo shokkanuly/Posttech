@@ -40,9 +40,17 @@ def locked_packages(path: Path, visited: set[Path] | None = None) -> dict[str, s
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--requirements",
+        type=Path,
+        action="append",
+        help="Requirements file to audit; repeat to include optional training pins",
+    )
     args = parser.parse_args()
     try:
-        packages = locked_packages(Path(__file__).parent / "requirements-dev.txt")
+        packages = {}
+        for path in args.requirements or [Path(__file__).parent / "requirements-dev.txt"]:
+            packages.update(locked_packages(path))
         queries = [
             {"package": {"name": name, "ecosystem": "PyPI"}, "version": version}
             for name, version in sorted(packages.items())

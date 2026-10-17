@@ -7,7 +7,10 @@ COPY app/ ./app/
 COPY migrations/ ./migrations/
 COPY alembic.ini .
 COPY static/ ./static/
-RUN useradd --uid 10001 --create-home janamen && mkdir /data && chown janamen:janamen /data
+COPY knowledge/ ./knowledge/
+COPY ml/ ./ml/
+RUN useradd --uid 10001 --create-home janamen && mkdir -p /data && chown -R janamen:janamen /app /data
+ENV DATABASE_URL=sqlite:////data/janamen.db
 USER janamen
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD curl -f http://localhost:8000/health || exit 1

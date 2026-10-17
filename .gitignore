@@ -29,3 +29,11 @@ Thumbs.db
 .ruff_cache/
 .mypy_cache/
 *.db-*
+
+# Locally trained model artifacts; training data and evaluation reports are versioned.
+ml/artifacts/
+
+# Independent local worktrees
+gallant-meninsky-5b66b7/
+posttech-hackathon-frontend-bed507/
+.claude/

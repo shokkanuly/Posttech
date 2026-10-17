@@ -475,7 +475,7 @@ def test_production_settings_and_synthetic_boundaries(client, hr_admin_headers):
 def test_knowledge_summary_and_notification_counts(client, employee_headers):
     summaries = client.get("/api/v1/ai/documents", headers=employee_headers)
     assert summaries.status_code == 200
-    assert len(summaries.json()) == 2
+    assert len(summaries.json()) == 3
     assert all(doc["is_synthetic"] for doc in summaries.json())
     count = client.get("/api/v1/notifications/unread-count", headers=employee_headers)
     assert count.json()["unread"] == 2

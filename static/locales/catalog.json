@@ -868,6 +868,10 @@
       "ru": "В вашей команде нет заявок на рассмотрении.",
       "kk": "Командаңызда қарауды күтетін өтініштер жоқ."
     },
+    "No pending requests across the company.": {
+      "ru": "Нет заявок на согласовании в компании.",
+      "kk": "Компания бойынша қарауды күтетін өтініштер жоқ."
+    },
     "Approve": {
       "ru": "Одобрить",
       "kk": "Мақұлдау"
@@ -1703,6 +1707,26 @@
     "Medical & Sick Leave Documentation": {
       "ru": "Документы по временной нетрудоспособности",
       "kk": "Уақытша еңбекке жарамсыздық құжаттары"
+    },
+    "Jana Academy & Course Guide (Sample Policy)": {
+      "ru": "Академия Jana и прохождение курсов (пример)",
+      "kk": "Jana академиясы және курстардан өту (мысал)"
+    },
+    "Learning & Development": {
+      "ru": "Обучение и развитие",
+      "kk": "Оқу және даму"
+    },
+    "Guidelines for enrolling in courses, completing lessons, and tracking learning progress.": {
+      "ru": "Демонстрационный порядок записи на курсы, прохождения уроков и сохранения прогресса.",
+      "kk": "Курстарға жазылудың, сабақтарды өтудің және оқу үлгерімін сақтаудың демонстрациялық тәртібі."
+    },
+    "Course Enrollment & Learning Progress": {
+      "ru": "Курсы и сохранение обучения",
+      "kk": "Курстар және оқу нәтижесін сақтау"
+    },
+    "All employees have access to courses in Jana Academy. Navigate to 'Jana Academy', select an assigned or available course, and click enroll. Complete each lesson and answer the knowledge check quiz at the end. Your learning progress is automatically saved to your profile upon passing the quiz.": {
+      "ru": "В Академии Jana сотрудникам доступны курсы. Откройте «Академия Jana», выберите курс и запишитесь на него. Изучите уроки и ответьте на контрольные вопросы в конце материала. При успешном прохождении теста прогресс обучения автоматически сохраняется в вашем профиле.",
+      "kk": "Jana академиясында қызметкерлерге курстар қолжетімді. «Jana академиясы» бөліміне өтіп, курсты таңдап, оған жазылыңыз. Сабақтарды оқып, материал соңындағы бақылау сұрақтарына жауап беріңіз. Тест сәтті тапсырылғанда оқу үлгерімі профиліңізде автоматты түрде сақталады."
     },
     "Sick leave requires an official digital or paper medical certificate (лист о временной нетрудоспособности / еңбекке жарамсыздық парағы) from an accredited clinic. You must notify your manager within 24 hours of falling ill and upload or deliver the certificate upon return.": {
       "ru": "В этом вымышленном примере для больничного требуется электронный или бумажный лист временной нетрудоспособности из аккредитованной клиники. О заболевании нужно сообщить руководителю в течение 24 часов, а документ передать после возвращения. Это демонстрационный порядок; подтвердите реальные требования в кадровой службе.",

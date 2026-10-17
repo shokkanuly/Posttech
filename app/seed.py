@@ -553,6 +553,29 @@ def seed_database(session=None):
         )
         db.add_all([chunk5, chunk6])
 
+        doc3 = KnowledgeDocument(
+            title="Jana Academy & Course Guide (Sample Policy)",
+            category="Learning & Development",
+            description="Guidelines for enrolling in courses, completing lessons, and tracking learning progress.",
+            version="1.0",
+            is_active=True,
+            is_approved=True,
+            is_synthetic=True,
+            approved_by_id=aigerim.id,
+            approved_at=datetime.now(timezone.utc),
+        )
+        db.add(doc3)
+        db.flush()
+
+        chunk7 = KnowledgeChunk(
+            document_id=doc3.id,
+            section_title="Course Enrollment & Learning Progress",
+            content="All employees have access to courses in Jana Academy. Navigate to 'Jana Academy', select an assigned or available course, and click enroll. Complete each lesson and answer the knowledge check quiz at the end. Your learning progress is automatically saved to your profile upon passing the quiz.",
+            tags="course, courses, learning, academy, lesson, quiz, прогресс, обучение, курс, курсы, урок, уроки, пройти курс, записаться, сабақ, оқу, өту, қалай өтеді, тіркелу, тест",
+            access_level="all",
+        )
+        db.add(chunk7)
+
         # ----------------------------------------------------
         # 5. INITIAL NOTIFICATIONS
         # ----------------------------------------------------

@@ -1,0 +1,16 @@
+All checks passed!
+Success: no issues found in 80 source files
+No broken requirements found.
+✔ all catalog messages have Russian and Kazakh translations (6.133167ms)
+✔ every template compiles and preserves the same placeholders (1.943292ms)
+✔ Russian default, Kazakh preference, templates and dynamic DOM text (12.044875ms)
+✔ authored source text and proper identifiers remain untouched (0.378375ms)
+✔ date labels use Russian and Kazakh month names even without browser ICU data (15.210875ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 162.491833

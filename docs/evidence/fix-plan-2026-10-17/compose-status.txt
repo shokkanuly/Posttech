@@ -1,0 +1,5 @@
+NAME                                    IMAGE                                 COMMAND                   SERVICE              CREATED         STATUS                   PORTS
+janamen-qa-check-db-1                   postgres:17-alpine                    "docker-entrypoint.s…"    db                   3 hours ago     Up 3 hours (healthy)     127.0.0.1:15440->5432/tcp
+janamen-qa-check-gateway-1              janamen-qa-check-gateway              "python -m uvicorn a…"    gateway              5 minutes ago   Up 5 minutes (healthy)   8000/tcp
+janamen-qa-check-integration-worker-1   janamen-qa-check-integration-worker   "python -m app.integ…"    integration-worker   5 minutes ago   Up 5 minutes             8000/tcp
+janamen-qa-check-web-1                  janamen-qa-check-web                  "sh -c 'set -e\npytho…"   web                  5 minutes ago   Up 5 minutes (healthy)   127.0.0.1:18766->8000/tcp

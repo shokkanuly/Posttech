@@ -1,5 +1,7 @@
 # JanaМен QA test results — 17 October 2026
 
+> Follow-up: the baseline findings below describe revision `54321c0`. Implemented fixes, current test results and remaining prerequisites are recorded in [the fix-plan implementation report](docs/FIX_PLAN_IMPLEMENTATION_REPORT.md). Historical counts are retained.
+
 Overall project readiness: **NEEDS WORK**. Final full Python suites: **400 passed on SQLite and 400 passed on PostgreSQL 17**, each with 1 Starlette/httpx deprecation warning; no failed/skipped tests in either full run. **5/5** frontend locale tests pass. Counts are repeated runs of the same suite, not 800 unique tests.
 
 ## Environments and safety

@@ -1,5 +1,7 @@
 # JanaМен QA checklist — 17 October 2026
 
+> Follow-up: the baseline findings below describe revision `54321c0`. Implemented fixes, current test results and remaining prerequisites are recorded in [the fix-plan implementation report](docs/FIX_PLAN_IMPLEMENTATION_REPORT.md). Historical counts are retained.
+
 Final-state assessment of all **162** checkbox/numbered acceptance items from the supplied checklist. PASS: 140 / FAIL: 2 / PARTIAL: 17 / NOT VERIFIED: 2 / BLOCKED: 0 / NOT APPLICABLE: 1.
 
 PASS is scoped to the evidence stated. Real vendor connections, production infrastructure and live Gemini are not established by MOCK tests. All 16 required acceptance scenarios are covered by executed tests; broader operational gaps remain.

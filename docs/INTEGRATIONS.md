@@ -163,3 +163,7 @@ Tests use isolated databases and synthetic keys. The six acceptance conditions f
 ## Still needed for any live connection
 
 Jana Post must provide vendor API documentation, test systems, employee-code mapping and balance-posting confirmation semantics, document types, authorized service accounts and private network/certificate ownership. Real connectors, VPN, inbound mTLS deployment, electronic signatures, production secret/storage/retention operations, automated dead-letter replay and a partner reconciliation schedule are not delivered. This service is a durable **MOCK** integration gateway, not evidence of a live enterprise connection.
+
+## Controlled recovery and store upgrades
+
+The fix-plan follow-up adds audited HR recovery/mapping commands, signed generation-aware retries, and gateway schema v2. See [Recovery and operations](RECOVERY_AND_OPERATIONS.md) for request contracts, lost-store behavior, immutable submission keys and the backup/restore procedure. All connectors remain MOCK; these are JanaМен canonical endpoints, not vendor APIs.

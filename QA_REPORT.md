@@ -1,5 +1,7 @@
 # JanaМен full-project QA report — 17 October 2026
 
+> Follow-up: the baseline findings below describe revision `54321c0`. Implemented fixes, current test results and remaining prerequisites are recorded in [the fix-plan implementation report](docs/FIX_PLAN_IMPLEMENTATION_REPORT.md). Historical counts are retained.
+
 Overall project readiness: **NEEDS WORK**. The local full-stack MVP and MOCK gateway have substantial executed coverage; remaining operational, privacy-governance, duplicate-submission and accessibility gaps prevent a production-readiness claim.
 
 **Checklist counts (162 requirements): PASS: 140 / FAIL: 2 / PARTIAL: 17 / NOT VERIFIED: 2 / BLOCKED: 0 / NOT APPLICABLE: 1.** Findings use separate severity/status labels; their count is not added to requirement totals. All 16 required acceptance scenarios have executed test evidence.

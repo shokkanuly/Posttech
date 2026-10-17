@@ -1,0 +1,7 @@
+{
+  "command": "sh -c '.venv/bin/python -m ruff check app tests migrations smoke_test.py && .venv/bin/python -m mypy app && .venv/bin/python -m pip check && node --test tests/*.test.cjs && for file in static/js/*.js; do node --check \"$file\"; done'",
+  "executed": true,
+  "exit_code": 0,
+  "seconds": 1.49,
+  "output": "final-quality.txt"
+}

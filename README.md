@@ -363,3 +363,9 @@ docker compose --env-file .env.gateway --profile integrations up --build -d
 The helper creates a new ignored mode0600 environment with generated directional keys, without printing or overwriting credentials. The gateway has no host port and runs only on an internal Compose network. Web startup and approvals never depend on gateway health. Empty `INTEGRATION_GATEWAY_URL` preserves the disabled behavior. The optional profile uses private-network HTTP plus HMAC for the local MOCK demonstration; production mTLS deployment is not claimed.
 
 Application schema head: `0006_gateway_runtime`. The separate gateway owns its own persistent SQLite job store. HR sees real pending/failed counts, last success, mapping issues and a rate-limited snapshot refresh. Profiles retain their last read-only MOCK snapshot during outages. [Current implementation and executed checks](docs/GATEWAY_IMPLEMENTATION_REPORT.md).
+
+### Исправления по плану QA
+
+Повторные отправки заявок защищены ключом `Idempotency-Key`; HR может восстанавливать допустимые задания и явно разрешать соответствие сотрудников. Добавлены ограничения БД, правила приоритета/срока действия утверждённых источников, управление фокусом диалогов и повторяемый smoke-сценарий. Миграции: `python -m app.migrate` (head `0010_source_metadata`). Все корпоративные коннекторы остаются **MOCK**.
+
+Контракты и восстановление: [RECOVERY_AND_OPERATIONS.md](docs/RECOVERY_AND_OPERATIONS.md). Проверки и оставшиеся ограничения: [FIX_PLAN_IMPLEMENTATION_REPORT.md](docs/FIX_PLAN_IMPLEMENTATION_REPORT.md). Исторические результаты QA не заменяются новыми: текущие логи хранятся отдельно в `docs/evidence/fix-plan-2026-10-17/`.

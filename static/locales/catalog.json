@@ -2767,6 +2767,34 @@
     "Access denied: Team workspace requires a manager role.": {
       "ru": "Доступ запрещён: раздел команды доступен только руководителю.",
       "kk": "Қолжетімсіз: команда бөлімі тек басшыға қолжетімді."
+    },
+    "1C:ZUP created the order": {
+      "ru": "1С:ЗУП сформировала приказ",
+      "kk": "1С:ЗУП бұйрықты қалыптастырды"
+    },
+    "Order sent to Documentolog for signing": {
+      "ru": "Приказ отправлен на подписание в Documentolog",
+      "kk": "Бұйрық Documentolog жүйесіне қол қоюға жіберілді"
+    },
+    "Order signed in Documentolog": {
+      "ru": "Приказ подписан в Documentolog",
+      "kk": "Бұйрыққа Documentolog жүйесінде қол қойылды"
+    },
+    "Order was rejected in Documentolog; HR will follow up": {
+      "ru": "Приказ отклонён в Documentolog, HR свяжется с вами",
+      "kk": "Бұйрық Documentolog жүйесінде қабылданбады, HR сізбен байланысады"
+    },
+    "Order signed": {
+      "ru": "Приказ подписан",
+      "kk": "Бұйрыққа қол қойылды"
+    },
+    "Order rejected": {
+      "ru": "Приказ отклонён",
+      "kk": "Бұйрық қабылданбады"
+    },
+    "Integration delivery failed": {
+      "ru": "Сбой передачи в интеграцию",
+      "kk": "Интеграцияға жіберу сәтсіз аяқталды"
     }
   },
   "rules": [
@@ -2974,6 +3002,11 @@
       "pattern": "(.+) \\((CRS-[A-Z0-9-]+)\\) was assigned to you\\.",
       "ru": "Назначен курс «{0}» ({1}).",
       "kk": "Сізге «{0}» курсы тағайындалды ({1})."
+    },
+    {
+      "pattern": "Request (REQ-N\\d+) could not be delivered to the integration gateway\\. Check the integration queue\\.",
+      "ru": "Заявку {0} не удалось передать в интеграционный шлюз. Проверьте очередь интеграции.",
+      "kk": "{0} өтінімін интеграциялық шлюзге жіберу мүмкін болмады. Интеграция кезегін тексеріңіз."
     }
   ]
 }

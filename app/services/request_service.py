@@ -8,6 +8,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
+from app.integrations import outbox
 from app.integrations.documentolog import documentolog_adapter
 from app.integrations.one_c_zup import one_c_adapter
 from app.models.enums import (
@@ -424,6 +425,10 @@ class RequestService:
                 raise HTTPException(400, "Insufficient leave balance at approval")
 
         db.refresh(req)
+        if new_status == RequestStatus.APPROVED and settings.INTEGRATION_GATEWAY_URL:
+            # Transactional outbox: the delivery task commits with the approval or not at all.
+            req.integration_status = "QUEUED"
+            outbox.enqueue(db, req, "ONE_C_ORDER")
         if new_status == RequestStatus.APPROVED and settings.ENABLE_MOCK_INTEGRATIONS:
             # Pure local simulation, never an external document registration.
             simulated = documentolog_adapter.register_approved_request(

@@ -8,6 +8,7 @@ from app.models.enums import (
     RequestType,
     UserRole,
 )
+from app.models.integration import IntegrationNonce, IntegrationOutbox
 from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
 from app.models.notification import Notification
 from app.models.profile import EmployeeProfile
@@ -35,4 +36,6 @@ __all__ = [
     "KnowledgeChunk",
     "AuditEvent",
     "AuthSession",
+    "IntegrationOutbox",
+    "IntegrationNonce",
 ]

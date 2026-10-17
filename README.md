@@ -30,15 +30,14 @@
 
 Интеграция и фактические результаты проверок описаны в [docs/LOCAL_MERGE_REPORT.md](docs/LOCAL_MERGE_REPORT.md).
 Полная хронология этапов развития платформы и архитектурные решения зафиксированы в [docs/PROJECT_HISTORY.md](docs/PROJECT_HISTORY.md).
-SQLite и существующий Docker volume остаются настройкой по умолчанию. Для отдельного PostgreSQL:
+Основная база — PostgreSQL 17. `docker compose up --build` поднимает базу и приложение; в демо-режиме контейнер сам применяет миграции и создаёт синтетические данные масштаба компании. Для запуска приложения вне Docker с той же базой:
 
 ```bash
-docker compose -f docker-compose.postgres.yml up -d db
-# Настройте DATABASE_URL для новой PostgreSQL БД; существующая SQLite БД не переносится автоматически.
-python -m app.migrate
+docker compose up -d db            # PostgreSQL на 127.0.0.1:5432 (порт: POSTGRES_PORT)
+python -m app.migrate              # DATABASE_URL из .env.example указывает на эту базу
 ```
 
-Полный запуск с PostgreSQL: `docker compose -f docker-compose.postgres.yml up --build`.
+Старый Docker volume с SQLite не переносится: демо-данные синтетические и создаются заново. SQLite по-прежнему подходит для быстрых локальных опытов (`DATABASE_URL=sqlite:///./janamen.db`).
 Тесты: `TEST_DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:PORT/TEST_DB python -m pytest -q`.
 Каждый тест создаёт собственную схему `janamen_test_<uuid>` и удаляет только её. Схема `public` не очищается.
 
@@ -51,15 +50,15 @@ ML: `python -m pip install -r requirements-ml.txt && python -m ml.train && pytho
 
 Масштабные синтетические данные: `python -m app.seed_scale --employees 150` (только демонстрационная БД).
 Измерение: `DEMO_PASSWORD='...' python -m app.benchmark --base-url http://127.0.0.1:8000`.
-Входящий [benchmark-postgresql.json](docs/evidence/benchmark-postgresql.json) — исторический результат другой рабочей копии, не проверка этого объединения.
+Замер этого объединения в Docker (PostgreSQL 17, 157 сотрудников, 434 заявки): медиана ключевых вызовов 2.8–15.8 мс, параллельная нагрузка 400 запросов в 16 потоков — 173.0 запросов/с, ошибок: 0 ([benchmark-docker.json](docs/evidence/benchmark-docker.json)). [benchmark-postgresql.json](docs/evidence/benchmark-postgresql.json) — более ранний замер вне Docker.
 
-Дни отпуска считаются календарно. Только даты из `LEAVE_EXCLUDED_DATES` исключаются из расчёта; список должен утвердить HR.
+Дни отпуска считаются календарно. Только даты из `LEAVE_EXCLUDED_DATES` исключаются из расчёта; список должен утвердить HR. По ст. 90 ТК РК праздничные дни в отпуск не входят, поэтому `docker-compose.yml` и `.env.example` заранее содержат фиксированные государственные праздники 2026–2027 годов (7 января и Курбан айт — выходные, а не праздники, и засчитываются). Список переопределяется в `.env`.
 1С не подключена; встроенного официального календаря и подтверждённой политики начислений нет.
 `MAX_ADVANCE_AMOUNT` и `REQUEST_HORIZON_DAYS` — настраиваемые технические ограничения MVP, а не официальные правила работодателя.
 
 ### Подробная настройка
 
-Проверено на Python 3.14 в macOS. Python 3.11 указан как целевая версия в конфигурации; Linux/Docker в этой сессии не запускались.
+Проверено на Python 3.14 в macOS и в Docker (образ `python:3.14-slim`, PostgreSQL 17). Полный набор тестов проходит и на SQLite, и на PostgreSQL.
 
 ### Шаг 1: Виртуальное окружение и зависимости
 
@@ -123,7 +122,7 @@ docker compose up --build -d
 curl http://127.0.0.1:8000/health
 ```
 
-Контейнер работает от непривилегированного пользователя, слушает порт 8000, автоматически применяет миграции при старте и сохраняет данные в постоянный том (volume).
+Поднимаются два контейнера: PostgreSQL 17 (`db`) и приложение (`web`: бэкенд и фронтенд). Приложение работает от непривилегированного пользователя, слушает порт 8000 (меняется через `WEB_PORT`), применяет миграции и в демо-режиме создаёт синтетические данные компании (`SEED_SCALE_EMPLOYEES`, по умолчанию 150). Данные хранятся в томе `janamen_pg`. Ключ Gemini передаётся из `.env` (`GEMINI_API_KEY`, `AI_PROVIDER=gemini`).
 
 ---
 

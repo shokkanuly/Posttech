@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from app.gateway.models import GatewayJob, MockDocument
@@ -181,7 +181,7 @@ def test_hr_explicitly_resolves_employee_codes_without_creating_accounts(
 )
 def test_database_rejects_invalid_direct_writes(db_engine, statement):
     with db_engine.begin() as connection:
-        with pytest.raises(IntegrityError):
+        with pytest.raises((IntegrityError, DataError)):
             connection.execute(text(statement))
 
 

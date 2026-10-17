@@ -4,10 +4,12 @@ JanaMen Digital HR — Live Demonstration Smoke Test Runner
 Runs the full 10-step hackathon judging scenario against the running server (http://127.0.0.1:8000).
 """
 
+import hashlib
 import json
 import os
 import urllib.error
 import urllib.request
+from datetime import date, timedelta
 
 BASE_URL = os.getenv("JANAMEN_BASE_URL", "http://127.0.0.1:8000")
 DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "Password123!")
@@ -17,11 +19,13 @@ def log_step(num, title):
     print(f"\n{'=' * 70}\n[STEP {num}] {title}\n{'=' * 70}")
 
 
-def request(path, method="GET", data=None, token=None):
+def request(path, method="GET", data=None, token=None, idempotency_key=None):
     url = f"{BASE_URL}{path}"
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    if idempotency_key:
+        headers["Idempotency-Key"] = idempotency_key
     body = json.dumps(data).encode("utf-8") if data else None
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
@@ -37,6 +41,8 @@ def request(path, method="GET", data=None, token=None):
 
 def main():
     print("🚀 Starting JanaMen Digital HR Live Smoke Test...")
+    status, config = request("/api/v1/config")
+    assert status == 200 and config["demo_mode"], "Smoke mutations require synthetic demo mode"
 
     # Step 1: Employee login and dashboard
     log_step(1, "Employee Login & Personalized Dashboard")
@@ -68,13 +74,45 @@ def main():
 
     # Step 3: Request submission (Vacation)
     log_step(3, "Request Submission & Event Audit History")
+    scenario = os.getenv("JANAMEN_SMOKE_SCENARIO", "repeatable-smoke-v1")
+    marker = "Synthetic smoke scenario " + scenario
+    existing = []
+    offset = 0
+    while True:
+        status, page = request(f"/api/v1/requests?limit=100&offset={offset}", token=emp_token)
+        assert status == 200
+        existing.extend(page)
+        if len(page) < 100:
+            break
+        offset += 100
+    previous = next((r for r in existing if r["reason"] == marker), None)
+    start = date.today() + timedelta(days=30)
+    if not previous:
+        for _ in range(300):
+            end = start + timedelta(days=2)
+            if not any(
+                r["type"] == "Vacation"
+                and r["status"] in ["Pending", "Approved"]
+                and r["start_date"] <= end.isoformat()
+                and (r["end_date"] or r["start_date"]) >= start.isoformat()
+                for r in existing
+            ):
+                break
+            start += timedelta(days=3)
+        else:
+            raise AssertionError(
+                "No free synthetic vacation period; use a fresh disposable fixture"
+            )
     vac_payload = {
         "type": "Vacation",
-        "start_date": "2026-11-23",
-        "end_date": "2026-11-25",
-        "reason": "Family gathering & trip",
+        "start_date": previous["start_date"] if previous else start.isoformat(),
+        "end_date": previous["end_date"] if previous else (start + timedelta(days=2)).isoformat(),
+        "reason": marker,
     }
-    status, new_req = request("/api/v1/requests", method="POST", data=vac_payload, token=emp_token)
+    key = "smoke-" + hashlib.sha256(scenario.encode()).hexdigest()[:32]
+    status, new_req = request(
+        "/api/v1/requests", method="POST", data=vac_payload, token=emp_token, idempotency_key=key
+    )
     assert status == 201, f"Failed: {new_req}"
     req_id = new_req["id"]
     req_code = new_req["request_code"]
@@ -93,16 +131,22 @@ def main():
 
     status, team_reqs = request("/api/v1/manager/requests?status=Pending", token=mgr_token)
     assert status == 200
-    assert any(r["id"] == req_id for r in team_reqs)
+    if new_req["status"] == "Pending":
+        assert any(r["id"] == req_id for r in team_reqs)
     print(f"✓ Manager sees {len(team_reqs)} pending request(s) for direct reports.")
 
-    status, approved_req = request(
-        f"/api/v1/requests/{req_id}/approve",
-        method="POST",
-        data={"action": "approve", "comment": "Approved by manager Timur. Coverage arranged."},
-        token=mgr_token,
+    already_approved = new_req["status"] == "Approved"
+    status, approved_req = (
+        request(
+            f"/api/v1/requests/{req_id}/approve",
+            method="POST",
+            data={"action": "approve", "comment": "Approved by manager Timur. Coverage arranged."},
+            token=mgr_token,
+        )
+        if not already_approved
+        else request(f"/api/v1/requests/{req_id}", token=emp_token)
     )
-    assert status == 200
+    assert status == 200 and approved_req["status"] == "Approved"
     print(f"✓ Request {req_code} approved. Reviewer: {approved_req['reviewer_name']}")
     print(
         f"✓ Documentolog local reference (unconnected by default): {approved_req['external_sync_id']}"
@@ -121,7 +165,11 @@ def main():
     )
 
     status, updated_prof = request("/api/v1/me/profile", token=emp_token)
-    assert status == 200 and updated_prof["leave_balance_days"] == prof["leave_balance_days"] - 3
+    expected_debit = 0 if already_approved else approved_req["vacation_days"]
+    assert (
+        status == 200
+        and updated_prof["leave_balance_days"] == prof["leave_balance_days"] - expected_debit
+    )
 
     # Step 6: Jana Academy Course & Interactive Quiz
     log_step(6, "Jana Academy: Course Progression & Persisted Completion")

@@ -4,6 +4,9 @@ import pytest
 
 from app.main import app
 from tests.conftest import login
+from tests.test_integration_gateway import approve_vacation, connected, gateway_client
+
+__all__ = ["connected", "gateway_client"]
 
 OPERATIONS = [
     ("GET", "/api/v1/config", None, 200, "public"),
@@ -96,6 +99,24 @@ OPERATIONS = [
     ("POST", "/api/v1/admin/integrations/refresh", None, 200, "hr_admin"),
     ("GET", "/api/v1/admin/integrations/queue", None, 200, "hr_admin"),
     ("GET", "/api/v1/admin/integrations/reviews", None, 200, "hr_admin"),
+    (
+        "POST",
+        "/api/v1/admin/integrations/queue/{task_id}/retry",
+        {"expected_retry_count": 0, "reason": "Synthetic outage resolved"},
+        200,
+        "hr_admin",
+    ),
+    (
+        "POST",
+        "/api/v1/admin/integrations/reviews/{employee_code}/resolve",
+        {
+            "observed_at": "2026-10-15T00:00:00Z",
+            "user_id": 1,
+            "reason": "Verified synthetic mapping",
+        },
+        200,
+        "hr_admin",
+    ),
     ("GET", "/api/v1/admin/audit", None, 200, "hr_admin"),
     ("GET", "/api/v1/admin/summary", None, 200, "hr_admin"),
     ("GET", "/health", None, 200, "public"),
@@ -103,6 +124,8 @@ OPERATIONS = [
 ]
 
 IDS = {
+    "task_id": 1,
+    "employee_code": "DEMO-MGR-001",
     "request_id": 1,
     "course_id": 1,
     "lesson_id": 1,
@@ -137,7 +160,7 @@ def test_exported_openapi_matches_application():
 
 
 @pytest.mark.parametrize("case", OPERATIONS, ids=case_name)
-def test_each_operation_has_a_working_authorized_request(client, case):
+def test_each_operation_has_a_working_authorized_request(client, case, request, db_session):
     method, path, payload, expected, role = case
     headers = {}
     ids = dict(IDS)
@@ -163,6 +186,27 @@ def test_each_operation_has_a_working_authorized_request(client, case):
         ]
     if "{user_id}" in path:
         ids["user_id"] = client.get("/api/v1/manager/team", headers=headers).json()[0]["user_id"]
+    if "{task_id}" in path:
+        from app.integrations import outbox
+        from app.models.integration import IntegrationOutbox
+
+        request.getfixturevalue("connected")
+        owner = {"Authorization": "Bearer " + login(client, "aruzhan@janapost.kz")}
+        manager = {"Authorization": "Bearer " + login(client, "timur@janapost.kz")}
+        approve_vacation(client, owner, manager)
+        outbox.dispatch_one(db_session)
+        task = db_session.query(IntegrationOutbox).one()
+        task.status = "DEAD"
+        db_session.commit()
+        ids["task_id"] = task.id
+    if "{employee_code}" in path:
+        from app.integrations import profile_sync
+
+        request.getfixturevalue("connected")
+        profile_sync.sync_profiles(db_session, force=True)
+        reviews = client.get("/api/v1/admin/integrations/reviews", headers=headers).json()
+        review = next(r for r in reviews if r["employee_code"] == ids["employee_code"])
+        payload = {**payload, "observed_at": review["observed_at"]}
     response = client.request(method, path.format(**ids), headers=headers, json=payload)
     assert response.status_code == expected, response.text
     assert response.headers["Cache-Control"] == "no-store"

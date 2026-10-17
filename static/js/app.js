@@ -18,6 +18,7 @@ const state = {
   currentCourse: null,
   currentLesson: null,
   pendingReview: null,
+  submission: null,
 };
 
 let demoAccounts = {};
@@ -183,6 +184,7 @@ function showLogin(email = "") {
   state.courses = [];
   state.notifications = [];
   state.pendingReview = null;
+  state.submission = null;
   document.getElementById("app").hidden = true;
   document.querySelectorAll(".modal-backdrop").forEach(el => el.classList.remove("open"));
   ["homeRequests", "homeCourseCard", "homeActivity", "academyGrid", "notificationsList", "teamTable", "requestTable",
@@ -433,6 +435,7 @@ async function loadAcademyPage() {
         </div>
         <h3 class="h4">${esc(c.title)}</h3>
         <p>${esc(c.description)}</p>
+        <p>${c.is_synthetic === true ? "Synthetic example" : c.is_synthetic == null ? "Unverified course provenance" : ""}</p>
         <div>
           <div class="progress"><span style="width:${c.progress_percent}%"></span></div>
           <div class="progress-label">
@@ -680,12 +683,14 @@ async function loadAdminPage() {
         <span class="notice-icon">${icon("book")}</span>
         <div style="flex:1">
           <b>${esc(doc.title)} · v${esc(doc.version)}</b>
+          ${policyControls(doc)}
           <p>${doc.is_synthetic ? "Synthetic example · " : ""}${doc.is_approved ? "Approved" : "Draft"} · ${doc.is_active ? "Active" : "Inactive"}</p>
           ${!doc.is_approved && doc.is_active ? `<button class="small-btn primary" data-approve-document="${doc.id}" data-revision="${reviewedRevision}">Approve reviewed source</button>` : ""}
           ${doc.is_active ? `<button class="small-btn" data-deactivate-document="${doc.id}" data-revision="${doc.revision}">Deactivate</button>` : ""}
         </div>
       </div>`;
     }).join("");
+    wirePolicyControls(documentList, documents);
     documentList.querySelectorAll("[data-approve-document], [data-deactivate-document]").forEach(button => {
       button.addEventListener("click", async () => {
         try {
@@ -701,8 +706,7 @@ async function loadAdminPage() {
     const mockMode = adapters.some(a => a.mode === "MOCK");
     document.getElementById("adminIntegrationMode").textContent = mockMode ? "MOCK" : "UNCONNECTED";
     document.getElementById("adminIntegrationNote").textContent = mockMode ? "MOCK connectors only. No live enterprise connection." : "1C:ZUP and Documentolog are unconnected. HR fields remain read-only.";
-    document.getElementById("adminIntegrationQueue").innerHTML = queue.length ? queue.map(q => `<p><code>${esc(q.request_code)}</code> · <span>${esc(q.mode)}</span> · <span>${esc(q.status)}</span> · <code>${esc(q.error_code)}</code></p>`).join("") : `<p class="muted">No failed deliveries.</p>`;
-    document.getElementById("adminIntegrationReviews").innerHTML = reviews.length ? reviews.map(r => `<p><code>${esc(r.employee_code)}</code> · <code>${esc(r.reason)}</code></p>`).join("") : `<p class="muted">No mapping issues.</p>`;
+    renderIntegrationRecovery(queue, reviews, members);
     document.getElementById("adminIntegrationsList").innerHTML = adapters.map(a => `
       <div class="notice">
         <span class="notice-icon">${icon("link")}</span>
@@ -815,13 +819,19 @@ function setupModals() {
     const submit = e.target.querySelector('button[type="submit"]');
     submit.disabled = true;
     try {
-      const res = await api("/requests", { method: "POST", body: JSON.stringify({
+      const body = JSON.stringify({
         type,
         start_date: document.getElementById("reqStart").value,
         end_date: type === "Vacation" ? document.getElementById("reqEnd").value || null : null,
         amount: type === "Advance payment" && amount ? parseFloat(amount) : null,
         reason: reason || null,
-      }) });
+      });
+      // A lost response must reuse the same key; edited content is a new submission.
+      if (state.submission?.body !== body) state.submission = {body, key: crypto.randomUUID()};
+      const res = await api("/requests", {
+        method: "POST", body, headers: {"Idempotency-Key": state.submission.key},
+      });
+      state.submission = null;
       toast(`Request ${res.request_code} successfully created!`);
       document.getElementById("requestModal").classList.remove("open");
       e.target.reset();

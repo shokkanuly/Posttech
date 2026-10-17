@@ -143,7 +143,9 @@ def test_ai_grounded_answer_kazakh(client, employee_headers, question, section):
 def test_ai_kazakh_question_answered_in_kazakh_even_in_russian_ui(client, employee_headers):
     headers = {**employee_headers, "Accept-Language": "ru"}
     data = client.post(
-        "/api/v1/ai/chat", json={"question": "Демалысқа қалай өтініш беруге болады?"}, headers=headers
+        "/api/v1/ai/chat",
+        json={"question": "Демалысқа қалай өтініш беруге болады?"},
+        headers=headers,
     ).json()
     assert data["answer_status"] == "grounded"
     assert data["sources"][0]["language"] == "kk"
@@ -180,4 +182,3 @@ def test_ai_privacy_guardrail_kazakh(client, employee_headers, question):
     assert data["answer_status"] == "unauthorized"
     assert data["sources"] == []
     assert "Jana қызметкерлердің жеке деректерін қорғайды" in data["answer"]
-

@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from app.localization import CATALOG
-from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
+from app.models.knowledge import KnowledgeDocument
 from app.services.audit_service import audit_service
 
 CANONICAL_CHUNKS = {
@@ -62,9 +62,15 @@ def install_demo_translations(db) -> None:
 
         # Sync legacy chunk content and tags if needed
         for chunk in doc.chunks:
-            if chunk.section_title in CANONICAL_CHUNKS and chunk.content != CANONICAL_CHUNKS[chunk.section_title]:
+            if (
+                chunk.section_title in CANONICAL_CHUNKS
+                and chunk.content != CANONICAL_CHUNKS[chunk.section_title]
+            ):
                 chunk.content = CANONICAL_CHUNKS[chunk.section_title]
-            if chunk.section_title in CANONICAL_TAGS and chunk.tags != CANONICAL_TAGS[chunk.section_title]:
+            if (
+                chunk.section_title in CANONICAL_TAGS
+                and chunk.tags != CANONICAL_TAGS[chunk.section_title]
+            ):
                 chunk.tags = CANONICAL_TAGS[chunk.section_title]
 
     for doc in db.query(KnowledgeDocument).filter_by(is_approved=True).all():

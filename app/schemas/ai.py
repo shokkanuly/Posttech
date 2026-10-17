@@ -32,7 +32,6 @@ class AIChatResponse(BaseModel):
     language: str = "en"
 
 
-
 class KnowledgeSourceResponse(BaseModel):
     chunk_id: int
     document_id: int

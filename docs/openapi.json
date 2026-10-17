@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "JanaMen Digital HR",
-    "description": "Unified Digital HR Self-Service Platform for Jana Post \u00d7 Terricon Valley Hackathon 2026",
+    "description": "Unified Digital HR Self-Service Platform for Jana Post × Terricon Valley Hackathon 2026",
     "version": "1.0.0"
   },
   "paths": {
@@ -5732,6 +5732,7 @@
             "type": "string",
             "enum": [
               "grounded",
+              "personal",
               "fallback",
               "unauthorized"
             ],

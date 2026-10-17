@@ -25,6 +25,7 @@ from app.models.user import User
 from app.retrieval_ranker import load_relevance_model, relevance_features
 from app.schemas.ai import AIChatRequest, AIChatResponse, SourceCitation
 from app.services import ml_retrieval
+from app.services.ai_personal import personal_facts
 from app.services.audit_service import audit_service
 
 # ponytail: Latin→Cyrillic first-pass transliteration, enough to match seeded names
@@ -684,7 +685,11 @@ class AIService:
         """Passages allowed for an extractive answer: the coverage gate always applies;
         the trained model (if enabled) can only re-order and further reject them."""
         target_lang = language or current_language.get()
-        gated = [c for c, cov, _sim in ranked if cov >= settings.AI_CONFIDENCE_THRESHOLD]
+        passing = [(c, sim) for c, cov, sim in ranked if cov >= settings.AI_CONFIDENCE_THRESHOLD]
+        # A second passage only when it is nearly as similar as the best one, not when it
+        # merely shares a word ("оформить отпуск" also appears in the maternity section).
+        best = max((sim for _c, sim in passing), default=0.0)
+        gated = [c for c, sim in passing if sim >= 0.85 * best]
         model = cls.relevance_model()
         if model is None:
             return gated[:2]
@@ -855,7 +860,8 @@ class AIService:
             f"Contact HR support at {settings.HR_SUPPORT_EMAIL} for confirmation.",
             language=effective_language,
         )
-        answer_status: Literal["grounded", "fallback", "unauthorized"]
+        answer_status: Literal["grounded", "personal", "fallback", "unauthorized"]
+        personal_topics: list[str] = []
         chunks = []
         views = []
         similarity: dict[int, float] = {}
@@ -907,6 +913,12 @@ class AIService:
                     f"{source_label} {text['document_title']} — {text['section_title']} (v{c.document.version})\n{text['content']}"
                     for c, text in views
                 )
+            # The asker's own records (balance, requests, courses...) lead the answer.
+            personal_topics, personal = personal_facts(db, user, question, effective_language)
+            if personal:
+                # Without a source the figures are all we know: point to HR for anything else.
+                answer = f"{personal}\n\n{answer}" if views else f"{personal}\n\n{guidance}"
+                answer_status = "grounded" if views else "personal"
         sources = [
             SourceCitation(
                 chunk_id=c.id,
@@ -924,6 +936,7 @@ class AIService:
         ]
         action = {
             "grounded": "AI_QUERY_GROUNDED_ANSWER",
+            "personal": "AI_QUERY_PERSONAL_ANSWER",
             "fallback": "AI_QUERY_FALLBACK",
             "unauthorized": "AI_QUERY_PRIVACY_BLOCKED",
         }[answer_status]
@@ -935,6 +948,7 @@ class AIService:
             details={
                 "question_hash": hashlib.sha256(question.encode()).hexdigest(),
                 "status": answer_status,
+                "personal_topics": personal_topics,  # topic names only, never the values
                 "engine": engine,
                 "llm": llm_status,
                 "source_ids": [c.id for c, _text in views],

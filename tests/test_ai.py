@@ -88,7 +88,11 @@ def test_ai_matches_russian_question_in_kazakh_ui(client, employee_headers):
 
 @pytest.mark.parametrize(
     "question",
-    ["Какие правила страховки питомцев?", "Какой дресс-код?", "Как оформить декретный отпуск?"],
+    [
+        "Какие правила страховки питомцев?",
+        "Какой дресс-код?",
+        "Какая политика по корпоративному такси?",
+    ],
 )
 def test_ai_safe_fallback_russian(client, employee_headers, question):
     data = ask_ru(client, employee_headers, question)
@@ -190,7 +194,7 @@ def test_ai_kazakh_question_answered_in_kazakh_even_in_russian_ui(client, employ
     [
         "Үй жануарларын сақтандыру ережесі қандай?",
         "Дресс-код қандай?",
-        "Декреттік демалыс қалай рәсімделеді?",
+        "Корпоративтік такси ережесі қандай?",
     ],
 )
 def test_ai_safe_fallback_kazakh(client, employee_headers, question):

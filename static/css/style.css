@@ -426,6 +426,17 @@ button.notice { width: 100%; }
 #playerQuizFeedback.bad { background: #fdecec; color: var(--error); }
 #citationSecTitle { margin-top: 12px; }
 
+/* Employee directory and HR card */
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td, tr.clickable:focus-visible td { background: var(--bg); }
+.mini-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 16px 0 8px; }
+.mini-stat { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: var(--r-input); background: var(--bg); }
+.mini-stat strong { font-size: 20px; font-weight: 600; }
+.mini-stat span { font-size: 13px; color: var(--text-2); }
+.mini-stat.green { background: var(--primary); color: var(--white); }
+.mini-stat.green span { color: rgba(255, 255, 255, .85); }
+@media (max-width: 640px) { .mini-stats { grid-template-columns: 1fr 1fr; } }
+
 /* Footer */
 .site-footer { background: var(--text); color: var(--white); margin-top: auto; }
 .footer-top { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 40px 0; border-bottom: 1px solid rgba(255, 255, 255, .1); flex-wrap: wrap; }
@@ -477,7 +488,8 @@ button.notice { width: 100%; }
 }
 @media (max-width: 640px) {
   :root { --gutter: 16px; }
-  .util-row { padding: 8px 0; }
+  .util-row { padding: 8px 0; flex-wrap: wrap; }
+  .util-actions, .segmented { flex-wrap: wrap; }
   .util-btn span { display: none; }
   .navbar { padding: 10px 10px 10px 16px; min-height: 60px; }
   .logo-word { font-size: 22px; }

@@ -66,15 +66,15 @@
           <option value="hr_admin">HR admin</option>
         </select>
       </label>
-      <button class="util-btn" data-goto="assistant"><svg class="ic"><use href="#i-help"/></svg><span>Help</span></button>
-      <button class="util-btn" id="logoutBtn"><svg class="ic"><use href="#i-logout"/></svg><span>Sign out</span></button>
+      <button class="util-btn" data-goto="assistant" aria-label="Help"><svg class="ic"><use href="#i-help"/></svg><span>Help</span></button>
+      <button class="util-btn" id="logoutBtn" aria-label="Sign out"><svg class="ic"><use href="#i-logout"/></svg><span>Sign out</span></button>
     </div>
   </div>
 
   <div class="container">
     <nav class="navbar" aria-label="Main">
       <button class="logo" data-goto="home" aria-label="JanaМен home">
-        <span class="logo-word">JANA</span><span class="logo-sub">МЕН · HR</span>
+        <span class="logo-word">JANA</span><span class="logo-sub" data-verbatim>МЕН · HR</span>
       </button>
       <div class="nav-links auth-only" id="navLinks">
         <button class="active" data-page="home">Home</button>
@@ -189,7 +189,7 @@
           </button>
           <button class="service-tile" data-goto="profile">
             <span class="tile-ico c-slate"><svg class="ic"><use href="#i-user"/></svg></span>
-            <b>Profile</b><span>Your HR record, read-only from 1C:ZUP</span>
+            <b>Profile</b><span>Local HR record · 1C:ZUP unconnected</span>
           </button>
           <button class="service-tile" data-goto="academy">
             <span class="tile-ico c-dark"><svg class="ic"><use href="#i-book"/></svg></span>
@@ -221,7 +221,7 @@
           <ol class="steps">
             <li><span class="step-num">1</span><div><b>Create a request</b><span>Vacation or advance — a few fields, checked by the server</span></div></li>
             <li><span class="step-num">2</span><div><b>Manager review</b><span>Only your direct manager or HR can approve or decline</span></div></li>
-            <li><span class="step-num">3</span><div><b>Registration</b><span>An approved request gets a Documentolog reference (mock)</span></div></li>
+            <li><span class="step-num">3</span><div><b>Registration</b><span>The decision is saved locally; Documentolog is unconnected</span></div></li>
             <li><span class="step-num">4</span><div><b>Notification</b><span>You are notified and your leave balance is updated</span></div></li>
           </ol>
         </div>
@@ -257,7 +257,7 @@
             <h3 class="h3">For employees</h3>
             <p class="muted">Self-service without paperwork or chasing HR</p>
             <ul class="icon-list">
-              <li><svg class="ic"><use href="#i-user"/></svg><span>Profile and leave balance from 1C:ZUP</span></li>
+              <li><svg class="ic"><use href="#i-user"/></svg><span>Local profile and leave balance</span></li>
               <li><svg class="ic"><use href="#i-calendar"/></svg><span>Vacation and advance requests with history</span></li>
               <li><svg class="ic"><use href="#i-book"/></svg><span>Mandatory courses in Jana Academy</span></li>
               <li><svg class="ic"><use href="#i-spark"/></svg><span>AI Jana answers with a source</span></li>
@@ -306,7 +306,7 @@
           <h1 class="h2">Profile</h1>
           <p class="muted">Official HR data is read-only. Changes go through HR.</p>
         </div>
-        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg><span>Read-only · 1C:ZUP mock</span></span>
+        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg><span>Read-only · 1C:ZUP unconnected</span></span>
       </div>
       <div class="grid profile-grid">
         <div class="card">
@@ -338,6 +338,13 @@
               <span class="chip"><span id="profLearningPct">—</span></span>
             </div>
             <div id="profCourses"></div>
+          </div>
+          <div class="card">
+            <div class="section-head">
+              <h3 class="h4">Notifications</h3>
+              <button class="link" data-goto="notifications"><span>View all</span> →</button>
+            </div>
+            <div id="profNotifications"></div>
           </div>
         </div>
       </div>
@@ -482,8 +489,32 @@
         <div class="section-head"><h3 class="h4">Pending approvals</h3></div>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Employee</th><th>Request</th><th>Period / details</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Employee</th><th>Request</th><th>Period / details</th><th>Leave balance</th><th>Status</th><th></th></tr></thead>
             <tbody id="teamTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-head">
+          <h3 class="h4">Employees</h3>
+          <span class="muted small">Click an employee to open the HR card</span>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Employee</th><th>Position · Department</th><th>Leave balance</th><th>Used</th><th>Pending</th><th>Available</th><th>Learning</th></tr></thead>
+            <tbody id="teamDirectory"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-head">
+          <h3 class="h4">Team request history</h3>
+          <span class="muted small">Latest 100 requests in your scope, every status</span>
+        </div>
+        <div class="table-wrap scroll-box">
+          <table class="table">
+            <thead><tr><th>Employee</th><th>Request</th><th>Period / details</th><th>Days</th><th>Status</th><th>Decision</th></tr></thead>
+            <tbody id="teamHistory"></tbody>
           </table>
         </div>
       </div>
@@ -507,10 +538,22 @@
       </div>
       <div class="card">
         <div class="section-head">
+          <h3 class="h4">Employees</h3>
+          <span class="muted small">Click an employee to open the HR card</span>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Employee</th><th>Position · Department</th><th>Leave balance</th><th>Used</th><th>Pending</th><th>Available</th><th>Learning</th></tr></thead>
+            <tbody id="adminDirectory"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-head">
           <h3 class="h4">Enterprise integration boundaries</h3>
           <span class="status pending">Unconnected</span>
         </div>
-        <p class="muted">Where 1C:ZUP and Documentolog plug in. Official HR data stays read-only.</p>
+        <p class="muted">1C:ZUP and Documentolog are unconnected. HR fields remain read-only.</p>
         <div id="adminIntegrationsList"></div>
       </div>
       <div class="grid lower">
@@ -646,6 +689,17 @@
     </div>
   </div>
 
+  <!-- MODAL: EMPLOYEE HR CARD (manager: own team, HR: everyone; scope checked by the API) -->
+  <div class="modal-backdrop" id="employeeModal" role="dialog" aria-modal="true" aria-labelledby="employeeModalName">
+    <div class="modal modal-wide">
+      <div class="modal-head">
+        <h3 class="h4" id="employeeModalName">—</h3>
+        <button class="close" id="closeEmployeeModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
+      </div>
+      <div id="employeeModalBody"></div>
+    </div>
+  </div>
+
   <!-- MODAL: REVIEW -->
   <div class="modal-backdrop" id="reviewModal" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
     <div class="modal">
@@ -667,7 +721,7 @@
 <footer class="site-footer">
   <div class="container footer-top">
     <div>
-      <div class="logo logo-dark"><span class="logo-word">JANA</span><span class="logo-sub">МЕН · HR</span></div>
+      <div class="logo logo-dark"><span class="logo-word">JANA</span><span class="logo-sub" data-verbatim>МЕН · HR</span></div>
       <p>HR workspace of Jana Post · hackathon prototype</p>
     </div>
     <div class="footer-badges">
@@ -679,8 +733,8 @@
     <div>
       <h3>Integrations</h3>
       <ul class="footer-list">
-        <li><svg class="ic"><use href="#i-link"/></svg>1C:ZUP 3.1 — <span>mock adapter, read-only</span></li>
-        <li><svg class="ic"><use href="#i-link"/></svg>Documentolog — <span>mock adapter, registration</span></li>
+        <li><svg class="ic"><use href="#i-link"/></svg>1C:ZUP 3.1 — <span>unconnected, local records only</span></li>
+        <li><svg class="ic"><use href="#i-link"/></svg>Documentolog — <span>unconnected, no external registration</span></li>
       </ul>
     </div>
     <div>

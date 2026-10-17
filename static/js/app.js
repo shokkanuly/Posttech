@@ -60,6 +60,9 @@ async function apiAll(path) {
 
 // --- HELPERS ---
 function toast(msg) {
+  // In-flight requests are deliberately cancelled when language or session changes.
+  if (["Session changed; please retry.", "Language changed; please retry."]
+      .some(reason => String(msg).includes(reason))) return;
   const el = document.getElementById("toast");
   el.textContent = msg;
   el.classList.add("show");
@@ -175,6 +178,7 @@ function showLogin(email = "") {
   ["homeRequests", "homeCourseCard", "homeActivity", "academyGrid", "notificationsList", "teamTable", "requestTable",
    "knowledgeList", "knowledgeDocuments", "approvedKnowledgeList", "adminAuditTable", "adminIntegrationsList",
    "chatMessages", "playerLessonsList", "playerQuizOptions", "detailModalTimeline", "profCourses",
+   "teamDirectory", "adminDirectory", "employeeModalBody", "employeeModalName", "teamHistory",
    "detailModalTitle", "detailModalCode", "detailModalRequester", "detailModalDept", "detailModalDates",
    "detailModalSync", "playerCourseTitle", "playerLessonTitle", "playerQuizQuestion", "playerQuizFeedback",
    "citationDocTitle", "citationSecTitle"]
@@ -337,7 +341,13 @@ async function loadDashboard() {
 // --- PROFILE ---
 async function loadProfilePage() {
   try {
-    const p = await api("/me/profile");
+    const [p, notifications] = await Promise.all([api("/me/profile"), api("/notifications?limit=3")]);
+    document.getElementById("profNotifications").innerHTML = notifications.length ? notifications.map(n => `
+      <div class="course-line">
+        <span class="notice-icon">${notificationIcon(n.type)}</span>
+        <div><b>${esc(n.title)}</b><div class="req-sub">${esc(n.time_ago)}</div></div>
+        ${n.is_read ? "" : `<span class="unread-dot" aria-label="unread"></span>`}
+      </div>`).join("") : `<div class="empty">No updates yet.</div>`;
     document.getElementById("profAvatar").textContent = initials(p.full_name);
     document.getElementById("profName").textContent = p.full_name;
     document.getElementById("profPosition").textContent = p.position;
@@ -347,7 +357,7 @@ async function loadProfilePage() {
     document.getElementById("profManager").textContent = p.manager_name || "None (Department Head)";
     document.getElementById("profHireDate").textContent = formatDate(p.hire_date);
     document.getElementById("profLocation").textContent = p.location;
-    document.getElementById("profLeaveBalance").textContent = `${p.leave_balance_days.toFixed(1)} days`;
+    document.getElementById("profLeaveBalance").textContent = days(p.leave_balance_days);
     document.getElementById("profLearningPct").textContent = `${Math.round(p.learning_progress_percent)}%`;
     document.getElementById("profCourses").innerHTML = p.courses.length ? p.courses.map(c => `
       <div class="course-line">
@@ -474,18 +484,103 @@ async function updateNotificationBadge() {
 }
 
 // --- MANAGER ---
+const days = value => `${Math.round(Number(value) * 10) / 10} days`;
+
+// Leave figures next to each pending request, so the approver sees the effect before deciding.
+function leaveImpact(request, member) {
+  if (!member || request.type !== "Vacation") return "—";
+  const after = member.leave_balance_days - (request.vacation_days ?? 0);
+  return `<b>${days(member.leave_balance_days)}</b><div class="req-sub">after approval: ${days(after)}</div>`;
+}
+
+function renderDirectory(tbodyId, members) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = members.length ? members.map(m => `
+    <tr class="clickable" tabindex="0" data-employee="${m.user_id}">
+      <td><b>${esc(m.full_name)}</b><div class="req-sub" data-verbatim>${esc(m.employee_code)}</div></td>
+      <td>${esc(m.position)}<div class="req-sub">${esc(m.department)}</div></td>
+      <td><b>${days(m.leave_balance_days)}</b></td>
+      <td>${days(m.used_days)}</td>
+      <td>${days(m.pending_days)}</td>
+      <td><b class="green">${days(m.available_days)}</b></td>
+      <td>${Math.round(m.learning_progress_percent)}%</td>
+    </tr>`).join("") : `<tr><td colspan="7" class="empty">No employees in your scope.</td></tr>`;
+  tbody.querySelectorAll("[data-employee]").forEach(row => {
+    const open = () => openEmployeeCard(Number(row.dataset.employee));
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", e => { if (e.key === "Enter") open(); });
+  });
+}
+
+async function openEmployeeCard(userId) {
+  try {
+    const e = await api(`/manager/team/${userId}`);
+    document.getElementById("employeeModalName").textContent = e.full_name;
+    const stat = (value, label, green) => `<div class="mini-stat ${green ? "green" : ""}"><strong>${days(value)}</strong><span>${label}</span></div>`;
+    document.getElementById("employeeModalBody").innerHTML = `
+      <p class="muted">${esc(e.position)} · ${esc(e.department)}</p>
+      <div class="mini-stats">
+        ${stat(e.leave_balance_days, "Leave balance")}${stat(e.used_days, "Used")}
+        ${stat(e.pending_days, "Pending")}${stat(e.available_days, "Available", true)}
+      </div>
+      <dl class="detail-grid">
+        <div class="detail"><dt>Employee ID</dt><dd data-verbatim>${esc(e.employee_code)}</dd></div>
+        <div class="detail"><dt>Company</dt><dd>${esc(e.company)}</dd></div>
+        <div class="detail"><dt>Manager</dt><dd>${esc(e.manager_name || "—")}</dd></div>
+        <div class="detail"><dt>Hire date</dt><dd>${esc(formatDate(e.hire_date))}</dd></div>
+        <div class="detail"><dt>Location</dt><dd>${esc(e.location)}</dd></div>
+        <div class="detail"><dt>Learning progress</dt><dd>${Math.round(e.learning_progress_percent)}%</dd></div>
+      </dl>
+      <h4 class="sub-title">Vacation and request history</h4>
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>Request</th><th>Period / details</th><th>Days</th><th>Status</th></tr></thead>
+        <tbody>${e.requests.length ? e.requests.map(r => `
+          <tr>
+            <td><b>${esc(r.type)}</b><div class="req-sub" data-verbatim>${esc(r.request_code)}</div></td>
+            <td>${esc(formatPeriod(r))}</td>
+            <td>${r.vacation_days == null ? "—" : days(r.vacation_days)}</td>
+            <td>${statusBadge(r.status)}</td>
+          </tr>`).join("") : `<tr><td colspan="4" class="empty">No requests yet.</td></tr>`}</tbody>
+      </table></div>
+      <h4 class="sub-title">Training</h4>
+      ${e.courses.length ? e.courses.map(c => `
+        <div class="course-line">
+          <span class="notice-icon">${icon(c.status === "COMPLETED" ? "check" : "book")}</span>
+          <div>
+            <b>${esc(c.title)}</b>
+            <div class="req-sub"><span>${Math.round(c.progress_percent)}% complete</span>${c.score === null ? "" : ` · <span>${Math.round(c.score)}% lessons passed</span>`}</div>
+            <div class="progress"><span style="width:${c.progress_percent}%"></span></div>
+          </div>
+        </div>`).join("") : `<div class="empty">No courses assigned.</div>`}
+      <h4 class="sub-title">History</h4>
+      <div class="timeline">${e.history.length ? e.history.map(h => `
+        <div class="activity">
+          <span class="activity-dot ${["APPROVED", "COURSE_COMPLETED", "LESSON_PASSED"].includes(h.event) ? "ok" : h.event === "REJECTED" ? "bad" : ""}"></span>
+          <div>
+            <b><span>${esc(h.event)}</span> · <span ${h.kind === "request" ? "data-verbatim" : ""}>${esc(h.reference)}</span></b>
+            <p>${h.detail ? `<span>${esc(h.detail)}</span> · ` : ""}${h.actor ? `<span>${esc(h.actor)}</span> · ` : ""}${esc(formatDate(h.at))} ${esc(formatTime(h.at))}</p>
+          </div>
+        </div>`).join("") : `<div class="empty">No history yet.</div>`}</div>`;
+    document.getElementById("employeeModal").classList.add("open");
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
 async function loadTeamPage() {
   try {
     const [requests, members] = await Promise.all([apiAll("/manager/requests?status=Pending"), apiAll("/manager/team")]);
+    const byUser = Object.fromEntries(members.map(m => [m.user_id, m]));
     document.getElementById("teamScope").textContent = state.user.role === "hr_admin" ? "Company" : "Direct reports";
     document.getElementById("teamCount").textContent = members.length;
     document.getElementById("teamPendingStat").textContent = requests.length;
     document.getElementById("teamPendingBadge").textContent = `${requests.length} pending`;
     document.getElementById("teamTable").innerHTML = requests.length ? requests.map(r => `
       <tr>
-        <td><b>${esc(r.user_name)}</b><div class="req-sub">${esc(r.department)}</div></td>
+        <td><button class="text-link" onclick="openEmployeeCard(${r.user_id})"><b>${esc(r.user_name)}</b></button><div class="req-sub">${esc(r.department)}</div></td>
         <td>${esc(r.type)}<div class="req-sub" data-verbatim>${esc(r.request_code)}</div></td>
         <td>${esc(formatPeriod(r))}<div class="req-sub">${esc(r.reason || "No comment")}</div></td>
+        <td>${leaveImpact(r, byUser[r.user_id])}</td>
         <td>${statusBadge(r.status)}</td>
         <td style="white-space:nowrap">
           <button class="small-btn primary" onclick="reviewRequestPrompt(${r.id}, 'approve')">Approve</button>
@@ -493,7 +588,18 @@ async function loadTeamPage() {
           <button class="text-link" onclick="openRequestDetailModal(${r.id})">Details</button>
         </td>
       </tr>`).join("")
-      : `<tr><td colspan="5" class="empty">No pending requests from your team.</td></tr>`;
+      : `<tr><td colspan="6" class="empty">No pending requests from your team.</td></tr>`;
+    renderDirectory("teamDirectory", members);
+    const history = await api("/manager/requests?limit=100");
+    document.getElementById("teamHistory").innerHTML = history.length ? history.map(r => `
+      <tr>
+        <td><button class="text-link" onclick="openEmployeeCard(${r.user_id})"><b>${esc(r.user_name)}</b></button></td>
+        <td>${esc(r.type)}<div class="req-sub" data-verbatim>${esc(r.request_code)}</div></td>
+        <td>${esc(formatPeriod(r))}</td>
+        <td>${r.vacation_days == null ? "—" : days(r.vacation_days)}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td>${esc(r.reviewer_name || "—")}<div class="req-sub">${esc(formatDate(r.updated_at))}</div></td>
+      </tr>`).join("") : `<tr><td colspan="6" class="empty">No requests yet.</td></tr>`;
   } catch (err) {
     toast(`Error: ${err.message}`);
   }
@@ -515,6 +621,7 @@ async function loadAdminPage() {
       api("/admin/summary"), apiAll("/admin/knowledge"), apiAll("/admin/knowledge/documents"),
       api("/admin/integrations"), api("/admin/audit?limit=15"),
     ]);
+    renderDirectory("adminDirectory", await apiAll("/manager/team"));
     document.getElementById("adminEmployeeCount").textContent = summary.active_accounts;
     document.getElementById("adminKnowledgeCount").textContent = chunks.length;
 
@@ -606,7 +713,7 @@ function setupModals() {
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") document.querySelectorAll(".modal-backdrop").forEach(m => m.classList.remove("open"));
   });
-  ["closeModal", "cancelModal", "closeDetailModal", "closeCourseModal", "closeCitationModal", "cancelReview"].forEach(id => {
+  ["closeModal", "cancelModal", "closeDetailModal", "closeCourseModal", "closeCitationModal", "cancelReview", "closeEmployeeModal"].forEach(id => {
     document.getElementById(id).addEventListener("click", () => document.getElementById(id).closest(".modal-backdrop").classList.remove("open"));
   });
 
@@ -639,9 +746,17 @@ function setupModals() {
   reqType.addEventListener("change", syncRequestType);
   syncRequestType();
 
+  // Mirror the server rule (today in Kazakhstan, UTC+5, up to one year ahead) in the picker.
+  const isoDay = offsetDays => new Date(Date.now() + 5 * 3600e3 + offsetDays * 86400e3).toISOString().slice(0, 10);
+  const reqStart = document.getElementById("reqStart");
+  const reqEnd = document.getElementById("reqEnd");
+  reqStart.addEventListener("change", () => { reqEnd.min = reqStart.value || reqStart.min; });
+
   document.querySelectorAll('[data-action="new-request"]').forEach(b => {
     b.addEventListener("click", () => {
       if (b.dataset.type) reqType.value = b.dataset.type;
+      reqStart.min = reqEnd.min = isoDay(0);
+      reqStart.max = reqEnd.max = isoDay(365);
       syncRequestType();
       document.getElementById("requestModal").classList.add("open");
       document.getElementById("reqStart").focus();
@@ -819,7 +934,7 @@ async function sendAIQuery(question) {
       botBubble.classList.add("fallback");
       if (res.escalation_guidance) html += `<div class="fallback-note"><b>Safe Fallback:</b> <span data-verbatim>${esc(res.escalation_guidance)}</span></div>`;
     }
-    html += `<small><span>AI Jana</span> · <span>${esc(res.answer_status)}</span>${res.engine ? ` · <span data-verbatim>${esc(res.engine)}</span>` : ""} · <span>${Math.round(res.processing_time_ms)} ms</span></small>`;
+    html += `<small><span>AI Jana</span> · <span>${esc(res.answer_status)}</span>${res.engine?.startsWith("gemini") ? ` · <span data-verbatim>${esc(res.engine)}</span>` : ""} · <span>${Math.round(res.processing_time_ms)} ms</span></small>`;
     botBubble.innerHTML = html;
     botBubble.querySelectorAll("[data-source-index]").forEach(button => {
       const source = res.sources[Number(button.dataset.sourceIndex)];

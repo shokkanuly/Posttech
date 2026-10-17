@@ -208,7 +208,7 @@ async function switchRole(roleKey) {
   if (email) await logout(email);
 }
 
-const ROLE_ACCESS = { manager: ["manager", "hr_admin"], hr_admin: ["hr_admin"] };
+const ROLE_ACCESS = { manager: ["manager"], hr_admin: ["hr_admin"] };
 
 function updateUserUI() {
   if (!state.user) return;
@@ -241,8 +241,12 @@ const pageTitles = {
 
 async function go(page) {
   if (!state.token) { showLogin(); return; }
+  if (page === "team" && state.user?.role === "hr_admin") {
+    go("admin");
+    return;
+  }
   if (page === "team" && !ROLE_ACCESS.manager.includes(state.user?.role)) {
-    toast("Access denied: Team workspace requires a manager or HR admin role.");
+    toast("Access denied: Team workspace requires a manager role.");
     return;
   }
   if (page === "admin" && state.user?.role !== "hr_admin") {
@@ -617,13 +621,30 @@ function reviewRequestPrompt(requestId, action) {
 // --- HR ADMIN ---
 async function loadAdminPage() {
   try {
-    const [summary, chunks, documents, adapters, logs] = await Promise.all([
+    const [summary, chunks, documents, adapters, logs, requests, members] = await Promise.all([
       api("/admin/summary"), apiAll("/admin/knowledge"), apiAll("/admin/knowledge/documents"),
       api("/admin/integrations"), api("/admin/audit?limit=15"),
+      apiAll("/manager/requests?status=Pending"), apiAll("/manager/team"),
     ]);
-    renderDirectory("adminDirectory", await apiAll("/manager/team"));
+    const byUser = Object.fromEntries(members.map(m => [m.user_id, m]));
+    renderDirectory("adminDirectory", members);
     document.getElementById("adminEmployeeCount").textContent = summary.active_accounts;
     document.getElementById("adminKnowledgeCount").textContent = chunks.length;
+    document.getElementById("adminPendingBadge").textContent = `${requests.length} pending`;
+    document.getElementById("adminApprovalsTable").innerHTML = requests.length ? requests.map(r => `
+      <tr>
+        <td><button class="text-link" onclick="openEmployeeCard(${r.user_id})"><b>${esc(r.user_name)}</b></button><div class="req-sub">${esc(r.department)}</div></td>
+        <td>${esc(r.type)}<div class="req-sub" data-verbatim>${esc(r.request_code)}</div></td>
+        <td>${esc(formatPeriod(r))}<div class="req-sub">${esc(r.reason || "No comment")}</div></td>
+        <td>${leaveImpact(r, byUser[r.user_id])}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td style="white-space:nowrap">
+          <button class="small-btn primary" onclick="reviewRequestPrompt(${r.id}, 'approve')">Approve</button>
+          <button class="small-btn danger" onclick="reviewRequestPrompt(${r.id}, 'reject')">Decline</button>
+          <button class="text-link" onclick="openRequestDetailModal(${r.id})">Details</button>
+        </td>
+      </tr>`).join("")
+      : `<tr><td colspan="6" class="empty">No pending requests across the company.</td></tr>`;
 
     document.getElementById("knowledgeList").innerHTML = chunks.map(c => `
       <div class="notice">

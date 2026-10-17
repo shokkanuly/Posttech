@@ -13,6 +13,7 @@ class SourceCitation(BaseModel):
     document_revision: int
     language: str
     is_synthetic: bool
+    relevance: float | None = None  # TF-IDF similarity to the question, 0..1
 
 
 class AIChatRequest(BaseModel):
@@ -26,6 +27,7 @@ class AIChatResponse(BaseModel):
     answer_status: Literal["grounded", "fallback", "unauthorized"]
     sources: list[SourceCitation] = Field(default_factory=list)
     escalation_guidance: str | None = None
+    engine: str = "extractive"  # or "gemini:<model>" when a verified model answer is shown
     processing_time_ms: float
 
 

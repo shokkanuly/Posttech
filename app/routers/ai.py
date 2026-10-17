@@ -81,8 +81,15 @@ def get_documents(
             KnowledgeChunk.translations[language].as_string().is_not(None),
         ),
     )
+    # DISTINCT on ids, not whole rows: PostgreSQL cannot compare JSON columns.
+    visible_ids = query.with_entities(KnowledgeDocument.id).distinct()
     documents = (
-        query.distinct().order_by(KnowledgeDocument.id).offset(page.offset).limit(page.limit).all()
+        db.query(KnowledgeDocument)
+        .filter(KnowledgeDocument.id.in_(visible_ids))
+        .order_by(KnowledgeDocument.id)
+        .offset(page.offset)
+        .limit(page.limit)
+        .all()
     )
     return [
         KnowledgeDocumentSummary(

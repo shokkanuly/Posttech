@@ -1,0 +1,27 @@
+{
+  "environment": "fresh disposable SQLite; synthetic seed only",
+  "database_probes": {
+    "negative_balance": {
+      "write_rejected": false
+    },
+    "reversed_request_dates": {
+      "write_rejected": false
+    },
+    "unknown_request_status": {
+      "write_rejected": false
+    },
+    "foreign_key": {
+      "write_rejected": true
+    },
+    "unique_employee_code": {
+      "write_rejected": true
+    }
+  },
+  "identical_advance_submission": {
+    "http_statuses": [
+      201,
+      201
+    ],
+    "distinct_records": 2
+  }
+}

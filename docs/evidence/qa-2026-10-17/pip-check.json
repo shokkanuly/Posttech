@@ -1,0 +1,7 @@
+{
+  "command": ".venv/bin/python -m pip check",
+  "executed": true,
+  "exit_code": 0,
+  "seconds": 0.24,
+  "output": "pip-check.txt"
+}

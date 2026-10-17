@@ -1,0 +1,25 @@
+🚀 Starting JanaMen Digital HR Live Smoke Test...
+
+======================================================================
+[STEP 1] Employee Login & Personalized Dashboard
+======================================================================
+✓ Authenticated: Synthetic Employee (Role: employee)
+✓ Dashboard loaded: Greeting = 'Good afternoon, Synthetic', Leave balance = 13.5 days, Learning = 50.0%
+
+======================================================================
+[STEP 2] Employee Profile & Read-Only Local HR Data
+======================================================================
+✓ Profile loaded: Code = JP-10428, Dept = Synthetic Operations, Manager = Synthetic Manager
+✓ Official HR data flags: read_only=True; local synthetic data, 1C unconnected
+
+======================================================================
+[STEP 3] Request Submission & Event Audit History
+======================================================================
+Traceback (most recent call last):
+  File "/Users/aibek/post tech /smoke_test.py", line 213, in <module>
+    main()
+    ~~~~^^
+  File "/Users/aibek/post tech /smoke_test.py", line 78, in main
+    assert status == 201, f"Failed: {new_req}"
+           ^^^^^^^^^^^^^
+AssertionError: Failed: {'detail': 'These dates overlap another active vacation request', 'error': {'code': 'conflict', 'message': 'These dates overlap another active vacation request', 'fields': []}, 'request_id': '60c06e69b3074d029609c5831481708d'}

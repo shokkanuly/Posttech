@@ -72,7 +72,7 @@ python -m app.gateway.configure_mock
 docker compose --env-file .env.gateway --profile integrations up --build -d
 ```
 
-The current isolated verification stack uses `http://127.0.0.1:18765`; its generated private environment is outside the repository. Existing normal app port8000 was not replaced. Use the usual synthetic employee/manager/HR accounts above. The source is uncommitted on `codex/integration-gateway` for review; no push or external deployment occurred.
+The integration verification stack uses `http://127.0.0.1:18765`; its generated private environment is outside the repository. Existing normal app port8000 was not replaced. Use the usual synthetic employee/manager/HR accounts above. The implementation was committed as `1ce82f3` and pushed to `codex/integration-gateway`; no external deployment occurred. The subsequent full-project review is recorded in the root `QA_REPORT.md` and uses a separate local QA stack.
 
 ## What remains / boundaries
 

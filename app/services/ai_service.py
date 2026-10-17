@@ -27,6 +27,8 @@ from app.schemas.ai import AIChatRequest, AIChatResponse, SourceCitation
 from app.services import ml_retrieval
 from app.services.audit_service import audit_service
 from app.services.knowledge_conflicts import has_conflicting_numeric_claims
+from app.services.policy_selection import ambiguous_policy, current_passages
+from app.services.request_service import request_today
 
 # ponytail: Latin→Cyrillic first-pass transliteration, enough to match seeded names
 # (Timur → тимур) in Russian questions. Use a name-alias table for real HR data.
@@ -645,7 +647,7 @@ class AIService:
         target_lang = language or current_language.get()
         chunks = [
             c
-            for c in cls.accessible_chunks(db, user_role)
+            for c in current_passages(list(cls.accessible_chunks(db, user_role)), request_today())
             if source_text(c, target_lang) is not None
         ]
         if not chunks:
@@ -847,7 +849,9 @@ class AIService:
             ranked = cls.rank_chunks(db, question, user.role, language=effective_language)
             similarity = {chunk.id: sim for chunk, _cov, sim in ranked}
             # Check every eligible passage before the two-citation limit or model reranking.
-            conflicting = has_conflicting_numeric_claims(
+            conflicting = ambiguous_policy(
+                ranked, settings.AI_CONFIDENCE_THRESHOLD
+            ) or has_conflicting_numeric_claims(
                 text["content"]
                 for chunk, coverage, _sim in ranked
                 if coverage >= settings.AI_CONFIDENCE_THRESHOLD

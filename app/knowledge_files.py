@@ -50,7 +50,19 @@ class PolicyBundle(BaseModel):
         return self
 
     def fingerprint(self) -> str:
-        value = json.dumps(self.model_dump(), sort_keys=True, ensure_ascii=False)
+        data = self.model_dump(mode="json")
+        # Keep unchanged pre-metadata bundles idempotent. Non-default policy
+        # decisions remain part of the hash and require a new bundle ID/version.
+        for field, default in {
+            "policy_key": None,
+            "priority": 0,
+            "effective_from": None,
+            "effective_until": None,
+            "known_conflict": False,
+        }.items():
+            if data["document"][field] == default:
+                del data["document"][field]
+        value = json.dumps(data, sort_keys=True, ensure_ascii=False)
         return hashlib.sha256(value.encode()).hexdigest()
 
 
@@ -66,7 +78,7 @@ def import_bundle(db: Session, bundle: PolicyBundle, actor: User) -> dict:
     if bundle.kind == "template":
         raise ValueError("Fill the template and change kind to document before importing")
     if any(
-        marker in json.dumps(bundle.model_dump(), ensure_ascii=False)
+        marker in json.dumps(bundle.model_dump(mode="json"), ensure_ascii=False)
         for marker in ("ЗАПОЛНИТЬ:", "ТОЛТЫРУ:")
     ):
         raise ValueError("Remove template placeholders before importing a document")

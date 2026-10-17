@@ -23,6 +23,7 @@ from app.models import (
     User,
     UserRole,
 )
+from app.seed_hr_topics import add_hr_topics
 from app.services.auth_service import auth_service
 
 
@@ -41,6 +42,7 @@ def seed_database(session=None):
     try:
         # Check if already seeded
         if db.query(User).count() > 0:
+            add_hr_topics(db)
             install_demo_translations(db)
             db.commit()
             print("Database already contains data. Skipping re-seed.")
@@ -637,6 +639,7 @@ def seed_database(session=None):
         )
 
         db.flush()
+        add_hr_topics(db)
         install_demo_translations(db)
         db.commit()
         print("Database seeded successfully with deterministic accounts and scenario data!")

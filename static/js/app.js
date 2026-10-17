@@ -1107,7 +1107,7 @@ async function sendAIQuery(question) {
       html += `<div class="citation-buttons">${res.sources.map((source, index) =>
         `<button class="source-pill" type="button" data-verbatim data-source-index="${index}">${icon("file")}${esc(source.document_title)} · ${esc(source.section_title)}</button>`).join("")}</div>`;
     }
-    if (res.answer_status !== "grounded") {
+    if (!["grounded", "personal"].includes(res.answer_status)) {
       botBubble.classList.add("fallback");
       if (res.escalation_guidance) html += `<div class="fallback-note"><b>Safe Fallback:</b> <span data-verbatim>${esc(res.escalation_guidance)}</span></div>`;
     }

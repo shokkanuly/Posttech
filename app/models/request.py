@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING
 
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy import Date as SQLDate
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,6 +41,8 @@ class Request(Base):
     )  # Reference to Documentolog/1C
     # Forward-only gateway progress: QUEUED, ORDER_CREATED, SIGNING, SIGNED or SIGN_REJECTED.
     integration_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Profile update only: {field: {"from": old, "to": new}}, applied when approved.
+    profile_changes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

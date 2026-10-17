@@ -104,5 +104,7 @@ def test_simultaneous_different_vacations_cannot_overreserve(client, employee_he
     assert sorted(statuses) == [201, 400]
 
 
-def test_calendar_does_not_claim_unconfigured_holidays():
-    assert one_c_adapter.vacation_days(date(2026, 12, 14), date(2026, 12, 18)) == 5
+def test_calendar_excludes_public_holidays_without_configuration():
+    # Independence Day (16 Dec) is built in, so an empty LEAVE_EXCLUDED_DATES cannot drop it.
+    assert one_c_adapter.vacation_days(date(2026, 12, 14), date(2026, 12, 18)) == 4
+    assert one_c_adapter.vacation_days(date(2026, 11, 23), date(2026, 11, 27)) == 5

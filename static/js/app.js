@@ -87,10 +87,57 @@ function formatDate(value) {
   return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} ${state.lang === "kz" ? "ж." : "г."}`;
 }
 function formatTime(value) { return new Date(value).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", hour12: false }); }
+const PROFILE_FIELDS = { phone: "Phone", location: "Location", emergency_contact: "Emergency contact" };
 function formatPeriod(request) {
+  // " · " parts are translated one by one by I18n.
+  if (request.type === "Profile update") return Object.keys(request.profile_changes || {}).map(f => PROFILE_FIELDS[f] || f).join(" · ");
   const start = formatDate(request.start_date);
   if (request.type === "Advance payment") return `${new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(request.amount)} ₸ · ${start}`;
   return request.end_date && request.end_date !== request.start_date ? `${start} — ${formatDate(request.end_date)}` : start;
+}
+
+// Every day of a vacation, marked: weekends are charged, public holidays are not (server rule).
+function renderLeaveCalendar(cal) {
+  const byDay = Object.fromEntries(cal.days.map(d => [d.day, d]));
+  const kindLabel = { workday: "Working day", weekend: "Weekend", holiday: "Public holiday" };
+  const monthNames = state.lang === "kz"
+    ? ["Қаңтар", "Ақпан", "Наурыз", "Сәуір", "Мамыр", "Маусым", "Шілде", "Тамыз", "Қыркүйек", "Қазан", "Қараша", "Желтоқсан"]
+    : ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+  const months = [...new Set(cal.days.map(d => d.day.slice(0, 7)))].map(ym => {
+    const [year, month] = ym.split("-").map(Number);
+    const lead = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
+    const total = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const cells = Array.from({ length: total }, (_, i) => {
+      const d = byDay[`${ym}-${String(i + 1).padStart(2, "0")}`];
+      return d ? `<span class="cal-day ${d.kind}" title="${esc(d.holiday || kindLabel[d.kind])}">${i + 1}</span>` : `<span class="cal-day">${i + 1}</span>`;
+    });
+    return `<div class="cal-month"><b data-verbatim>${monthNames[month - 1]} ${year}</b><div class="cal-grid">
+      ${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(w => `<span class="cal-wd">${w}</span>`).join("")}
+      ${"<span></span>".repeat(lead)}${cells.join("")}</div></div>`;
+  }).join("");
+  const holidays = cal.days.filter(d => d.kind === "holiday")
+    .map(d => `<li><span data-verbatim>${esc(formatDate(d.day))}</span> — <span>${esc(d.holiday)}</span></li>`).join("");
+  const num = value => Math.round(Number(value) * 10) / 10;
+  return `<div class="leave-cal">
+    <div class="cal-summary">
+      <span><span>Calendar days</span> <b>${cal.days.length}</b></span>
+      <span class="weekend"><span>Weekends (charged)</span> <b>${cal.weekend_days}</b></span>
+      <span class="holiday"><span>Public holidays (not charged)</span> <b>${cal.holiday_days}</b></span>
+      <span class="charged"><span>Will be charged</span> <b>${num(cal.charged_days)}</b></span>
+    </div>
+    <div class="cal-legend"><span><i class="workday"></i><span>Working day</span></span><span><i class="weekend"></i><span>Weekend</span></span><span><i class="holiday"></i><span>Public holiday</span></span></div>
+    <div class="cal-months">${months}</div>
+    ${holidays ? `<ul class="cal-holidays">${holidays}</ul>` : ""}
+    <p class="muted small">Annual leave is counted in calendar days: weekends are charged, public holidays are not.</p>
+  </div>`;
+}
+
+function renderProfileChanges(changes) {
+  return `<div class="table-wrap"><table class="table table-compact">
+    <thead><tr><th>Field</th><th>Current</th><th>New value</th></tr></thead>
+    <tbody>${Object.entries(changes).map(([field, c]) => `
+      <tr><td>${esc(PROFILE_FIELDS[field] || field)}</td><td>${esc(c.from || "—")}</td><td><b>${esc(c.to)}</b></td></tr>`).join("")}</tbody>
+  </table></div>`;
 }
 
 function greetingText() {
@@ -361,6 +408,13 @@ async function loadProfilePage() {
     document.getElementById("profManager").textContent = p.manager_name || "None (Department Head)";
     document.getElementById("profHireDate").textContent = formatDate(p.hire_date);
     document.getElementById("profLocation").textContent = p.location;
+    document.getElementById("profPhone").textContent = p.phone || "—";
+    document.getElementById("profEmergency").textContent = p.emergency_contact || "—";
+    state.profile = p;
+    const pending = document.getElementById("profPending");
+    pending.hidden = !p.pending_profile_change;
+    pending.innerHTML = p.pending_profile_change ? `<b>Awaiting approval</b>${renderProfileChanges(p.pending_profile_change)}` : "";
+    document.getElementById("editProfileBtn").disabled = Boolean(p.pending_profile_change);
     document.getElementById("profLeaveBalance").textContent = days(p.leave_balance_days);
     document.getElementById("profLearningPct").textContent = `${Math.round(p.learning_progress_percent)}%`;
     document.getElementById("profCourses").innerHTML = p.courses.length ? p.courses.map(c => `
@@ -494,7 +548,8 @@ const days = value => `${Math.round(Number(value) * 10) / 10} days`;
 function leaveImpact(request, member) {
   if (!member || request.type !== "Vacation") return "—";
   const after = member.leave_balance_days - (request.vacation_days ?? 0);
-  return `<b>${days(member.leave_balance_days)}</b><div class="req-sub">after approval: ${days(after)}</div>`;
+  return `<b>${days(member.leave_balance_days)}</b><div class="req-sub">after approval: ${days(after)}</div>
+    <div class="req-sub"><span>Weekends</span>: ${request.weekend_days ?? 0} · <span>Holidays</span>: ${request.holiday_days ?? 0}</div>`;
 }
 
 function renderDirectory(tbodyId, members) {
@@ -534,7 +589,18 @@ async function openEmployeeCard(userId) {
         <div class="detail"><dt>Hire date</dt><dd>${esc(formatDate(e.hire_date))}</dd></div>
         <div class="detail"><dt>Location</dt><dd>${esc(e.location)}</dd></div>
         <div class="detail"><dt>Learning progress</dt><dd>${Math.round(e.learning_progress_percent)}%</dd></div>
+        <div class="detail"><dt>Phone</dt><dd data-verbatim>${esc(e.phone || "—")}</dd></div>
       </dl>
+      ${e.email ? `
+      <h4 class="sub-title"><span>Personal and account data</span> · <span>Visible to HR only</span></h4>
+      <dl class="detail-grid">
+        <div class="detail"><dt>Email</dt><dd data-verbatim>${esc(e.email)}</dd></div>
+        <div class="detail"><dt>Role</dt><dd>${esc(e.role)}</dd></div>
+        <div class="detail"><dt>Account status</dt><dd>${e.is_active ? "Active" : "Disabled"}</dd></div>
+        <div class="detail"><dt>Emergency contact</dt><dd data-verbatim>${esc(e.emergency_contact || "—")}</dd></div>
+        <div class="detail"><dt>Account created</dt><dd>${esc(formatDate(e.account_created_at))}</dd></div>
+        <div class="detail"><dt>Last sign-in</dt><dd>${e.last_sign_in_at ? esc(`${formatDate(e.last_sign_in_at)} ${formatTime(e.last_sign_in_at)}`) : "Never"}</dd></div>
+      </dl>` : ""}
       <h4 class="sub-title">Vacation and request history</h4>
       <div class="table-wrap"><table class="table">
         <thead><tr><th>Request</th><th>Period / details</th><th>Days</th><th>Status</th></tr></thead>
@@ -734,7 +800,7 @@ function setupModals() {
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") document.querySelectorAll(".modal-backdrop").forEach(m => m.classList.remove("open"));
   });
-  ["closeModal", "cancelModal", "closeDetailModal", "closeCourseModal", "closeCitationModal", "cancelReview", "closeEmployeeModal"].forEach(id => {
+  ["closeModal", "cancelModal", "closeDetailModal", "closeCourseModal", "closeCitationModal", "cancelReview", "closeEmployeeModal", "closeContactModal", "cancelContactModal"].forEach(id => {
     document.getElementById(id).addEventListener("click", () => document.getElementById(id).closest(".modal-backdrop").classList.remove("open"));
   });
 
@@ -773,12 +839,35 @@ function setupModals() {
   const reqEnd = document.getElementById("reqEnd");
   reqStart.addEventListener("change", () => { reqEnd.min = reqStart.value || reqStart.min; });
 
+  // Live day breakdown while dates are picked; submit is blocked when the balance is short.
+  const reqCalendar = document.getElementById("reqCalendar");
+  const reqSubmit = document.querySelector('#requestForm button[type="submit"]');
+  let previewSeq = 0;
+  const previewLeave = async () => {
+    const start = reqStart.value;
+    const end = reqEnd.value || start;
+    const seq = ++previewSeq;
+    reqSubmit.disabled = false;
+    reqCalendar.hidden = !(reqType.value === "Vacation" && start && end >= start);
+    if (reqCalendar.hidden) return;
+    try {
+      const cal = await api(`/requests/leave-calendar?start_date=${start}&end_date=${end}`);
+      if (seq !== previewSeq) return;
+      const short = cal.charged_days > cal.available_days;
+      reqCalendar.innerHTML = renderLeaveCalendar(cal) + `<p class="cal-balance ${short ? "bad" : ""}">
+        <span>Available days</span>: <b>${Math.round(cal.available_days * 10) / 10}</b>${short ? ` · <span>Not enough leave days for these dates</span>` : ""}</p>`;
+      reqSubmit.disabled = short;
+    } catch { reqCalendar.hidden = true; }
+  };
+  [reqStart, reqEnd, reqType].forEach(el => el.addEventListener("change", previewLeave));
+
   document.querySelectorAll('[data-action="new-request"]').forEach(b => {
     b.addEventListener("click", () => {
       if (b.dataset.type) reqType.value = b.dataset.type;
       reqStart.min = reqEnd.min = isoDay(0);
       reqStart.max = reqEnd.max = isoDay(365);
       syncRequestType();
+      previewLeave();
       document.getElementById("requestModal").classList.add("open");
       document.getElementById("reqStart").focus();
     });
@@ -803,9 +892,42 @@ function setupModals() {
       document.getElementById("requestModal").classList.remove("open");
       e.target.reset();
       syncRequestType();
+      previewLeave();
       await refreshCurrentPage();
     } catch (err) {
       toast(`Submission failed: ${err.message}`);
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
+  // Contact details change through a "Profile update" request; the approver applies it.
+  const profileInputs = [["contactPhone", "phone"], ["contactLocation", "location"], ["contactEmergency", "emergency_contact"]];
+  document.getElementById("editProfileBtn").addEventListener("click", () => {
+    const p = state.profile || {};
+    profileInputs.forEach(([id, field]) => { document.getElementById(id).value = p[field] || ""; });
+    document.getElementById("contactReason").value = "";
+    document.getElementById("contactModal").classList.add("open");
+    document.getElementById("contactPhone").focus();
+  });
+  document.getElementById("contactForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const changes = {};
+    profileInputs.forEach(([id, field]) => {
+      const value = document.getElementById(id).value.trim();
+      if (value && value !== (state.profile?.[field] || "")) changes[field] = value;
+    });
+    if (!Object.keys(changes).length) { toast("Change at least one field"); return; }
+    const submit = e.target.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    try {
+      const reason = document.getElementById("contactReason").value.trim();
+      await api("/requests", { method: "POST", body: JSON.stringify({ type: "Profile update", profile_changes: changes, reason: reason || null }) });
+      document.getElementById("contactModal").classList.remove("open");
+      toast("Profile changes were sent for approval");
+      await refreshCurrentPage();
+    } catch (err) {
+      toast(err.message);
     } finally {
       submit.disabled = false;
     }
@@ -821,6 +943,10 @@ async function openRequestDetailModal(id) {
     document.getElementById("detailModalRequester").textContent = r.user_name;
     document.getElementById("detailModalDept").textContent = r.department;
     document.getElementById("detailModalDates").textContent = formatPeriod(r);
+    // Approvers see exactly which days are charged, or which profile fields change.
+    document.getElementById("detailModalExtra").innerHTML = r.leave_days.length
+      ? `<h4 class="sub-title">Day breakdown</h4>${renderLeaveCalendar({ days: r.leave_days, weekend_days: r.weekend_days, holiday_days: r.holiday_days, charged_days: r.vacation_days })}`
+      : r.profile_changes ? `<h4 class="sub-title">Requested changes</h4>${renderProfileChanges(r.profile_changes)}` : "";
     document.getElementById("detailModalSync").textContent = r.external_sync_id || I18n.t("Documentolog is unconnected; no external registration");
     document.getElementById("detailModalTimeline").innerHTML = r.events.map(ev => `
       <div class="activity">

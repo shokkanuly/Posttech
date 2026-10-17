@@ -20,7 +20,10 @@ from app.services.audit_service import audit_service
 class AIService:
     PRIVACY_RESTRICTED_TERMS = (
         "salary of",
-        "зарплата",
+        "зарплат",
+        "оклад",
+        "зарабатыва",
+        "сколько получает",
         "айлық",
         "жалақы",
         "who got fired",
@@ -36,7 +39,6 @@ class AIService:
         "disciplinary record",
         "home address",
         "medical record",
-        "зарплату коллеги",
         "жалақысын",
         "личные данные коллег",
         "домашний адрес",
@@ -87,6 +89,10 @@ class AIService:
                 "беремін",
                 "сұраймын",
                 "сұрау",
+                "оформить",
+                "оформление",
+                "взять",
+                "получить",
             ),
             "request",
         ),
@@ -94,25 +100,35 @@ class AIService:
             ("остаток", "остатка", "баланс", "қалдық", "қалдығы", "қалдығын", "қалдықтан"),
             "balance",
         ),
-        **dict.fromkeys(("дней", "дня", "дни", "күн", "күндерінің", "күндер", "күндері"), "day"),
+        **dict.fromkeys(
+            ("день", "дней", "дня", "дни", "күн", "күндерінің", "күндер", "күндері"), "day"
+        ),
         **dict.fromkeys(("аванс", "аванса", "авансқа", "авансты"), "advance"),
         **dict.fromkeys(("график", "графика", "кесте", "кестесі", "кестеде"), "schedule"),
         **dict.fromkeys(("рабочее", "работы", "работа", "жұмыс", "working"), "work"),
-        **dict.fromkeys(("кадровую", "кадровая", "кадровой", "кадр", "службу", "қызметі"), "hr"),
-        **dict.fromkeys(("контакты", "связаться", "байланыс", "хабарласу"), "contact"),
+        **dict.fromkeys(
+            ("кадровую", "кадровая", "кадровой", "кадр", "кадры", "службу", "қызметі"), "hr"
+        ),
+        **dict.fromkeys(("контакты", "связаться", "байланыс"), "contact"),
     }
     STOP_WORDS |= set(
-        "подскажите какой какая какие как где посмотреть системе мой мои мне туралы қалай қандай қайдан көремін жүйеде есть могу можно для нужно".split()
+        "подскажите какой какая какие как где посмотреть системе мой мои мне туралы қалай қандай қайдан көремін жүйеде есть могу можно для нужно "
+        "положено делать если отдел когда істеймін қашан мен".split()
     )
+    # ponytail: RU/KK inflect heavily, so Cyrillic words match on a 5-letter prefix
+    # (отпуском ~ отпуска). Swap for a Snowball stemmer if false matches show up.
+    ALIASES |= {k[:5]: v for k, v in ALIASES.items() if not k.isascii()}
+    STOP_WORDS |= {w[:5] for w in STOP_WORDS if not w.isascii()}
 
     @classmethod
     def _tokenize(cls, text: str) -> set[str]:
         text = text.lower().replace("time off", "vacation").replace("carry over", "carryover")
-        return {
-            cls.ALIASES.get(t, t)
-            for t in re.findall(r"\w+", text)
-            if len(t) > 2 and t not in cls.STOP_WORDS
-        }
+        tokens = set()
+        for t in re.findall(r"\w+", text):
+            stem = t if t.isascii() or t in cls.ALIASES else t[:5]
+            if len(t) > 2 and t not in cls.STOP_WORDS and stem not in cls.STOP_WORDS:
+                tokens.add(cls.ALIASES.get(stem, stem))
+        return tokens
 
     @staticmethod
     def accessible_chunks(db: Session, role: UserRole):
@@ -133,12 +149,14 @@ class AIService:
             return []
         ranked = []
         for chunk in cls.accessible_chunks(db, user_role).yield_per(100):
-            localized = source_text(chunk)
-            if localized is None:
+            if source_text(chunk) is None:
                 continue
+            # Match the question in any reviewed language; the answer stays in the reader's.
+            texts = [source_text(chunk, language) for language in ("en", "ru", "kk")]
             # Exact token coverage, not substring counts or repeated keyword sums.
             evidence = cls._tokenize(
-                f"{localized['section_title']} {localized['content']} {chunk.tags or ''}"
+                " ".join(f"{t['section_title']} {t['content']}" for t in texts if t)
+                + f" {chunk.tags or ''}"
             )
             score = len(tokens & evidence) / len(tokens)
             if score >= settings.AI_CONFIDENCE_THRESHOLD:

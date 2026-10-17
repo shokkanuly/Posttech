@@ -491,28 +491,32 @@ def seed_database(session=None):
             document_id=doc1.id,
             section_title="Vacation Request Workflow",
             content="To request vacation, navigate to 'My requests' -> 'New request' -> select 'Vacation'. Enter your start and end dates and provide a brief handover note. Your direct manager will review the request. Once approved, the leave days are deducted from your balance in this local demonstration. Documentolog is unconnected and no official order is submitted.",
-            tags="vacation, leave, time off, отпуск, демалыс, submission, dates, request, how to request",
+            tags="vacation, leave, time off, отпуск, демалыс, submission, dates, request, how to request, "
+            "оформить отпуск, ежегодный отпуск, еңбек демалысы",
             access_level="all",
         )
         chunk2 = KnowledgeChunk(
             document_id=doc1.id,
             section_title="Leave Balance & Accrual Rules",
             content="Full-time employees at Jana Post accrue 24 calendar days of paid vacation per completed year of service. Your available balance is displayed on your Overview and My Profile screens. These are synthetic sample balances; 1C:ZUP is unconnected.",
-            tags="balance, days, leave days, сколько дней, баланс, қалдық, vacation balance, 1c",
+            tags="balance, days, leave days, сколько дней, баланс, қалдық, vacation balance, 1c, "
+            "сколько осталось, положено, қанша күн",
             access_level="all",
         )
         chunk3 = KnowledgeChunk(
             document_id=doc1.id,
             section_title="Advance Payment Policy",
             content="Employees may request an advance payment of up to 50% of their monthly base salary for urgent personal expenses. Requests are submitted through JanaMen under 'Advance payment' and require direct manager approval. Approved amounts are disbursed on the 20th of the month and deducted from the subsequent payroll.",
-            tags="advance, advance payment, salary, аванс, жалақы, төлем, money, payment",
+            tags="advance, advance payment, salary, аванс, жалақы, төлем, money, payment, "
+            "выплата аванса, авансқа өтініш",
             access_level="all",
         )
         chunk4 = KnowledgeChunk(
             document_id=doc1.id,
             section_title="Working Hours & Flexible Schedule",
             content="Official core working hours at Jana Post offices and administrative branches are 09:00 to 18:00 (Almaty time, GMT+5), Monday through Friday, with a lunch break from 13:00 to 14:00. Flexible start times (08:00 - 10:00) require written approval from your department lead.",
-            tags="working hours, schedule, time, график работы, жұмыс кестесі, lunch, flexible",
+            tags="working hours, schedule, time, график работы, жұмыс кестесі, lunch, flexible, "
+            "во сколько, начинается, рабочий день, обед, перерыв, жұмыс уақыты, түскі үзіліс",
             access_level="all",
         )
         db.add_all([chunk1, chunk2, chunk3, chunk4])
@@ -535,14 +539,16 @@ def seed_database(session=None):
             document_id=doc2.id,
             section_title="HR People Support Contacts",
             content="For medical leave certificates, maternity/paternity leave, or confidential employment inquiries not answered in the knowledge base, contact the People Operations Helpdesk at hr-support@janapost.kz or call extension 1040 (internal) / +7 (727) 344-9000. The HR office is located on the 3rd floor (Room 304), Almaty Central Hub.",
-            tags="contact, hr, support, help, email, телефон, байланыс, көмек, emergency, escalations",
+            tags="contact, hr, support, help, email, телефон, байланыс, көмек, emergency, escalations, "
+            "отдел кадров, связаться, кадр бөлімі, хабарласу",
             access_level="all",
         )
         chunk6 = KnowledgeChunk(
             document_id=doc2.id,
             section_title="Medical & Sick Leave Documentation",
             content="Sick leave requires an official digital or paper medical certificate (лист о временной нетрудоспособности / еңбекке жарамсыздық парағы) from an accredited clinic. You must notify your manager within 24 hours of falling ill and upload or deliver the certificate upon return.",
-            tags="sick, medical, illness, больничный, ауырып қалу, дәрігер, certificate",
+            tags="sick, medical, illness, больничный, ауырып қалу, дәрігер, certificate, "
+            "оформить больничный, заболел, заболела, болезнь, ауырып қалсам, ауырсам",
             access_level="all",
         )
         db.add_all([chunk5, chunk6])

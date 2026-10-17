@@ -118,6 +118,22 @@
       "maxItems": 100,
       "title": "Privacy Other Person Markers",
       "type": "array"
+    },
+    "privacy_record_terms": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Privacy Record Terms",
+      "type": "array"
+    },
+    "privacy_colleague_markers": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Privacy Colleague Markers",
+      "type": "array"
     }
   },
   "required": [

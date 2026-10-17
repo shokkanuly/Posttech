@@ -37,6 +37,10 @@ class AssistantRules(BaseModel):
     # policy question, "зарплата у Тимура" / "оклад коллеги" is not.
     privacy_sensitive_terms: list[str] = Field(default_factory=list, max_length=100)
     privacy_other_person_markers: list[str] = Field(default_factory=list, max_length=100)
+    # Personal records (leave, requests, balance): private only about a colleague or a
+    # named employee. "Сколько отпуска у меня?" stays a policy question.
+    privacy_record_terms: list[str] = Field(default_factory=list, max_length=100)
+    privacy_colleague_markers: list[str] = Field(default_factory=list, max_length=100)
 
 
 @lru_cache(maxsize=1)
@@ -51,6 +55,10 @@ def is_private_text(question: str) -> bool:
     rules = load_assistant_rules()
     text = f" {question.lower()} "
     if any(term in text for term in rules.privacy_restricted_terms):
+        return True
+    if any(term in text for term in rules.privacy_record_terms) and any(
+        marker in text for marker in rules.privacy_colleague_markers
+    ):
         return True
     return any(term in text for term in rules.privacy_sensitive_terms) and any(
         marker in text for marker in rules.privacy_other_person_markers

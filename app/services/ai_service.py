@@ -65,11 +65,32 @@ _TRANSLIT = (
 )
 
 
-def _name_key(word: str) -> str:
+# Kazakh and soft letters folded so "Dana", "Даны" and "Дананың" share one spelling.
+_FOLD = str.maketrans("йыіёәөұүғқңһ", "иииеаоуугкнх", "ьъ")
+# Russian/Kazakh case endings after folding: Тимура, Даной, Тимурдың, Дананың, Данаға.
+_NAME_ENDINGS = (
+    *("", "а", "я", "и", "е", "у", "ю", "ои", "еи", "ою", "ом", "ем", "им"),
+    *("нин", "дин", "тин", "га", "ге", "ка", "ке", "на", "не", "ни", "ди", "ти", "н"),
+    *("да", "де", "та", "те", "нда", "нде", "дан", "ден", "тан", "тен", "нан", "нен"),
+    *("мен", "бен", "пен"),
+)
+
+
+def _fold(word: str) -> str:
     word = word.lower()
     for latin, cyrillic in _TRANSLIT:
         word = word.replace(latin, cyrillic)
-    return word.replace("й", "и").replace("ы", "и")[:4]
+    return word.translate(_FOLD)
+
+
+def _is_name_form(word: str, names: set[str]) -> bool:
+    """word (folded) is a case form of a name: Тимур+а, or Дан(а)+ы with the final vowel dropped."""
+    for ending in _NAME_ENDINGS:
+        if word.endswith(ending):
+            base = word[: len(word) - len(ending)]
+            if base in names or (ending and (base + "а" in names or base + "я" in names)):
+                return True
+    return False
 
 
 KAZAKH_SPECIFIC_CHARS = set("әғқңөұүһіӘҒҚҢӨҰҮҺІ")
@@ -700,14 +721,19 @@ class AIService:
             return True
         rules = load_assistant_rules()
         text = question.lower()
-        if not any(term in text for term in rules.privacy_sensitive_terms):
+        topics = rules.privacy_sensitive_terms + rules.privacy_record_terms
+        if not any(term in text for term in topics):
             return False
-        # A sensitive word next to another employee's name ("зарплата Тимура").
-        words = {_name_key(w) for w in re.findall(r"\w+", text) if len(w) >= 4}
-        names = db.query(User.full_name).filter(User.id != user.id)
-        return any(
-            _name_key(part) in words for (name,) in names for part in name.split() if len(part) >= 4
-        )
+        # A salary or leave word next to another employee's name ("отпуск у Даны").
+        # ponytail: first names only — demo accounts carry role words as surnames
+        # ("Демо Сотрудник"); add surnames with a stop-list once real HR names are loaded.
+        names = {
+            key
+            for (name,) in db.query(User.full_name).filter(User.id != user.id)
+            for part in name.split()[:1]
+            if len(key := _fold(part)) >= 4
+        }
+        return any(_is_name_form(_fold(word), names) for word in re.findall(r"\w+", text))
 
     @staticmethod
     def _norm(text: str) -> str:

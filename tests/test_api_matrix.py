@@ -14,6 +14,7 @@ OPERATIONS = [
         200,
         "public",
     ),
+    ("POST", "/api/v1/auth/demo-login", {"role": "manager"}, 200, "public"),
     ("POST", "/api/v1/auth/logout", None, 200, "employee"),
     ("GET", "/api/v1/me", None, 200, "employee"),
     ("GET", "/api/v1/me/profile", None, 200, "employee"),

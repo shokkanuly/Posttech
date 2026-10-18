@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -9,6 +9,11 @@ class LoginRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: EmailStr = Field(max_length=255)
     password: str = Field(min_length=1, max_length=256, repr=False)
+
+
+class DemoLoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: Literal["employee", "manager", "hr_admin"]
 
 
 class UserResponse(BaseModel):

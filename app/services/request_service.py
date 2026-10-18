@@ -224,31 +224,12 @@ class RequestService:
             and float(payload.amount) > settings.MAX_ADVANCE_AMOUNT
         ):
             raise HTTPException(422, "Advance amount exceeds the allowed maximum")
-        changes = None
         if payload.type == RequestType.PROFILE_UPDATE:
-            requested = (
-                payload.profile_changes.model_dump(exclude_none=True)
-                if payload.profile_changes
-                else {}
+            # HR data lives in Documentolog/1C; without that integration the profile is read-only.
+            raise HTTPException(
+                409,
+                "Profile data is kept in Documentolog and is read-only here; contact HR to correct it",
             )
-            changes = {
-                field: {"from": getattr(profile, field), "to": value}
-                for field, value in requested.items()
-                if getattr(profile, field) != value
-            }
-            if not changes:
-                raise HTTPException(422, "The new values match your current profile")
-            waiting = (
-                db.query(Request.id)
-                .filter(
-                    Request.user_id == user.id,
-                    Request.type == RequestType.PROFILE_UPDATE,
-                    Request.status == RequestStatus.PENDING,
-                )
-                .first()
-            )
-            if waiting:
-                raise HTTPException(409, "A profile update is already awaiting approval")
         if payload.type == RequestType.VACATION:
             days_needed = cls._calculate_calendar_days(start, payload.end_date)
             if days_needed == 0:
@@ -294,7 +275,6 @@ class RequestService:
             reason=payload.reason,
             status=RequestStatus.PENDING,
             external_sync_id=None,
-            profile_changes=changes,
         )
         db.add(new_req)
         db.flush()
@@ -392,6 +372,7 @@ class RequestService:
         db: Session,
         manager: User,
         status_filter: Optional[RequestStatus] = None,
+        type_filter: Optional[RequestType] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> List[Request]:
@@ -405,6 +386,8 @@ class RequestService:
             )
         if status_filter:
             query = query.filter(Request.status == status_filter)
+        if type_filter:
+            query = query.filter(Request.type == type_filter)
         return (
             query.order_by(Request.created_at.desc(), Request.id.desc())
             .offset(offset)

@@ -96,13 +96,20 @@ function formatPeriod(request) {
   return request.end_date && request.end_date !== request.start_date ? `${start} — ${formatDate(request.end_date)}` : start;
 }
 
+const todayIso = (days = 0) => new Date(Date.now() + 5 * 3600e3 + days * 86400e3).toISOString().slice(0, 10); // Kazakhstan, UTC+5
+const upcomingVacations = requests => requests
+  .filter(r => r.type === "Vacation" && r.status !== "Rejected" && (r.end_date || r.start_date) >= todayIso())
+  .sort((a, b) => a.start_date.localeCompare(b.start_date));
+
 // Every day of a vacation, marked: weekends are charged, public holidays are not (server rule).
-// booked: the employee's other active vacations, outlined so their exact dates are visible.
-function renderLeaveCalendar(cal, booked = []) {
+// booked: active vacations, outlined so their exact dates are visible.
+// own=false is the manager/HR view: each vacation is labelled with the employee's name.
+function renderLeaveCalendar(cal, booked = [], own = true) {
   const days = cal ? cal.days : [];
   const byDay = Object.fromEntries(days.map(d => [d.day, d]));
   const kindLabel = { workday: "Working day", weekend: "Weekend", holiday: "Public holiday" };
-  const bookedOn = iso => booked.find(b => b.start_date <= iso && iso <= (b.end_date || b.start_date));
+  const bookedOn = iso => booked.filter(b => b.start_date <= iso && iso <= (b.end_date || b.start_date));
+  const who = b => own ? "" : `${b.user_name} · `;
   const monthKeys = new Set(days.map(d => d.day.slice(0, 7)));
   booked.forEach(b => {
     for (const d = new Date(`${b.start_date}T12:00:00Z`); d <= new Date(`${b.end_date || b.start_date}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 1)) {
@@ -120,8 +127,8 @@ function renderLeaveCalendar(cal, booked = []) {
       const iso = `${ym}-${String(i + 1).padStart(2, "0")}`;
       const d = byDay[iso];
       const b = bookedOn(iso);
-      const classes = ["cal-day", d?.kind, b && "booked"].filter(Boolean).join(" ");
-      const title = [d && (d.holiday || kindLabel[d.kind]), b && `${b.request_code} · ${b.status}`].filter(Boolean).join(" · ");
+      const classes = ["cal-day", d?.kind, b.length && "booked"].filter(Boolean).join(" ");
+      const title = [d && (d.holiday || kindLabel[d.kind]), ...b.map(x => `${who(x)}${x.request_code} · ${x.status}`)].filter(Boolean).join(" · ");
       return `<span class="${classes}"${title ? ` title="${esc(title)}"` : ""}>${i + 1}</span>`;
     });
     return `<div class="cal-month"><b data-verbatim>${monthNames[month - 1]} ${year}</b><div class="cal-grid">
@@ -130,7 +137,7 @@ function renderLeaveCalendar(cal, booked = []) {
   }).join("");
   const holidays = days.filter(d => d.kind === "holiday")
     .map(d => `<li><span data-verbatim>${esc(formatDate(d.day))}</span> — <span>${esc(d.holiday)}</span></li>`).join("");
-  const plans = booked.map(b => `<li><b data-verbatim>${esc(formatPeriod(b))}</b> · <span data-verbatim>${esc(b.request_code)}</span> · <span>${esc(b.status)}</span></li>`).join("");
+  const plans = booked.map(b => `<li>${own ? "" : `<b>${esc(b.user_name)}</b> · `}<b data-verbatim>${esc(formatPeriod(b))}</b> · <span data-verbatim>${esc(b.request_code)}</span> · <span>${esc(b.status)}</span></li>`).join("");
   const num = value => Math.round(Number(value) * 10) / 10;
   return `<div class="leave-cal">
     ${cal ? `<div class="cal-summary">
@@ -139,8 +146,8 @@ function renderLeaveCalendar(cal, booked = []) {
       <span class="holiday"><span>Public holidays (not charged)</span> <b>${cal.holiday_days}</b></span>
       <span class="charged"><span>Will be charged</span> <b>${num(cal.charged_days)}</b></span>
     </div>` : ""}
-    ${plans ? `<div class="cal-plans"><b>Your planned vacations</b><ul>${plans}</ul></div>` : ""}
-    <div class="cal-legend"><span><i class="workday"></i><span>Working day</span></span><span><i class="weekend"></i><span>Weekend</span></span><span><i class="holiday"></i><span>Public holiday</span></span>${plans ? `<span><i class="booked"></i><span>Your vacation</span></span>` : ""}</div>
+    ${plans ? `<div class="cal-plans"><b>${own ? "Your planned vacations" : "Planned vacations"}</b><ul>${plans}</ul></div>` : ""}
+    <div class="cal-legend"><span><i class="workday"></i><span>Working day</span></span><span><i class="weekend"></i><span>Weekend</span></span><span><i class="holiday"></i><span>Public holiday</span></span>${plans ? `<span><i class="booked"></i><span>${own ? "Your vacation" : "Vacation"}</span></span>` : ""}</div>
     <div class="cal-months">${months}</div>
     ${holidays ? `<ul class="cal-holidays">${holidays}</ul>` : ""}
     <p class="muted small">Annual leave is counted in calendar days: weekends are charged, public holidays are not.</p>
@@ -185,15 +192,7 @@ async function initApp() {
         email: document.getElementById("loginEmail").value,
         password: document.getElementById("loginPassword").value,
       }) });
-      state.token = result.access_token;
-      state.user = result.user;
-      const me = await api("/me");
-      state.profile = me.profile;
-      document.getElementById("loginPassword").value = "";
-      document.getElementById("loginGate").hidden = true;
-      document.getElementById("app").hidden = false;
-      updateUserUI();
-      await go("home");
+      await enterApp(result);
     } catch (error) {
       showLogin(document.getElementById("loginEmail").value);
       document.getElementById("loginError").textContent = error.message;
@@ -203,10 +202,7 @@ async function initApp() {
   });
 
   document.querySelectorAll("[data-persona]").forEach(card => {
-    card.addEventListener("click", () => {
-      document.getElementById("loginEmail").value = demoAccounts[card.dataset.persona] || "";
-      document.getElementById("loginPassword").focus();
-    });
+    card.addEventListener("click", () => demoLogin(card.dataset.persona));
   });
 
   try {
@@ -218,10 +214,33 @@ async function initApp() {
       card.querySelector("[data-email]").textContent = demoAccounts[card.dataset.persona] || "";
     });
     document.getElementById("loginHint").textContent = config.demo_mode
-      ? "Synthetic demo. Use a test account and the demo password configured by the operator."
+      ? "Synthetic demo. Pick a role on the right to sign in instantly, or use a test account and the demo password."
       : "Use your account email and password.";
     showLogin(demoAccounts.employee || "");
   } catch (error) {
+    document.getElementById("loginError").textContent = error.message;
+  }
+}
+
+async function enterApp(session) {
+  state.token = session.access_token;
+  state.user = session.user;
+  const me = await api("/me");
+  state.profile = me.profile;
+  document.getElementById("loginPassword").value = "";
+  document.getElementById("loginGate").hidden = true;
+  document.getElementById("app").hidden = false;
+  updateUserUI();
+  await go("home");
+}
+
+// Demo mode only (the server refuses otherwise): one click signs in as that role.
+async function demoLogin(role) {
+  document.getElementById("loginError").textContent = "";
+  try {
+    await enterApp(await api("/auth/demo-login", { method: "POST", body: JSON.stringify({ role }) }));
+  } catch (error) {
+    showLogin(demoAccounts[role] || "");
     document.getElementById("loginError").textContent = error.message;
   }
 }
@@ -266,8 +285,9 @@ async function logout(email = "") {
 }
 
 async function switchRole(roleKey) {
-  const email = demoAccounts[roleKey];
-  if (email) await logout(email);
+  if (!demoAccounts[roleKey]) return;
+  await logout(demoAccounts[roleKey]);
+  await demoLogin(roleKey);
 }
 
 const ROLE_ACCESS = { manager: ["manager"], hr_admin: ["hr_admin"] };
@@ -400,6 +420,7 @@ async function loadDashboard() {
         <small>${esc(n.time_ago)}</small>
       </article>`).join("") : `<div class="empty">No updates yet.</div>`;
     bindNotificationClicks("homeActivity");
+    await renderNextActions({ dashboard: data, courses, requests });
   } catch (err) {
     toast(`Error: ${err.message}`);
   }
@@ -431,7 +452,6 @@ async function loadProfilePage() {
     const pending = document.getElementById("profPending");
     pending.hidden = !p.pending_profile_change;
     pending.innerHTML = p.pending_profile_change ? `<b>Awaiting approval</b>${renderProfileChanges(p.pending_profile_change)}` : "";
-    document.getElementById("editProfileBtn").disabled = Boolean(p.pending_profile_change);
     document.getElementById("profLeaveBalance").textContent = days(p.leave_balance_days);
     document.getElementById("profLearningPct").textContent = `${Math.round(p.learning_progress_percent)}%`;
     document.getElementById("profCourses").innerHTML = p.courses.length ? p.courses.map(c => `
@@ -442,7 +462,10 @@ async function loadProfilePage() {
           <div class="req-sub"><span>${c.is_mandatory ? "Mandatory" : "Recommended"}</span>${c.due_date ? ` · <span>Due ${esc(formatDate(c.due_date))}</span>` : ""}${c.score === null ? "" : ` · <span>${Math.round(c.score)}% lessons passed</span>`}</div>
           <div class="progress"><span style="width:${c.progress_percent}%"></span></div>
         </div>
+        ${c.status === "COMPLETED" ? `<button class="small-btn" data-certificate="${c.id}">Certificate</button>` : ""}
       </div>`).join("") : `<div class="empty">No courses assigned.</div>`;
+    document.querySelectorAll("#profCourses [data-certificate]").forEach(b => b.addEventListener("click",
+      () => openCertificate(p.courses.find(c => c.id === Number(b.dataset.certificate)))));
   } catch (err) {
     toast(`Error: ${err.message}`);
   }
@@ -498,6 +521,7 @@ async function loadAcademyPage() {
           </div>
         </div>
         <button class="btn ${done ? "btn-light" : "btn-primary"}" onclick="${c.assigned ? "openCoursePlayer" : "openCoursePreview"}(${c.id})"><span>${action}</span>${icon("arrow")}</button>
+        ${done ? `<button class="text-link" onclick="openCertificate(state.courses.find(x => x.id === ${c.id}))">Certificate</button>` : ""}
       </article>`;
     }).join("");
   } catch (err) {
@@ -666,6 +690,8 @@ async function openEmployeeCard(userId) {
         <div class="detail"><dt>Account created</dt><dd>${esc(formatDate(e.account_created_at))}</dd></div>
         <div class="detail"><dt>Last sign-in</dt><dd>${e.last_sign_in_at ? esc(`${formatDate(e.last_sign_in_at)} ${formatTime(e.last_sign_in_at)}`) : "Never"}</dd></div>
       </dl>` : ""}
+      <h4 class="sub-title">Vacation calendar</h4>
+      ${upcomingVacations(e.requests).length ? renderLeaveCalendar(null, upcomingVacations(e.requests), false) : `<div class="empty">No planned vacations.</div>`}
       <h4 class="sub-title">Vacation and request history</h4>
       <div class="table-wrap"><table class="table">
         <thead><tr><th>Request</th><th>Period / details</th><th>Days</th><th>Status</th></tr></thead>
@@ -703,6 +729,15 @@ async function openEmployeeCard(userId) {
   }
 }
 
+// Who is away when: every current or planned vacation in the reviewer's scope.
+async function renderTeamCalendar(containerId) {
+  try {
+    const vacations = upcomingVacations(await apiAll("/manager/requests?type=Vacation"));
+    document.getElementById(containerId).innerHTML = vacations.length
+      ? renderLeaveCalendar(null, vacations, false) : `<div class="empty">No planned vacations.</div>`;
+  } catch (err) { toast(err.message); }
+}
+
 // Manager/HR actions in the employee card; scope and rules are enforced by the API.
 function bindEmployeeActions(e) {
   const courseForm = document.getElementById("assignCourseForm");
@@ -719,7 +754,7 @@ function bindEmployeeActions(e) {
   const form = document.getElementById("fileRequestForm");
   if (!form) return;
   const { type, start, end, amount } = form.elements;
-  const today = new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
+  const today = todayIso();
   start.min = end.min = today;
   const sync = () => {
     const advance = type.value === "Advance payment";
@@ -772,6 +807,7 @@ async function loadTeamPage() {
       </tr>`).join("")
       : `<tr><td colspan="6" class="empty">No pending requests from your team.</td></tr>`;
     renderDirectory("teamDirectory", members);
+    renderTeamCalendar("teamCalendar");
     const history = await api("/manager/requests?limit=100");
     document.getElementById("teamHistory").innerHTML = history.length ? history.map(r => `
       <tr>
@@ -806,6 +842,7 @@ async function loadAdminPage() {
     ]);
     const byUser = Object.fromEntries(members.map(m => [m.user_id, m]));
     renderDirectory("adminDirectory", members);
+    renderTeamCalendar("adminCalendar");
     document.getElementById("adminEmployeeCount").textContent = summary.active_accounts;
     document.getElementById("adminKnowledgeCount").textContent = chunks.length;
     document.getElementById("adminPendingBadge").textContent = `${requests.length} pending`;
@@ -912,7 +949,7 @@ function setupModals() {
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") document.querySelectorAll(".modal-backdrop").forEach(m => m.classList.remove("open"));
   });
-  ["closeModal", "cancelModal", "closeDetailModal", "closeCourseModal", "closeCitationModal", "cancelReview", "closeEmployeeModal", "closeContactModal", "cancelContactModal", "closeNotificationModal", "closeCoursePreview", "cancelCoursePreview"].forEach(id => {
+  ["closeModal", "cancelModal", "closeDetailModal", "closeCourseModal", "closeCitationModal", "cancelReview", "closeEmployeeModal", "closeNotificationModal", "closeCoursePreview", "cancelCoursePreview", "closeCertificate"].forEach(id => {
     document.getElementById(id).addEventListener("click", () => document.getElementById(id).closest(".modal-backdrop").classList.remove("open"));
   });
 
@@ -958,10 +995,7 @@ function setupModals() {
   // The employee's pending/approved vacations still ahead, shown before any date is picked.
   const loadBookedLeave = async () => {
     try {
-      const today = isoDay(0);
-      state.bookedLeave = (await apiAll("/requests?type=Vacation"))
-        .filter(r => r.status !== "Rejected" && (r.end_date || r.start_date) >= today)
-        .sort((a, b) => a.start_date.localeCompare(b.start_date));
+      state.bookedLeave = upcomingVacations(await apiAll("/requests?type=Vacation"));
     } catch { state.bookedLeave = []; }
   };
   const previewLeave = async () => {
@@ -1032,43 +1066,13 @@ function setupModals() {
     }
   });
 
-  // Contact details change through a "Profile update" request; the approver applies it.
-  const profileInputs = [["contactPhone", "phone"], ["contactLocation", "location"], ["contactEmergency", "emergency_contact"]];
-  document.getElementById("editProfileBtn").addEventListener("click", () => {
-    const p = state.profile || {};
-    profileInputs.forEach(([id, field]) => { document.getElementById(id).value = p[field] || ""; });
-    document.getElementById("contactReason").value = "";
-    document.getElementById("contactModal").classList.add("open");
-    document.getElementById("contactPhone").focus();
-  });
-  document.getElementById("contactForm").addEventListener("submit", async e => {
-    e.preventDefault();
-    const changes = {};
-    profileInputs.forEach(([id, field]) => {
-      const value = document.getElementById(id).value.trim();
-      if (value && value !== (state.profile?.[field] || "")) changes[field] = value;
-    });
-    if (!Object.keys(changes).length) { toast("Change at least one field"); return; }
-    const submit = e.target.querySelector('button[type="submit"]');
-    submit.disabled = true;
-    try {
-      const reason = document.getElementById("contactReason").value.trim();
-      await api("/requests", { method: "POST", body: JSON.stringify({ type: "Profile update", profile_changes: changes, reason: reason || null }) });
-      document.getElementById("contactModal").classList.remove("open");
-      toast("Profile changes were sent for approval");
-      await refreshCurrentPage();
-    } catch (err) {
-      toast(err.message);
-    } finally {
-      submit.disabled = false;
-    }
-  });
 }
 
 async function openRequestDetailModal(id, notice = null) {
   try {
     const r = await api(`/requests/${id}`);
     document.getElementById("detailModalNotice").innerHTML = notice ? noticeBanner(notice) : "";
+    document.getElementById("detailModalSteps").innerHTML = requestStepper(r);
     document.getElementById("detailModalTitle").innerHTML = `<span data-verbatim>${esc(r.request_code)}</span> · <span>${esc(r.type)}</span>`;
     document.getElementById("detailModalCode").textContent = r.request_code;
     document.getElementById("detailModalStatus").innerHTML = statusBadge(r.status);
@@ -1090,10 +1094,13 @@ async function openRequestDetailModal(id, notice = null) {
       </div>`).join("");
     // Reviewers decide right here; the server re-checks scope and status.
     const actions = document.getElementById("detailModalActions");
-    actions.hidden = !(r.status === "Pending" && r.user_id !== state.user.id && state.user.role !== "employee");
-    actions.innerHTML = actions.hidden ? "" : `
+    const own = r.user_id === state.user.id;
+    const canReview = r.status === "Pending" && !own && state.user.role !== "employee";
+    actions.hidden = !(own || canReview);
+    actions.innerHTML = own ? `<button class="small-btn" onclick="askAIAboutMyRequests()">${icon("spark")}<span>Ask AI Jana</span></button>`
+      : canReview ? `
       <button class="small-btn danger" data-review="reject">Decline</button>
-      <button class="small-btn primary" data-review="approve">Approve</button>`;
+      <button class="small-btn primary" data-review="approve">Approve</button>` : "";
     actions.querySelectorAll("[data-review]").forEach(b => b.addEventListener("click", () => {
       document.getElementById("requestDetailModal").classList.remove("open");
       reviewRequestPrompt(r.id, b.dataset.review);

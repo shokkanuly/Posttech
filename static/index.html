@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/static/css/style.css">
   <script src="/static/js/i18n.js" defer></script>
   <script src="/static/js/app.js" defer></script>
+  <script src="/static/js/journey.js" defer></script>
 </head>
 <body>
 <!-- Icon sprite: 24px stroke icons, original drawings -->
@@ -121,7 +122,7 @@
       <button class="btn btn-primary btn-block" id="loginSubmit" type="submit"><span>Sign in</span><svg class="ic"><use href="#i-arrow"/></svg></button>
     </form>
     <div class="persona-list" id="demoPersonas" hidden>
-      <p class="muted">Synthetic demo accounts — pick a role to fill in the email:</p>
+      <p class="muted">Synthetic demo accounts — pick a role to sign in instantly:</p>
       <button class="persona-card" data-persona="employee" type="button">
         <svg class="ic ic-lg"><use href="#i-user"/></svg>
         <span><b>Employee</b><small data-email></small></span>
@@ -173,6 +174,7 @@
           <button class="btn btn-white btn-sm" data-action="new-request" data-type="Vacation"><span>Request time off</span><svg class="ic"><use href="#i-arrow"/></svg></button>
         </div>
       </div>
+      <div class="panel-gray next-actions" id="homeNextActions"></div>
     </div>
 
     <section class="band white">
@@ -304,9 +306,9 @@
       <div class="page-head">
         <div>
           <h1 class="h2">Profile</h1>
-          <p class="muted">Contact details can be changed; changes apply after approval by your manager or HR.</p>
+          <p class="muted">Profile data is kept in Documentolog and 1C and is read-only here. To correct it, contact HR.</p>
         </div>
-        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg><span>Contacts editable · changes need approval</span></span>
+        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg><span>Read-only · Documentolog</span></span>
       </div>
       <div class="grid profile-grid">
         <div class="card">
@@ -328,9 +330,6 @@
             <div class="detail"><dt>Emergency contact</dt><dd id="profEmergency" data-verbatim>—</dd></div>
           </dl>
           <div class="notice-box" id="profPending" hidden></div>
-          <div class="form-actions">
-            <button class="btn btn-light" type="button" id="editProfileBtn"><span>Edit contact details</span></button>
-          </div>
         </div>
         <div class="profile-side">
           <div class="stat-card green static">
@@ -518,6 +517,13 @@
       </div>
       <div class="card">
         <div class="section-head">
+          <h3 class="h4">Vacation calendar</h3>
+          <span class="muted small">Current and planned vacations in your scope</span>
+        </div>
+        <div id="teamCalendar"></div>
+      </div>
+      <div class="card">
+        <div class="section-head">
           <h3 class="h4">Team request history</h3>
           <span class="muted small">Latest 100 requests in your scope, every status</span>
         </div>
@@ -569,6 +575,13 @@
             <tbody id="adminDirectory"></tbody>
           </table>
         </div>
+      </div>
+      <div class="card">
+        <div class="section-head">
+          <h3 class="h4">Vacation calendar</h3>
+          <span class="muted small">Current and planned vacations in your scope</span>
+        </div>
+        <div id="adminCalendar"></div>
       </div>
       <div class="card">
         <div class="section-head">
@@ -660,6 +673,7 @@
         <button class="close" id="closeDetailModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
       </div>
       <div id="detailModalNotice"></div>
+      <div id="detailModalSteps"></div>
       <dl class="detail-grid">
         <div class="detail"><dt>ID</dt><dd id="detailModalCode">—</dd></div>
         <div class="detail"><dt>Status</dt><dd id="detailModalStatus"></dd></div>
@@ -683,6 +697,20 @@
         <button class="close" id="closeNotificationModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
       </div>
       <div id="notificationModalBody"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: CERTIFICATE (completed course) -->
+  <div class="modal-backdrop" id="certificateModal" role="dialog" aria-modal="true" aria-label="Certificate of completion">
+    <div class="modal">
+      <div class="modal-head no-print">
+        <h3 class="h4">Certificate</h3>
+        <button class="close" id="closeCertificate" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
+      </div>
+      <div id="certificateBody"></div>
+      <div class="form-actions no-print">
+        <button class="btn btn-primary" type="button" onclick="window.print()">Print</button>
+      </div>
     </div>
   </div>
 
@@ -750,41 +778,6 @@
         <button class="close" id="closeEmployeeModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
       </div>
       <div id="employeeModalBody"></div>
-    </div>
-  </div>
-
-  <!-- MODAL: CONTACT DETAILS UPDATE (applied only after manager/HR approval) -->
-  <div class="modal-backdrop" id="contactModal" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle">
-    <div class="modal">
-      <div class="modal-head">
-        <h3 class="h4" id="contactModalTitle">Edit contact details</h3>
-        <button class="close" id="closeContactModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
-      </div>
-      <p class="muted small">Your manager or HR approves the change; HR data such as position and department stays with HR.</p>
-      <form id="contactForm">
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="contactPhone">Phone</label>
-            <input class="field" id="contactPhone" type="tel" maxlength="32" placeholder="+7 700 000 00 00" autocomplete="tel">
-          </div>
-          <div class="form-group">
-            <label for="contactLocation">Location</label>
-            <input class="field" id="contactLocation" maxlength="255" autocomplete="address-level2">
-          </div>
-          <div class="form-group full">
-            <label for="contactEmergency">Emergency contact</label>
-            <input class="field" id="contactEmergency" maxlength="255">
-          </div>
-          <div class="form-group full">
-            <label for="contactReason">Comment for the approver (optional)</label>
-            <textarea class="field" id="contactReason" rows="2" maxlength="2000"></textarea>
-          </div>
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-light" type="button" id="cancelContactModal">Cancel</button>
-          <button class="btn btn-primary" type="submit"><span>Send for approval</span><svg class="ic"><use href="#i-arrow"/></svg></button>
-        </div>
-      </form>
     </div>
   </div>
 

@@ -31,11 +31,17 @@ reviewer = require_role(UserRole.MANAGER, UserRole.HR_ADMIN)
 def get_manager_team_requests(
     page: Page,
     status: Optional[RequestStatus] = Query(None, description="Filter by status (e.g., Pending)"),
+    type: Optional[RequestType] = Query(None, description="Filter by type (e.g., Vacation)"),
     current_user: User = Depends(reviewer),
     db: Session = Depends(get_db),
 ):
     team_requests = request_service.get_team_requests(
-        db, current_user, status_filter=status, limit=page.limit, offset=page.offset
+        db,
+        current_user,
+        status_filter=status,
+        type_filter=type,
+        limit=page.limit,
+        offset=page.offset,
     )
     return [request_service.to_response(r) for r in team_requests]
 

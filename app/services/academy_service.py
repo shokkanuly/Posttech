@@ -242,7 +242,7 @@ class AcademyService:
         db.commit()
         return QuizSubmitResponse(
             passed=passed,
-            correct_index=lesson.quiz_correct_answer or 0,
+            correct_index=(lesson.quiz_correct_answer or 0) if passed else None,
             explanation="Correct. Lesson completed."
             if passed
             else "Review the material and try again.",

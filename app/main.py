@@ -13,11 +13,10 @@ from app.database import engine, get_db
 from app.errors import install_error_handlers
 from app.middleware import RequestBodyLimitMiddleware
 from app.migrate import SchemaNotCurrentError, require_current_schema
-from app.models.user import User
-from app.provision_demo import DEMO_ACCOUNTS
 from app.routers.academy import router as academy_router
 from app.routers.admin import router as admin_router
 from app.routers.ai import router as ai_router
+from app.routers.auth import demo_accounts
 from app.routers.auth import router as auth_router
 from app.routers.internal import router as internal_router
 from app.routers.manager import router as manager_router
@@ -65,22 +64,9 @@ if settings.ALLOWED_ORIGINS:
 
 @app.get(settings.API_V1_STR + "/config", tags=["Configuration"], response_model=PublicConfig)
 def public_config(db: Session = Depends(get_db)):
-    accounts = {
-        "employee": "aruzhan@janapost.kz",
-        "manager": "timur@janapost.kz",
-        "hr_admin": "aigerim@janapost.kz",
-    }
-    if settings.DEMO_MODE:
-        for user in (
-            db.query(User)
-            .filter(User.email.in_(DEMO_ACCOUNTS.values()), User.is_active.is_(True))
-            .all()
-        ):
-            if DEMO_ACCOUNTS.get(user.role.value) == user.email:
-                accounts[user.role.value] = user.email
     return {
         "demo_mode": settings.DEMO_MODE,
-        "demo_accounts": accounts if settings.DEMO_MODE else {},
+        "demo_accounts": demo_accounts(db) if settings.DEMO_MODE else {},
     }
 
 

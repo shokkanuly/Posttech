@@ -1,7 +1,0 @@
-{
-  "command": "docker compose --env-file /tmp/janamen-qa-check.env -p janamen-qa-check --profile integrations up --build -d",
-  "executed": true,
-  "exit_code": 0,
-  "seconds": 14.64,
-  "output": "final-docker-build.txt"
-}

@@ -1,7 +1,0 @@
-{
-  "command": ".venv/bin/python -m mypy app",
-  "executed": true,
-  "exit_code": 0,
-  "seconds": 2.52,
-  "output": "final-mypy.txt"
-}

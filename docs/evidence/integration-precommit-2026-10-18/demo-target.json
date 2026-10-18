@@ -1,8 +1,0 @@
-{
-  "project": "janamen-mock-precommit-a0210a70",
-  "web_port": 63490,
-  "postgres_port": 63491,
-  "private_environment": "/var/folders/c7/hdw9k4tn52z32sbg0dld44100000gn/T/janamen-precommit-20261018-kjg5e_uo/demo.env",
-  "purpose": "Fresh synthetic MOCK smoke only; separate from the dedicated worker-test PostgreSQL container",
-  "availability": "Observed only during this session; not guaranteed for future runs"
-}

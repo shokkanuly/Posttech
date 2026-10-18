@@ -1,2 +1,0 @@
- Container janamen-mock-precommit-a0210a70-gateway-1 Stopping
- Container janamen-mock-precommit-a0210a70-gateway-1 Stopped

@@ -1,9 +1,0 @@
-     version_num      
-----------------------
- 0010_source_metadata
-(1 row)
-
- data_type | numeric_precision | numeric_scale 
------------+-------------------+---------------
- numeric   |                12 |             2
-(1 row)

@@ -1,7 +1,0 @@
-{
-  "environment": "isolated QA PostgreSQL HTTP app after Docker rebuild",
-  "course_count": 2,
-  "course_progress_survived_relogin": true,
-  "progress_loaded_after_process_restart": true,
-  "live_ai_provider_called": false
-}

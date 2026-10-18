@@ -1,7 +1,0 @@
-{
-  "command": "node --test tests/frontend_localization.test.cjs",
-  "executed": true,
-  "exit_code": 0,
-  "seconds": 0.11,
-  "output": "frontend.txt"
-}

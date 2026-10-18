@@ -1,1 +1,0 @@
-Checked 50 exact pins; 0 packages have advisory matches.

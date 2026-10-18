@@ -1,7 +1,0 @@
-{
-  "command": "docker compose -p janamen-qa-check --env-file /tmp/janamen-qa-check.env --profile integrations ps",
-  "executed": true,
-  "exit_code": 0,
-  "seconds": 0.28,
-  "output": "compose-status.txt"
-}

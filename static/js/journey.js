@@ -52,14 +52,24 @@ function requestStepper(r) {
     { label: "Submitted", state: "done", note: when(at("SUBMITTED") || r.created_at) },
     { label: "Manager review", state: rejected ? "bad" : decided ? "done" : "current",
       note: decided ? when(at(rejected ? "REJECTED" : "APPROVED")) : "<small>Waiting for a decision</small>" },
-    { label: "Registration", state: rejected ? "skip" : decided ? "done" : "todo",
-      note: decided && !rejected ? `<small>${r.external_sync_id ? "MOCK registration" : "Saved locally"}</small>` : "" },
+    registrationStep(r, decided, rejected),
     { label: "Notification", state: rejected || decided ? "done" : "todo",
       note: decided ? "<small>Employee notified</small>" : "" },
   ];
   return `<ol class="req-stepper">${steps.map((s, i) => `
     <li class="${s.state}"><span class="step-dot">${s.state === "done" ? "✓" : s.state === "bad" ? "✕" : i + 1}</span>
       <b>${s.label}</b>${s.note}</li>`).join("")}</ol>`;
+}
+
+// Approval and document registration are separate: the gateway registers asynchronously.
+function registrationStep(r, decided, rejected) {
+  if (rejected) return { label: "Registration", state: "skip", note: "" };
+  if (!decided) return { label: "Registration", state: "todo", note: "" };
+  const sync = r.sync_status || "NOT_REQUIRED";
+  if (sync === "REGISTERED" || r.external_sync_id) return { label: "Registration", state: "done", note: "<small>MOCK registration</small>" };
+  if (["PENDING", "SENT"].includes(sync)) return { label: "Registration", state: "current", note: "<small>Waiting for the MOCK gateway</small>" };
+  if (["FAILED", "DEAD"].includes(sync)) return { label: "Registration", state: "bad", note: "<small>Registration failed; HR is notified</small>" };
+  return { label: "Registration", state: "done", note: "<small>Saved locally</small>" };
 }
 
 // AI Jana answers from the asker's own records, so the question is phrased in the first person.

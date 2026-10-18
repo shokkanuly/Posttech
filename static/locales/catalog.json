@@ -3495,6 +3495,14 @@
     "Profile data is kept in 1C and Documentolog and is read-only here; contact HR to correct it": {
       "ru": "Данные профиля ведутся в 1С и Documentolog и здесь доступны только для чтения; для исправления обратитесь в HR",
       "kk": "Профиль деректері 1С пен Documentolog жүйесінде жүргізіледі және мұнда тек оқуға қолжетімді; түзету үшін HR-ға хабарласыңыз"
+    },
+    "Waiting for the MOCK gateway": {
+      "ru": "Ожидает MOCK-шлюз",
+      "kk": "MOCK-шлюзды күтуде"
+    },
+    "Registration failed; HR is notified": {
+      "ru": "Регистрация не удалась; HR уведомлён",
+      "kk": "Тіркеу сәтсіз аяқталды; HR-ға хабарланды"
     }
   },
   "rules": [

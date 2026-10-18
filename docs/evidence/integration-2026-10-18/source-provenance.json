@@ -1,0 +1,8 @@
+{
+  "source_markdown_sha256": "2a87bbdf6c231c5a8d11f0f3e0d485b78c8fbcd49b652a31dd043cbda9d53a23",
+  "saved_markdown_sha256": "2a87bbdf6c231c5a8d11f0f3e0d485b78c8fbcd49b652a31dd043cbda9d53a23",
+  "docx_sha256": "a872e8b4cdb1615241b0257181497956165ee3e0698fe3fe6e29697118f968fd",
+  "docx_text_characters": 73741,
+  "docx_has_acceptance_matrix": true,
+  "interpretation": "User-provided design reference; current implementation and executed evidence determine delivered behavior. Pasted agent prompt is supporting task context, not a claim of current state."
+}

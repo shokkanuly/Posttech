@@ -1,0 +1,67 @@
+{
+  "base_url": "http://127.0.0.1:18766",
+  "environment": "owned disposable janamen-qa-check Compose project; synthetic fixtures only",
+  "checks": [
+    {
+      "check": "Reload requires sign-in",
+      "result": "PASS",
+      "observed": "Reload returned the login form; bearer token is kept in memory."
+    },
+    {
+      "check": "HR mapping UI",
+      "result": "PASS",
+      "observed": "Resolved DEMO-MGR-001 to the explicitly selected existing Synthetic Manager account; success toast shown and review removed. No new account or role."
+    },
+    {
+      "check": "Modal background isolation",
+      "result": "PASS",
+      "observed": "With recovery dialog open, AX tree exposed only the dialog; initial focus on employee selector."
+    },
+    {
+      "check": "Shift+Tab wrap",
+      "result": "PASS",
+      "observed": "From first employee selector, Shift+Tab focused Confirm."
+    },
+    {
+      "check": "Tab wrap",
+      "result": "PASS",
+      "observed": "From final Confirm button, Tab focused employee selector."
+    },
+    {
+      "check": "Escape and opener restoration",
+      "result": "PASS",
+      "observed": "Escape closed recovery dialog and focus returned to its Resolve mapping opener."
+    },
+    {
+      "check": "Single-control request details dialog",
+      "result": "PASS",
+      "observed": "Tab stayed on Close; Escape returned focus to Details."
+    },
+    {
+      "check": "HR integration telemetry",
+      "result": "PASS",
+      "observed": "Both adapters labelled MOCK, pending0/failed0 and last-success timestamps visible after signed snapshot refresh."
+    },
+    {
+      "check": "New Russian labels",
+      "result": "PASS for observed controls",
+      "observed": "Recovery dialog and policy precedence controls rendered in Russian; both RU/KK catalog completeness and template placeholder tests also ran."
+    },
+    {
+      "check": "Mobile/device matrix",
+      "result": "NOT VERIFIED",
+      "observed": "Current browser tab exposes no viewport/emulation control; desktop keyboard checks do not establish mobile behavior."
+    },
+    {
+      "check": "Nested dialogs",
+      "result": "NOT VERIFIED in browser",
+      "observed": "Shared dialog stack implemented; no natural nested-dialog workflow exercised in this run."
+    }
+  ],
+  "screenshots": [
+    "hr-mapping-dialog.png",
+    "hr-mapping-resolved.png",
+    "hr-integration-card.png"
+  ],
+  "live_vendor_or_external_ai_connection": false
+}

@@ -7,7 +7,7 @@ from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from sqlalchemy.engine import Engine
 
-HEAD = "0006_profile_updates"
+HEAD = "0011_merge_profile_updates"
 
 
 class SchemaNotCurrentError(RuntimeError):

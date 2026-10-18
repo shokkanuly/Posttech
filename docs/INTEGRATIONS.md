@@ -1,269 +1,179 @@
-# Интеграция JanaМен с 1С:ЗУП 3.1 и Documentolog (ЭДО)
+# JanaМен integration gateway — implemented MOCK contract
 
-> **Статус: проект + фундамент на стороне JanaМен.** Подпись HMAC, outbox, воркер доставки и
-> приём подписанных callback уже в коде (раздел 5). Сам шлюз и реальные 1С/Documentolog **не
-> подключены**. Всё, что помечено **[уточнить]**, — допущение. Его нужно подтвердить с Jana Post:
-> точные адреса, методы, названия полей и документов 1С/Documentolog мы не знаем и не выдумываем.
+**Current mode: MOCK only. No live 1C:ЗУП or Documentolog connection, document registration, payment or electronic signature.** This implements the canonical contracts in sections 5–7 of the supplied *JanaМен — Integration Design 1C ZUP and Documentolog* design. These endpoints are ours, not vendor APIs.
 
-## 1. Топология
+The older two-step `/v1/1c/orders` → `/v1/documentolog/documents` design has been replaced by the requested asynchronous `/v1/documents` contract. Existing signing primitives and header names are retained. The separate worktree's earlier in-memory simulator implementation was inspected but was not merged: it lacks these endpoints, durable jobs and the snapshot flow.
 
-JanaМен **никогда не обращается к 1С и Documentolog напрямую**. Между ними стоит отдельный сервис —
-**интеграционный шлюз (Integration Gateway)**. Только он знает учётные данные партнёров и их форматы.
+## Run the isolated MOCK stack
+
+From a configured Python environment:
+
+```bash
+python -m app.gateway.configure_mock \
+  --web-port "${DEMO_WEB_PORT:?Set an unused web port}" \
+  --postgres-port "${DEMO_POSTGRES_PORT:?Set an unused PostgreSQL port}"
+# Creates .env.gateway with mode0600, generated passwords/keys and a unique Compose project.
+# It refuses to overwrite an existing file and never prints the keys.
+docker compose --env-file .env.gateway --profile integrations up --build -d
+```
+
+After successful startup, open the application on loopback using the configured `WEB_PORT`. The usual synthetic seed accounts are `aruzhan@janapost.kz` (employee), `timur@janapost.kz` (manager), `aigerim@janapost.kz` (HR). Their generated password is stored only in the private environment file. The generated environment disables external AI and selects a unique `janamen-mock-*` Compose project. The generator refuses to overwrite files or run in production. Select unused ports before startup. See [the repeatable integration demo runbook](INTEGRATION_DEMO_RUNBOOK.md) for isolated demo accounts, registration assertions and outage/recovery.
+
+`INTEGRATION_GATEWAY_URL` is still the switch. Empty means no new outbox tasks, no profile network reads and no integration delivery. The ordinary default Compose startup does not start the optional integration services. To enable them, use the generated environment and `--profile integrations` together. Setting the URL alone while leaving the gateway offline is allowed: approvals still succeed and delivery retries independently.
+
+Do not commit/share `.env.gateway`; it is excluded by Git and Docker context. `configure_mock` creates new development credentials, not a rotation of an existing deployment. Existing `.env`, databases and running stacks are not changed by that command.
+
+## Actual topology
 
 ```mermaid
 flowchart LR
-  subgraph JM["JanaМен"]
-    UI["SPA сотрудника / HR"] --> API["FastAPI"]
-    API --> DB[("PostgreSQL: заявки, кэш профилей, outbox")]
-    WK["Outbox-воркер"] --> DB
-    AI["AI Jana"] --> KB[("Только утверждённые регламенты")]
-  end
-  subgraph GW["Интеграционный шлюз"]
-    VER["mTLS + проверка HMAC, timestamp, nonce"] --> MAP["Маппинг и отсев полей"]
-    MAP --> C1["Коннектор 1С"]
-    MAP --> CD["Коннектор Documentolog"]
-    SEC[("Ключи партнёров, nonce, idempotency")]
-  end
-  WK -- "TLS 1.3 + mTLS + HMAC" --> VER
-  GW -- "подписанные callback" --> API
-  C1 -- "HTTPS во внутренней сети / VPN [уточнить]" --> ONEC["1С:ЗУП 3.1"]
-  CD -- "HTTPS, способ авторизации Documentolog [уточнить]" --> DL["Documentolog"]
+  Browser --> Web["JanaМен FastAPI: approval, profile, HR card"]
+  Web --> DB[("PostgreSQL: requests, history, notifications, outbox, nonces, sync state")]
+  Worker["Separate integration-worker process"] --> DB
+  Worker -->|"HMAC; internal MOCK network"| Gateway["Separate FastAPI gateway :9000; no host ports"]
+  Gateway --> GDB[("Persistent gateway volume: jobs, nonces, MOCK documents")]
+  Gateway --> OneC["MOCK 1C connector: synthetic snapshot fixture"]
+  Gateway --> Doc["MOCK Documentolog connector: durable MOCK-DOC reference"]
+  Gateway -->|"Signed callback, retried"| Web
+  Future["Future real connectors / private network / mTLS ingress"] -.-> Gateway
 ```
 
-| Сторона | Чем владеет | Чего у неё нет |
-|---|---|---|
-| **JanaМен** | UI, пользователи и роли, заявки и согласование, кэш профиля и остатка отпуска, outbox, статусы, уведомления, база знаний AI | Ключей и адресов 1С/Documentolog, PDF приказов, данных о зарплате |
-| **Шлюз** | Учётные данные партнёров, маппинг полей, проверка подписи, хранилище nonce и idempotency-ключей, повторы к партнёрам, технический аудит | UI, бизнес-решений (кто что согласует), постоянного хранения персональных данных |
-| **1С:ЗУП** | Мастер-данные: кадры, оргструктура, остатки отпусков, приказы, расчёт выплат | — |
-| **Documentolog** | Регистрация документов, маршруты подписания ЭЦП, архив | — |
+Compose's `integration` network is `internal: true`. The gateway belongs only to that network. Web and worker also reach the app database through the normal app network. The gateway's database is independent: a persisted SQLite WAL database in `gateway_data`, never the application's user tables. Its schema is created by the gateway itself; changes to the application schema use Alembic `0006_gateway_runtime`. The app worker uses PostgreSQL `FOR UPDATE SKIP LOCKED`; gateway claims use conditional updates and expiring leases, including SQLite concurrency tests.
 
-**AI Jana не получает записей о сотрудниках.** Она ищет только по утверждённым HR-регламентам
-(фильтр в SQL до поиска). Поиска по пользователям нет. У шлюза нет связи с AI/Gemini.
-Интеграционные данные в базу знаний не попадают.
+**Transport boundary:** this local MOCK profile uses HTTP on the private Compose network plus HMAC authentication. It does not claim active mTLS. Existing outbound TLS1.3/mTLS client support remains available, including gateway callback client certificate configuration. Production certificate issuance, inbound mTLS termination and handshake deployment are not supplied by this demo; do not expose it as a production integration. Core production settings require HTTPS and a configured client certificate for an enabled gateway.
 
-## 2. Потоки данных
+## Shared signature and anti-replay rules
 
-### 2.1. Профиль сотрудника и остаток отпуска: 1С → JanaМен
-
-1С — источник истины для кадровых данных. JanaМен хранит только кэш для экранов и проверок.
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant C as 1С:ЗУП
-  participant G as Шлюз
-  participant J as JanaМен API
-  participant DB as БД JanaМен
-  loop По расписанию, например каждые 15 минут, плюс ночная полная сверка
-    G->>C: Изменённые сотрудники с last_sync (сервисная учётка, только чтение) [уточнить способ]
-    C-->>G: Табельный номер, ФИО, подразделение, должность, руководитель, дата приёма, остаток отпуска
-    G->>G: Маппинг, отсев лишних полей
-    G->>J: POST /internal/integrations/1c/employees (mTLS + HMAC, Idempotency-Key = id пакета)
-    J->>J: Проверка подписи, timestamp, nonce
-    J->>DB: Upsert employee_profiles по employee_code
-    J->>DB: Остаток = остаток из 1С минус одобренные заявки, ещё не проведённые в 1С
-    J-->>G: 200 (принято / пропущено)
-  end
-  Note over J: AI Jana эти данные не получает
-```
-
-- Новый сотрудник в 1С → неактивная учётная запись. HR активирует её явно.
-- Увольнение в 1С → учётная запись деактивируется, активные сессии отзываются.
-- Расхождение остатка: **побеждает 1С**, HR получает уведомление.
-
-### 2.2. Одобренная заявка (отпуск / аванс) → документ в 1С
-
-Сейчас `RequestService.review_request` в **одной транзакции** переводит заявку из `Pending` в
-`Approved`, списывает дни отпуска, пишет событие, уведомление и аудит. В эту же транзакцию
-добавляется строка **outbox**. Тогда одобрение и задача на передачу в 1С либо сохраняются обе, либо
-не сохраняется ни одна.
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor M as Руководитель или HR
-  participant J as JanaМен API
-  participant DB as БД JanaМен
-  participant W as Outbox-воркер
-  participant G as Шлюз
-  participant C as 1С:ЗУП
-  M->>J: POST /api/v1/requests/ID/approve
-  J->>DB: Одна транзакция: Approved, списание дней, событие, уведомление, аудит, outbox ONE_C_ORDER
-  J-->>M: 200 Approved (не ждёт 1С)
-  W->>DB: Взять задачу PENDING (FOR UPDATE SKIP LOCKED)
-  W->>G: POST /v1/1c/orders (mTLS + HMAC, Idempotency-Key = REQ-N000123:1c-order)
-  G->>G: Проверка подписи, nonce, idempotency
-  G->>C: Создать документ отпуска или выплаты аванса [уточнить тип документа и метод]
-  C-->>G: Номер и идентификатор документа 1С
-  G-->>W: 201 (external_id)
-  W->>DB: outbox DONE, requests.external_sync_id, статус «Приказ создан в 1С»
-  alt 1С недоступна, 5xx или таймаут
-    W->>DB: attempts + 1, next_attempt_at по backoff
-  else Ошибка данных 4xx
-    W->>DB: DEAD и уведомление HR
-  end
-```
-
-В 1С уходят только: табельный номер, тип, даты или сумма, код заявки `REQ-N…`, табельный номер
-согласующего. Текст причины не передаётся, если 1С его не требует **[уточнить]**.
-
-### 2.3. Документ на подпись → Documentolog → статус обратно
-
-Печатная форма приказа идёт из 1С в Documentolog **через шлюз**. В JanaМен PDF не хранится.
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant W as Outbox-воркер
-  participant G as Шлюз
-  participant C as 1С:ЗУП
-  participant D as Documentolog
-  participant J as JanaМен API
-  actor E as Сотрудник
-  W->>G: POST /v1/documentolog/documents (HMAC, Idempotency-Key = REQ-N000123:doclog)
-  G->>C: Печатная форма приказа по идентификатору документа [уточнить]
-  C-->>G: PDF
-  G->>D: Регистрация документа и маршрута подписания [уточнить API и шаблон]
-  D-->>G: Идентификатор документа в Documentolog
-  G-->>W: 202 (doc_id)
-  W->>J: Статус «На подписании»
-  Note over D: Подписание ЭЦП и ознакомление происходят внутри Documentolog
-  D->>G: Webhook или опрос статуса [уточнить]: подписан / отклонён
-  G->>J: POST /internal/integrations/documentolog/status (mTLS + HMAC, nonce)
-  J->>J: Проверка подписи, идемпотентное обновление статуса
-  J->>E: Уведомление «Приказ подписан»
-```
-
-## 3. Безопасность: только стандартные примитивы
-
-**Почему не собственный шифр.** Идея «ключ знают только JanaМен и партнёр» сохраняется полностью.
-Но уникальным мы делаем **ключ, а не алгоритм** (принцип Керкгоффса). Самописный шифр никто не
-проверял, его не примут аудит и служба ИБ заказчика, и он почти всегда ломается.
-TLS 1.3, HMAC-SHA256 и AES-256-GCM проверены десятилетиями и есть в стандартных библиотеках.
-
-| Уровень | Что защищает | Как |
-|---|---|---|
-| 1. Канал | Перехват, подмена сервера | TLS 1.3. Между JanaМен и шлюзом — **mTLS**: у каждого сервиса клиентский сертификат от своего внутреннего CA, короткий срок жизни (90 дней) |
-| 2. Подпись запроса | Подделка, изменение, повтор | **HMAC-SHA256** на каждом запросе в обе стороны (см. ниже) |
-| 3. Идемпотентность | Двойной приказ при повторе | Заголовок `Idempotency-Key`. Шлюз хранит ключ → результат |
-| 4. Шифрование тела (опционально) | Чтение тела на промежуточном прокси / балансировщике | **AES-256-GCM** (`AESGCM` из библиотеки `cryptography`) |
-
-**Подпись запроса.** Заголовки: `X-Key-Id`, `X-Timestamp` (Unix, UTC), `X-Nonce` (128 бит
-случайных), `X-Signature`. Подписываемая строка:
+Reuse `app/integrations/signing.py`, without a custom cipher:
 
 ```text
-METHOD \n PATH?QUERY \n TIMESTAMP \n NONCE \n SHA256_HEX(сырое тело)
-X-Signature = base64( HMAC-SHA256( key[X-Key-Id], строка ) )
+METHOD_UPPER + "\n" + PATH_WITH_QUERY + "\n" + TIMESTAMP + "\n" + NONCE + "\n" + SHA256_HEX(RAW_BODY)
+X-Signature = base64(HMAC-SHA256(key, that message))
 ```
 
-Получатель:
-1. находит ключ по `X-Key-Id` (неизвестный → 401);
-2. отклоняет запрос, если `|now − timestamp| > 300 с` (устаревший);
-3. отклоняет `nonce`, уже виденный за окно (хранится с TTL ≥ окна) — **anti-replay**;
-4. пересчитывает хэш тела из сырых байтов и сравнивает подпись через `hmac.compare_digest`;
-5. при любой ошибке отвечает 401 без подробностей и пишет технический аудит.
+Headers: **`X-Key-Id`, `X-Timestamp`, `X-Nonce`, `X-Signature`**. `Idempotency-Key` also accompanies document POSTs and must match the body. Unknown/retired key, wrong body/path/query signature, clock skew beyond300 seconds or an already seen nonce is rejected with401. Comparison uses `hmac.compare_digest`. Nonces persist in `gateway_nonces` and existing app `integration_nonces`; cleanup retains900 seconds, exceeding the signature window. Replaying captured signed requests remains rejected after a service restart. Retrying a legitimate operation uses a fresh nonce and the same idempotency key.
 
-Для подписи хватает стандартной библиотеки Python (`hmac`, `hashlib`, `secrets`).
+Each direction has a separate key. Verification maps support overlapping current/previous key IDs during operator-controlled rotation. There is no bearer-token fallback, anonymous health route, browser CORS or public Swagger/OpenAPI route on the gateway. Its container readiness check signs `/health`. Callback `nonce` must equal signed `X-Nonce`. The shared signing helper gained an optional nonce argument solely to bind that field into the body/signature.
 
-**Идемпотентность.** Ключ строится из кода заявки и операции: `REQ-N000123:1c-order`.
-Повтор с тем же ключом возвращает сохранённый результат, второго документа в 1С не будет.
-Тот же ключ с другим телом → 409.
+Golden vectors in `tests/test_integration_hardening.py` pin UTF-8 bytes, uppercase method, literal encoded path/query, decimal timestamp, LF separators, lowercase hex SHA-256 and Base64 HMAC. They also pin the inclusive ±300-second boundary. The signer itself is unchanged.
 
-**Шифрование тела (если TLS завершается не на шлюзе).** Отдельный 256-битный ключ шифрования
-(не тот, что для HMAC). Новый случайный 96-битный nonce на каждое сообщение, повтор nonce с тем же
-ключом запрещён. AAD = `key_id + timestamp + path`: шифротекст нельзя переставить в другой запрос.
-HMAC считается уже по шифротексту.
+Authenticated business routes use a durable fixed UTC-minute limit per verified key ID: `GATEWAY_REQUESTS_PER_MINUTE` (default 600, range 1–100000). Signed `GET /health`, including the container probe, has an independent `GATEWAY_HEALTH_REQUESTS_PER_MINUTE` limit (default 60, same range); neither quota can spend the other's capacity. The server selects the health budget only for that method and exact path. Query parameters remain signed; other methods/routes cannot borrow that quota. Admission and nonce consumption commit together before a handler runs. Concurrent processes cannot exceed either bucket; restarts retain counts. Rejected requests return `429`, `Retry-After` seconds until the next minute and `Cache-Control: no-store`, without creating a job or nonce. Invalid/replayed signatures return 401. Rotated key IDs have separate buckets; fixed windows permit a burst across a minute boundary. This is not a public-internet denial-of-service defense. Keep the gateway private. Safe rejection logs contain only the category/status, never headers or bodies.
 
-**Ключи.**
-- Отдельный ключ на каждого партнёра и каждое направление: JanaМен→шлюз, шлюз→JanaМен,
-  шлюз→Documentolog и т.д. Минимум 32 случайных байта (`secrets.token_bytes(32)`).
-- Ключи хранятся в секрет-хранилище (Docker secrets / Vault / KMS) и попадают в env при запуске.
-  В репозиторий не коммитятся, как и сейчас `SECRET_KEY` и `GEMINI_API_KEY`.
-- Ротация: у ключа есть версия (`X-Key-Id`). Во время перекрытия (7 дней) принимаются текущая и
-  предыдущая версии, затем старая отзывается. Плановая ротация раз в 90 дней, при подозрении —
-  немедленно.
-- Учётка шлюза в 1С: только чтение кадровых данных и создание нужных документов **[уточнить]**.
+The existing v3 business key hashes/counts are preserved; health uses additional namespaced rows in the same table. No schema change or quota reset is required. Health remains private, signed and replay-protected; no anonymous probe endpoint is introduced.
 
-**Минимум данных.**
+Gateway startup upgrades its independent store additively to **v3**, creating `gateway_rate_limits` without rewriting jobs, references, callback state or nonces. Deploy one gateway instance for migration first. Core head remains `0011_merge_profile_updates`. An internal [OpenAPI snapshot](gateway-openapi.json) documents our canonical routes; no public schema endpoint is enabled.
 
-| Направление | Передаётся | Не передаётся |
+No AES/JWE/custom encryption was added. Integration logs contain only technical state/counters/codes; canonical bodies, names, amounts, API keys and callback secrets are not logged or included in validation error responses. State includes the minimum canonical payload needed for restart-safe retries; storage is different from logging. Production storage/access/retention controls remain an operational requirement.
+
+## Canonical gateway endpoints
+
+All endpoints require a valid machine signature, including GETs and `/health`.
+
+| Method | Path | Behavior |
 |---|---|---|
-| 1С → JanaМен | Табельный номер, ФИО, подразделение, должность, руководитель, дата приёма, остаток отпуска | ИИН, оклад, начисления, банковские реквизиты, адрес, медданные |
-| JanaМен → 1С | Табельный номер, тип, даты / сумма, код заявки, согласующий | Комментарии, история переписки |
-| JanaМен ↔ Documentolog | Код заявки, идентификаторы документов, статус | PDF и содержимое приказа (идут 1С → шлюз → Documentolog) |
+| POST | `/v1/documents` | Validate canonical request, enforce matching key/body and persist one job; return202 with job ID/status and `mode: MOCK` |
+| GET | `/v1/documents/{idempotency_key}` | Return persisted job/terminal result for reconciliation;404 if unknown |
+| GET | `/v1/employees?updated_since=...` | Return canonical synthetic snapshots, `mode: MOCK`, high-water `next_cursor`; query is signed exactly |
+| GET | `/v1/employees/{employee_code}` | Return one synthetic canonical snapshot;404 if unknown |
+| GET | `/health` | Mode, actual connector availability, pending jobs/callback counts and last successful registration |
 
-**Аудит без персональных данных.** Логируются партнёр, операция, код заявки, `key_id`,
-idempotency-ключ, SHA-256 тела, HTTP-код, длительность, число попыток. Тела запросов, ФИО и суммы
-не логируются. Это тот же принцип, что и у нынешних `audit_events` с минимальными метаданными.
+Vacation request example (our API, not a vendor document):
 
-## 4. Надёжность
-
-```mermaid
-stateDiagram-v2
-  [*] --> QUEUED: заявка одобрена (outbox в той же транзакции)
-  QUEUED --> ORDER_CREATED: 1С создала документ
-  QUEUED --> RETRYING: сеть, 5xx, 429
-  RETRYING --> ORDER_CREATED: повтор успешен
-  RETRYING --> DEAD: попытки исчерпаны
-  QUEUED --> DEAD: ошибка данных 4xx
-  ORDER_CREATED --> SIGNING: зарегистрирован в Documentolog
-  SIGNING --> SIGNED: подписан
-  SIGNING --> SIGN_REJECTED: отклонён в Documentolog, HR решает вручную
-  DEAD --> QUEUED: HR нажал «Повторить» (тот же idempotency-ключ)
-  SIGNED --> [*]
-  SIGN_REJECTED --> [*]
+```json
+{
+  "idempotency_key": "REQ-N000005:v1",
+  "kind": "VACATION_REQUEST",
+  "request_code": "REQ-N000005",
+  "employee_code": "JP-10428",
+  "period": {"start": "2026-11-23", "end": "2026-11-25", "days": 3},
+  "approved_by_employee_code": "JP-10201",
+  "approved_at": "2026-10-17T10:15:00Z"
+}
 ```
 
-- **Outbox** (таблица `integration_outbox`): `request_id`, `operation`, уникальный
-  `idempotency_key`, `status` (PENDING / DONE / DEAD), `attempts`, `next_attempt_at`,
-  `last_error` (только код). Тело запроса собирается в момент отправки, копий персональных данных
-  в очереди нет. Воркер берёт по одной задаче через `FOR UPDATE SKIP LOCKED`, поэтому несколько
-  воркеров не возьмут одну задачу. RETRYING и DEAD на схеме — это состояние задачи в outbox, а
-  `requests.integration_status` хранит только движение вперёд.
-- **Повторы**: экспоненциальный backoff с jitter ±20% (30 с, 1, 5, 15 мин, 1, 6, 12 ч), до 8
-  попыток (около суток). Повторяются только сетевые ошибки, 5xx и 429. Ошибки данных (4xx,
-  например «сотрудник не найден в 1С») сразу уходят в DEAD.
-- **Dead-letter**: при DEAD все активные HR получают уведомление. План: список DEAD в карточке
-  «Границы корпоративных интеграций» с кнопкой «Повторить». Повтор безопасен благодаря тому же
-  idempotency-ключу.
-- **Сверка (reconciliation)**, ночью. Шлюз сравнивает документы 1С и статусы Documentolog за
-  последние N дней с заявками JanaМен:
-  - одобрена, но документа нет → снова в очередь;
-  - документ в 1С есть, а одобренной заявки нет → тревога HR;
-  - потерянный callback → статус подтягивается опросом;
-  - расхождение остатка → берётся значение 1С.
+Codes, dates, charged days and decision metadata are frozen in the outbox at approval. Names, emails, free-text reasons, training and AI data do not travel. For advance requests the explicit **canonical extension** is `kind: ADVANCE_PAYMENT_REQUEST`, `amount` as an exact decimal string, `currency: KZT`, and no vacation `period`. This only registers a synthetic request; it never instructs or executes a payment.
 
-**Что видит пользователь.** Одобрение не блокируется недоступностью 1С: сотрудник сразу видит
-«Одобрено». Дальше в карточке заявки статус: «Передаётся в 1С» → «Приказ создан в 1С» →
-«На подписании» → «Подписано». При DEAD сотрудник видит «Передача задерживается, HR уведомлён»,
-без технического текста. HR видит код ошибки и кнопку повтора. Остаток отпуска показывается с
-пометкой «по данным 1С на <дата последней синхронизации>».
+The202 acknowledgement contains `gateway_job_id` (`job_<32hex>`), `idempotency_key`, `status`, `mode: MOCK`, `occurred_at`, optional `external_ref` and `error_code`. A terminal REGISTERED result must contain `MOCK-DOC-<32hex>`. Empty/malformed2xx responses are delivery errors, never successful registrations. Same key plus the same normalized canonical content returns the original job; same key with different content returns409. The mock connector enforces a second unique idempotency constraint on its durable document row.
 
-## 5. Текущее состояние (честно)
+## Flow A — approval to asynchronous MOCK registration
 
-| Что | Состояние |
-|---|---|
-| `app/integrations/one_c_zup.py` | `UNCONNECTED`, 0 записей, без `last_sync`. Профили и остатки — локальные записи. `vacation_days()` считает календарные дни минус даты из `LEAVE_EXCLUDED_DATES`; производственный календарь из 1С не загружается |
-| `app/integrations/documentolog.py` | `UNCONNECTED`. При `ENABLE_MOCK_INTEGRATIONS=true` пишет `MOCK-DOCLOG-<код>` в `requests.external_sync_id`. Это **локальная симуляция**, а не регистрация документа |
-| `app/schemas/integration.py` | Схемы телеметрии и черновые ответы (`OneCProfileSyncResponse`, `DocumentologSyncResponse`) |
-| `GET /api/v1/admin/integrations` | Показывает телеметрию обоих адаптеров |
-| `app/integrations/signing.py` | **Есть.** HMAC-SHA256 по схеме раздела 3, окно 300 с, `hmac.compare_digest`, только стандартная библиотека |
-| `app/integrations/outbox.py` | **Есть.** Задача пишется в транзакции одобрения (`review_request`), воркер `python -m app.integrations.outbox` подписывает запрос, шлёт по TLS 1.3 / mTLS, ведёт backoff и DEAD. После документа 1С ставит в очередь регистрацию в Documentolog |
-| `POST /api/v1/internal/integrations/documentolog/status` | **Есть.** Принимает только подписанные запросы, nonce хранится в `integration_nonces` (повтор → 401). Статус двигается только вперёд, сотрудник получает уведомление. Скрыт из OpenAPI: это не API для браузера |
-| Миграция `0005_integration_outbox` | **Есть.** Таблицы `integration_outbox`, `integration_nonces`, колонка `requests.integration_status` |
-| Сам шлюз, синхронизация сотрудников из 1С, шифрование тела AES-GCM, экран DEAD для HR | **Не реализованы.** Ждут подтверждения API и полей от Jana Post |
+1. Existing approval transaction commits Approved + frozen charged days/provisional balance flag + history + notification + immutable outbox snapshot. `INTEGRATION_GATEWAY_URL` determines whether the registration task is added. There is no network call in that transaction.
+2. App worker claims due PENDING tasks, signs `POST /v1/documents`, validates the acknowledgement and stores the job ID. Request sync status becomes SENT. Business status stays Approved.
+3. Gateway worker claims a durable job using a lease. The MOCK Documentolog connector writes one durable synthetic reference in the same transaction as completion. It cannot call a vendor API.
+4. Gateway sends a signed callback to the **existing** `/api/v1/internal/integrations/documentolog/status` route. The app matches the outbox key, approved request and job ID, then atomically updates `external_sync_id`/API alias `external_ref`, sync state, history and exactly one employee registration notice.
+5. If a callback is lost, the gateway retries with fresh nonces. The app worker also polls `GET /v1/documents/{key}`; callback and reconciliation use the same idempotent transition, so whichever arrives second does not add another notice.
 
-**Как включить** (без `INTEGRATION_GATEWAY_URL` в очередь ничего не пишется):
-`INTEGRATION_GATEWAY_URL`, `INTEGRATION_OUTBOUND_KEY_ID` + `INTEGRATION_OUTBOUND_KEY` (JanaМен →
-шлюз), `INTEGRATION_INBOUND_KEYS='{"gw-2026-10":"..."}'` (шлюз → JanaМен), `INTEGRATION_TLS_CERT` /
-`INTEGRATION_TLS_KEY` / `INTEGRATION_TLS_CA` для mTLS. Ключи — минимум 32 случайных символа. В
-production без https и клиентского сертификата приложение не стартует.
+Callback body adds the explicit mode/error metadata to the design's example:
 
-**Нужно подтвердить с Jana Post:**
-1. Способ доступа к 1С:ЗУП: HTTP-сервис конфигурации, стандартный интерфейс OData или обмен файлами;
-   тестовая копия базы.
-2. Типы документов 1С для отпуска и аванса, обязательные реквизиты, идентификатор сотрудника
-   (табельный номер или GUID).
-3. API Documentolog: авторизация, регистрация документа, маршруты и шаблоны, webhook или опрос.
-4. Кто подписывает приказ, нужна ли отметка о подписании обратно в 1С.
-5. Сетевая схема: где стоят 1С и шлюз, VPN, белые списки IP, требования ИБ к хранению ключей.
+```json
+{
+  "nonce": "0123456789abcdef0123456789abcdef",
+  "idempotency_key": "REQ-N000005:v1",
+  "gateway_job_id": "job_0123456789abcdef0123456789abcdef",
+  "status": "REGISTERED",
+  "external_ref": "MOCK-DOC-0123456789abcdef0123456789abcdef",
+  "occurred_at": "2026-10-17T10:15:04Z",
+  "mode": "MOCK",
+  "error_code": null
+}
+```
+
+The nonce and job/reference values shown are illustrative synthetic values, not valid signed messages or credentials.
+
+Request sync states are exposed separately from the Approved business state: **NOT_REQUIRED, PENDING, SENT, REGISTERED, FAILED, DEAD**. Disabled/legacy null state is represented as NOT_REQUIRED in the API. The legacy `external_sync_id` field remains for compatibility; `external_ref`, `sync_status`, `integration_mode` are exposed explicitly. Older legacy-contract pending rows are preserved, parked as DEAD/LEGACY_CONTRACT by the migration, and shown for HR review; they are never silently sent to an incompatible endpoint. Historical SIGNED rows are not relabeled as a registration by this new gateway.
+
+### Failure and restart behavior
+
+- Gateway/network/429/5xx: approval remains Approved. Delivery retries with jitter and the existing30s,60s,5m,15m,1h,6h,12h schedule; after8 consecutive delivery errors the outbox is DEAD and HR is notified.
+- Malformed success envelope: `INVALID_ACK`, retried as a gateway error; no false SENT/REGISTERED result.
+- Non-transient app delivery4xx: FAILED, no automatic retry; reason appears in the HR queue.
+- MOCK Documentolog validation rejection: gateway job FAILED, no connector retry; signed failure callback updates separate sync state. Temporary MOCK connector failure uses backoff and becomes DEAD after8 attempts.
+- Callback failure: retry independently; the registered MOCK document is never recreated. Terminal job remains available for GET reconciliation even if callback delivery exhausts attempts.
+- Restart mid-job: persistent job/nonce/document rows survive. An expired processing lease can be reclaimed. Fresh-nonce retries with the same key return the same job/reference. Application outbox content never changes when profiles/calendar settings later change.
+
+## Flow B — scheduled/read-only MOCK snapshots
+
+The app integration worker polls snapshots on a configured interval (default900 seconds), using the last successful `updated_since` cursor. `POST /api/v1/admin/integrations/refresh` is HR-only and uses a database-backed cooldown (default60 seconds). An on-demand refresh fetches the full fixture so previously unmatched codes can be reviewed again after mapping.
+
+`apply_snapshot` is the integration's single writer of profile facts. It matches **only employee code**, not email/name; it updates an existing profile and preserves role/login identity. Unknown employee/manager codes go to `integration_reviews` for HR. No arbitrary new user/role is provisioned. Older snapshots and insufficient/conflicting balances are held for review. Integration data does not enter the knowledge base or AI provider.
+
+Profiles store source mode, original snapshot balance, `as_of` and `synced_at`. A successful source check leaves a truthful freshness record; failed checks retain the last snapshot and expose `is_stale`. Profile/dashboard requests never synchronously call the gateway. Disconnecting a previously synced source also marks that retained snapshot stale. The UI says MOCK and read-only, never official 1C data.
+
+For reconciliation, the **canonical snapshot extension** `confirmed_request_codes` explicitly identifies local approvals already included in the source balance. An approved local request keeps frozen charged days and is provisional until confirmed. Effective local balance is source balance minus still-unconfirmed charged days. A Documentolog registration alone does **not** prove a 1C balance posting and does not clear the provisional adjustment. The default MOCK fixture confirms no approvals. Existing pre-migration approvals retain their legacy balance state; official historical reconciliation requires operator/partner confirmation.
+
+## HR operational display
+
+`GET /api/v1/admin/integrations` uses persisted facts, not hardcoded statistics or a live network request during page load. Each card includes mode (UNCONNECTED or observed MOCK), pending/failed delivery counts, actual last success time, last source error and confirmed synthetic record count. A configured but never successfully observed gateway remains UNCONNECTED. CONNECTED cannot be produced by this MOCK implementation.
+
+HR-only queue and review endpoints:
+
+- `GET /api/v1/admin/integrations/queue`: paginated FAILED/DEAD request codes, safe error code and mode.
+- `GET /api/v1/admin/integrations/reviews`: paginated unmatched/conflicting employee codes and reason.
+- `POST /api/v1/admin/integrations/refresh`: role checked and rate limited.
+
+Every MOCK reference displayed in a request detail carries a MOCK label. The admin headline changes from UNCONNECTED to observed MOCK and explicitly says no live enterprise connection. Both RU/KK labels are maintained.
+
+## Configuration and verification
+
+Existing settings: `INTEGRATION_GATEWAY_URL`, `INTEGRATION_OUTBOUND_KEY_ID`, `INTEGRATION_OUTBOUND_KEY`, `INTEGRATION_INBOUND_KEYS`, and outbound `INTEGRATION_TLS_CERT/KEY/CA`.
+
+Gateway settings are separately prefixed `GATEWAY_`: MODE (only MOCK accepted), DATABASE_URL, APP_KEY_ID/APP_KEY or JANAMEN_KEYS verification map, CALLBACK_URL/KEY_ID/KEY, optional TLS_CA/CERT/KEY, WORKER_ENABLED/POLL_SECONDS, optional MOCK_EMPLOYEES_FILE. MOCK_ONE_C_UNAVAILABLE and MOCK_DOCUMENTOLOG_FAILURE allow controlled local failure testing; they do not select real connectors.
+
+```bash
+python -m pytest -q tests/test_gateway_service.py tests/test_integration_gateway.py tests/test_migrations.py
+python -m pytest -q
+TEST_DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:PORT/TEST_DB python -m pytest -q
+node --test tests/frontend_localization.test.cjs
+python -m ruff check app tests migrations smoke_test.py dependency_audit.py
+python -m mypy app
+```
+
+Tests use isolated databases and synthetic keys. The six acceptance conditions from design section10 map to signature/replay tests, concurrent idempotency/restart tests, gateway-down approval/retry/DEAD tests, callback/reconciliation notification tests, bearer-denial tests, and profile-outage snapshot tests. Actual results for this implementation are recorded in `docs/GATEWAY_IMPLEMENTATION_REPORT.md`; test existence alone is not a claim of execution.
+
+## Still needed for any live connection
+
+Jana Post must provide vendor API documentation, test systems, employee-code mapping and balance-posting confirmation semantics, document types, authorized service accounts and private network/certificate ownership. Real connectors, VPN, inbound mTLS deployment, electronic signatures, production secret/storage/retention operations, automated dead-letter replay and a partner reconciliation schedule are not delivered. This service is a durable **MOCK** integration gateway, not evidence of a live enterprise connection.
+
+## Controlled recovery and store upgrades
+
+The fix-plan follow-up adds audited HR recovery/mapping commands, signed generation-aware retries, and gateway schema v2. See [Recovery and operations](RECOVERY_AND_OPERATIONS.md) for request contracts, lost-store behavior, immutable submission keys and the backup/restore procedure. All connectors remain MOCK; these are JanaМен canonical endpoints, not vendor APIs.

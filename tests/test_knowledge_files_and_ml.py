@@ -258,3 +258,28 @@ def test_training_and_portable_artifact_run_end_to_end(
         headers=employee_headers,
     ).json()
     assert source["content"] in answer["answer"]
+
+
+def test_policy_dates_import_and_legacy_bundle_fingerprint(db_session, bundle):
+    import hashlib
+    from datetime import date
+
+    original = bundle.model_dump(mode="json")
+    for field in ("policy_key", "priority", "effective_from", "effective_until", "known_conflict"):
+        del original["document"][field]
+    previous_hash = hashlib.sha256(
+        json.dumps(original, sort_keys=True, ensure_ascii=False).encode()
+    ).hexdigest()
+    assert bundle.fingerprint() == previous_hash
+    bundle.document.effective_from = date(2026, 10, 1)
+    assert bundle.fingerprint() != previous_hash
+    actor = db_session.query(User).filter_by(role=UserRole.HR_ADMIN).first()
+    result = import_bundle(db_session, bundle, actor)
+    assert result["created"]
+    assert import_bundle(db_session, bundle, actor) == {
+        "document_id": result["document_id"],
+        "created": False,
+    }
+    assert db_session.get(KnowledgeDocument, result["document_id"]).effective_from == date(
+        2026, 10, 1
+    )

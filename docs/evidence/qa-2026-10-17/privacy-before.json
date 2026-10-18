@@ -1,0 +1,40 @@
+{
+  "methodology": {
+    "fresh_temporary_sqlite_database": true,
+    "synthetic_seed_only": true,
+    "provider_configured_with_fake_test_key": true,
+    "httpx_post_intercepted_before_network": true,
+    "live_provider_called": false,
+    "existing_application_data_modified": false,
+    "well_covered_seeded_policy_paragraph_used_as_question": true,
+    "synthetic_identifier_appended_to_question": true,
+    "actual_outbound_http_json_inspected": true
+  },
+  "before_fix_results": {
+    "synthetic_national_identifier": {
+      "privacy_blocked": false,
+      "provider_boundary_called": true,
+      "raw_identifier_present_in_http_json": true,
+      "response_grounded": true
+    },
+    "synthetic_email_address": {
+      "privacy_blocked": false,
+      "provider_boundary_called": true,
+      "raw_identifier_present_in_http_json": true,
+      "response_grounded": true
+    },
+    "synthetic_phone_number": {
+      "privacy_blocked": false,
+      "provider_boundary_called": true,
+      "raw_identifier_present_in_http_json": true,
+      "response_grounded": true
+    }
+  },
+  "limitations": {
+    "end_to_end_http_route_exercised": false,
+    "actual_ai_service_and_provider_adapter_exercised": true,
+    "production_configuration_exercised": false,
+    "arbitrary_pii_detection_established": false,
+    "live_provider_behavior_verified": false
+  }
+}

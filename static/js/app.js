@@ -18,6 +18,8 @@ const state = {
   currentCourse: null,
   currentLesson: null,
   pendingReview: null,
+  submission: null,
+  contactSubmission: null,
 };
 
 let demoAccounts = {};
@@ -177,6 +179,16 @@ async function initApp() {
   setupRoleSwitch();
   setupLanguageSwitch();
   setupModals();
+  document.getElementById("refreshHrSnapshots").addEventListener("click", async event => {
+    event.target.disabled = true;
+    try {
+      const result = await api("/admin/integrations/refresh", { method: "POST" });
+      if (result.status === "unavailable") toast("Gateway unavailable; last snapshot retained.");
+      if (result.status === "disabled") toast("Integration gateway is disabled.");
+      await loadAdminPage();
+    } catch (error) { toast(error.message); }
+    finally { event.target.disabled = false; }
+  });
   setupAIChat();
   setupKnowledgeForm();
   setupHome();
@@ -254,6 +266,8 @@ function showLogin(email = "") {
   state.courses = [];
   state.notifications = [];
   state.pendingReview = null;
+  state.submission = null;
+  state.contactSubmission = null;
   document.getElementById("app").hidden = true;
   document.querySelectorAll(".modal-backdrop").forEach(el => el.classList.remove("open"));
   ["homeRequests", "homeCourseCard", "homeActivity", "academyGrid", "notificationsList", "teamTable", "requestTable",
@@ -440,6 +454,10 @@ async function loadProfilePage() {
     document.getElementById("profAvatar").textContent = initials(p.full_name);
     document.getElementById("profName").textContent = p.full_name;
     document.getElementById("profPosition").textContent = p.position;
+    document.getElementById("profSource").textContent = p.source_mode === "MOCK" ? "MOCK · Read-only" : "Read-only · 1C:ZUP unconnected";
+    const source = document.getElementById("profSource");
+    if (p.as_of) source.textContent += ` · ${I18n.t("Data as of")}: ${formatDate(p.as_of)}`;
+    if (p.is_stale) source.textContent += ` · ${I18n.t("Stale snapshot")}`;
     document.getElementById("profEmpCode").textContent = p.employee_code;
     document.getElementById("profDept").textContent = p.department;
     document.getElementById("profCompany").textContent = p.company;
@@ -513,6 +531,7 @@ async function loadAcademyPage() {
         </div>
         <h3 class="h4">${esc(c.title)}</h3>
         <p>${esc(c.description)}</p>
+        <p>${c.is_synthetic === true ? "Synthetic example" : c.is_synthetic == null ? "Unverified course provenance" : ""}</p>
         <div>
           <div class="progress"><span style="width:${c.progress_percent}%"></span></div>
           <div class="progress-label">
@@ -835,10 +854,11 @@ function reviewRequestPrompt(requestId, action) {
 // --- HR ADMIN ---
 async function loadAdminPage() {
   try {
-    const [summary, chunks, documents, adapters, logs, requests, members] = await Promise.all([
+    const [summary, chunks, documents, adapters, logs, requests, members, queue, reviews] = await Promise.all([
       api("/admin/summary"), apiAll("/admin/knowledge"), apiAll("/admin/knowledge/documents"),
       api("/admin/integrations"), api("/admin/audit?limit=15"),
       apiAll("/manager/requests?status=Pending"), apiAll("/manager/team"),
+      apiAll("/admin/integrations/queue"), apiAll("/admin/integrations/reviews"),
     ]);
     const byUser = Object.fromEntries(members.map(m => [m.user_id, m]));
     renderDirectory("adminDirectory", members);
@@ -880,12 +900,14 @@ async function loadAdminPage() {
         <span class="notice-icon">${icon("book")}</span>
         <div style="flex:1">
           <b>${esc(doc.title)} · v${esc(doc.version)}</b>
+          ${policyControls(doc)}
           <p>${doc.is_synthetic ? "Synthetic example · " : ""}${doc.is_approved ? "Approved" : "Draft"} · ${doc.is_active ? "Active" : "Inactive"}</p>
           ${!doc.is_approved && doc.is_active ? `<button class="small-btn primary" data-approve-document="${doc.id}" data-revision="${reviewedRevision}">Approve reviewed source</button>` : ""}
           ${doc.is_active ? `<button class="small-btn" data-deactivate-document="${doc.id}" data-revision="${doc.revision}">Deactivate</button>` : ""}
         </div>
       </div>`;
     }).join("");
+    wirePolicyControls(documentList, documents);
     documentList.querySelectorAll("[data-approve-document], [data-deactivate-document]").forEach(button => {
       button.addEventListener("click", async () => {
         try {
@@ -898,6 +920,10 @@ async function loadAdminPage() {
       });
     });
 
+    const mockMode = adapters.some(a => a.mode === "MOCK");
+    document.getElementById("adminIntegrationMode").textContent = mockMode ? "MOCK" : "UNCONNECTED";
+    document.getElementById("adminIntegrationNote").textContent = mockMode ? "MOCK connectors only. No live enterprise connection." : "1C:ZUP and Documentolog are unconnected. HR fields remain read-only.";
+    renderIntegrationRecovery(queue, reviews, members);
     document.getElementById("adminIntegrationsList").innerHTML = adapters.map(a => `
       <div class="notice">
         <span class="notice-icon">${icon("link")}</span>
@@ -905,6 +931,9 @@ async function loadAdminPage() {
           <b>${esc(a.adapter_name)}</b> <span class="status pending">${esc(a.status)}</span>
           <p>${esc(a.notes)}</p>
           <p class="small"><b>Endpoint:</b> <code>${esc(a.endpoint_template)}</code> · <b>Mode:</b> ${esc(a.mode)}</p>
+          <p><span>Pending deliveries</span>: ${Number(a.pending_count)} · <span>Failed deliveries</span>: ${Number(a.failed_count)}</p>
+          <p><span>Last success</span>: ${a.last_success ? esc(formatDate(a.last_success)) + " " + esc(formatTime(a.last_success)) : "—"}</p>
+          ${a.last_error ? `<p><code>${esc(a.last_error)}</code></p>` : ""}
         </div>
       </div>`).join("");
 
@@ -1046,13 +1075,19 @@ function setupModals() {
     const submit = e.target.querySelector('button[type="submit"]');
     submit.disabled = true;
     try {
-      const res = await api("/requests", { method: "POST", body: JSON.stringify({
+      const body = JSON.stringify({
         type,
         start_date: document.getElementById("reqStart").value,
         end_date: type === "Vacation" ? document.getElementById("reqEnd").value || null : null,
         amount: type === "Advance payment" && amount ? parseFloat(amount) : null,
         reason: reason || null,
-      }) });
+      });
+      // A lost response must reuse the same key; edited content is a new submission.
+      if (state.submission?.body !== body) state.submission = {body, key: crypto.randomUUID()};
+      const res = await api("/requests", {
+        method: "POST", body, headers: {"Idempotency-Key": state.submission.key},
+      });
+      state.submission = null;
       toast(`Request ${res.request_code} successfully created!`);
       document.getElementById("requestModal").classList.remove("open");
       e.target.reset();
@@ -1065,7 +1100,6 @@ function setupModals() {
       submit.disabled = false;
     }
   });
-
 }
 
 async function openRequestDetailModal(id, notice = null) {
@@ -1083,7 +1117,9 @@ async function openRequestDetailModal(id, notice = null) {
     document.getElementById("detailModalExtra").innerHTML = r.leave_days.length
       ? `<h4 class="sub-title">Day breakdown</h4>${renderLeaveCalendar({ days: r.leave_days, weekend_days: r.weekend_days, holiday_days: r.holiday_days, charged_days: r.vacation_days })}`
       : r.profile_changes ? `<h4 class="sub-title">Requested changes</h4>${renderProfileChanges(r.profile_changes)}` : "";
-    document.getElementById("detailModalSync").textContent = r.external_sync_id || I18n.t("Documentolog is unconnected; no external registration");
+    document.getElementById("detailModalSync").textContent = r.external_sync_id
+      ? `${r.integration_mode === "MOCK" || r.external_sync_id.startsWith("MOCK-") ? "MOCK · " : ""}${r.external_sync_id}`
+      : r.sync_status && r.sync_status !== "NOT_REQUIRED" ? I18n.t(r.sync_status) : I18n.t("Documentolog is unconnected; no external registration");
     document.getElementById("detailModalTimeline").innerHTML = r.events.map(ev => `
       <div class="activity">
         <span class="activity-dot ${ev.event_type === "APPROVED" ? "ok" : ev.event_type === "REJECTED" ? "bad" : ""}"></span>

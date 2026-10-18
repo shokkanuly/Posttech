@@ -1,0 +1,8 @@
+{
+  "scope": "QA Compose logs only; raw logs not published",
+  "bytes_scanned": 11161,
+  "private_values_checked": 10,
+  "private_value_matches": 0,
+  "payload_marker_matches": 0,
+  "live_vendor_or_ai_calls": false
+}

@@ -1,0 +1,40 @@
+{
+  "dedicated_test_postgres_removed": true,
+  "new_mock_demo_stopped": true,
+  "mock_data_volumes_retained": true,
+  "existing_other_projects_changed": false,
+  "availability": "Healthy at capture only; owned fresh demo subsequently stopped. No future availability guarantee.",
+  "commands": [
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--env-file",
+        "/var/folders/c7/hdw9k4tn52z32sbg0dld44100000gn/T/janamen-precommit-20261018-kjg5e_uo/demo.env",
+        "--profile",
+        "integrations",
+        "stop"
+      ],
+      "exit_code": 0,
+      "stdout": ""
+    },
+    {
+      "command": [
+        "docker",
+        "stop",
+        "janamen-disposable-check-b5930545"
+      ],
+      "exit_code": 0,
+      "stdout": "janamen-disposable-check-b5930545"
+    },
+    {
+      "command": [
+        "docker",
+        "rm",
+        "janamen-disposable-check-b5930545"
+      ],
+      "exit_code": 0,
+      "stdout": "janamen-disposable-check-b5930545"
+    }
+  ]
+}

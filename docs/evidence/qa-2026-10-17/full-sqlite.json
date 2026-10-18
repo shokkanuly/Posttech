@@ -1,0 +1,7 @@
+{
+  "command": ".venv/bin/python -m pytest -q",
+  "executed": true,
+  "exit_code": 0,
+  "seconds": 136.25,
+  "output": "full-sqlite.txt"
+}

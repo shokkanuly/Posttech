@@ -1,0 +1,15 @@
+{
+  "image": "janamen-strict-audit:local",
+  "health_http": 200,
+  "login_http": 200,
+  "root_http": 200,
+  "config": {
+    "demo_mode": true,
+    "demo_accounts": {
+      "employee": "aruzhan@janapost.kz",
+      "manager": "timur@janapost.kz",
+      "hr_admin": "aigerim@janapost.kz"
+    }
+  },
+  "scope": "built image, fresh disposable SQLite in container; not entire compose topology"
+}

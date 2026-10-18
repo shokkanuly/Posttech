@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, false
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -17,6 +17,11 @@ class KnowledgeDocument(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     version: Mapped[str] = mapped_column(String(20), default="1.0", nullable=False)
     revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
+    policy_key: Mapped[str | None] = mapped_column(String(100))
+    priority: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    effective_from: Mapped[date | None] = mapped_column(Date)
+    effective_until: Mapped[date | None] = mapped_column(Date)
+    known_conflict: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     language: Mapped[str] = mapped_column(
         String(5), default="en", server_default="en", nullable=False
     )

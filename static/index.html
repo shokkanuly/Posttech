@@ -11,6 +11,9 @@
   <link rel="stylesheet" href="/static/css/style.css">
   <script src="/static/js/i18n.js" defer></script>
   <script src="/static/js/app.js" defer></script>
+  <script src="/static/js/recovery.js" defer></script>
+  <script src="/static/js/policy_controls.js" defer></script>
+  <script src="/static/js/dialogs.js" defer></script>
   <script src="/static/js/journey.js" defer></script>
 </head>
 <body>
@@ -308,7 +311,7 @@
           <h1 class="h2">Profile</h1>
           <p class="muted">Profile data is kept in Documentolog and 1C and is read-only here. To correct it, contact HR.</p>
         </div>
-        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg><span>Read-only · Documentolog</span></span>
+        <span class="chip"><svg class="ic"><use href="#i-shield"/></svg><span id="profSource">Read-only · 1C:ZUP unconnected</span></span>
       </div>
       <div class="grid profile-grid">
         <div class="card">
@@ -586,10 +589,15 @@
       <div class="card">
         <div class="section-head">
           <h3 class="h4">Enterprise integration boundaries</h3>
-          <span class="status pending">Unconnected</span>
+          <span class="status pending" id="adminIntegrationMode">UNCONNECTED</span>
         </div>
-        <p class="muted">1C:ZUP and Documentolog are unconnected. HR fields remain read-only.</p>
+        <p class="muted" id="adminIntegrationNote">1C:ZUP and Documentolog are unconnected. HR fields remain read-only.</p>
+        <button class="small-btn" id="refreshHrSnapshots">Refresh HR snapshots</button>
         <div id="adminIntegrationsList"></div>
+        <h4 class="h4">Failed deliveries</h4>
+        <div id="adminIntegrationQueue"></div>
+        <h4 class="h4">Profile mapping review</h4>
+        <div id="adminIntegrationReviews"></div>
       </div>
       <div class="grid lower">
         <div class="card">
@@ -794,6 +802,15 @@
           <button class="btn btn-light" id="cancelReview" type="button">Cancel</button>
           <button class="btn btn-primary" id="submitReview" type="submit">Confirm</button>
         </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="recoveryModal" role="dialog" aria-modal="true" aria-labelledby="recoveryTitle">
+    <div class="modal"><h3 id="recoveryTitle">Review recovery</h3><p id="recoveryTarget" data-verbatim></p><p id="recoveryWarning"></p>
+      <form id="recoveryForm">
+        <div class="form-group" id="recoveryEmployeeGroup"><label for="recoveryEmployee">Existing employee account</label><select class="field" id="recoveryEmployee"></select></div>
+        <div class="form-group"><label for="recoveryReason">Reason for recovery</label><textarea class="field" id="recoveryReason" required minlength="3" maxlength="500"></textarea></div>
+        <div class="form-actions"><button class="btn btn-light" type="button" onclick="document.getElementById('recoveryModal').classList.remove('open')">Cancel</button><button class="btn btn-primary" id="submitRecovery">Confirm</button></div>
       </form>
     </div>
   </div>

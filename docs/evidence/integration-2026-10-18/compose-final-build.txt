@@ -1,0 +1,122 @@
+ Image janamen-int-20261018-integration-worker Building
+ Image janamen-int-20261018-web Building
+ Image janamen-int-20261018-gateway Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.44kB done
+#1 DONE 0.0s
+
+#2 [integration-worker internal] load build definition from Dockerfile
+#2 transferring dockerfile: 776B done
+#2 DONE 0.0s
+
+#3 [web internal] load metadata for docker.io/library/python:3.14-slim
+#3 DONE 1.0s
+
+#4 [integration-worker internal] load .dockerignore
+#4 transferring context: 247B done
+#4 DONE 0.0s
+
+#5 [web  1/12] FROM docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+#5 resolve docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 0.0s done
+#5 DONE 0.0s
+
+#6 [web internal] load build context
+#6 transferring context: 44.46kB 0.1s done
+#6 transferring context: 44.46kB 0.1s done
+#6 DONE 0.1s
+
+#7 [integration-worker  2/12] WORKDIR /app
+#7 CACHED
+
+#8 [integration-worker  3/12] RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+#8 CACHED
+
+#9 [integration-worker  4/12] COPY requirements.txt .
+#9 CACHED
+
+#10 [integration-worker  5/12] RUN pip install --no-cache-dir -r requirements.txt
+#10 CACHED
+
+#11 [gateway  6/12] COPY app/ ./app/
+#11 DONE 0.3s
+
+#12 [integration-worker  7/12] COPY migrations/ ./migrations/
+#12 DONE 0.1s
+
+#13 [integration-worker  8/12] COPY alembic.ini .
+#13 DONE 0.0s
+
+#14 [integration-worker  9/12] COPY static/ ./static/
+#14 DONE 0.0s
+
+#15 [integration-worker 10/12] COPY knowledge/ ./knowledge/
+#15 DONE 0.1s
+
+#16 [gateway 11/12] COPY ml/ ./ml/
+#16 DONE 0.1s
+
+#17 [gateway 12/12] RUN useradd --uid 10001 --create-home janamen && mkdir -p /data && chown -R janamen:janamen /app /data
+#17 DONE 1.0s
+
+#18 [gateway] exporting to image
+#18 exporting layers
+#18 exporting layers 0.2s done
+#18 exporting manifest sha256:f600372bc049de9a2b66ad960c4cf7f92dc29b61016ae0e169c3fed54fdefea7 0.0s done
+#18 exporting config sha256:4ddf31411d364f61389662ba1760e691574629c53879b21b4231aa9f1270e450 0.0s done
+#18 exporting attestation manifest sha256:84a0a1e76219077368af773d252d3c5245233abba4a2d0a11911a4aebeaaa6de 0.0s done
+#18 exporting manifest list sha256:e19184931a4f005b6130cb82ba369e63729c5d7d8b85ccb7631bc9fc2b1db74b 0.0s done
+#18 naming to docker.io/library/janamen-int-20261018-gateway:latest done
+#18 unpacking to docker.io/library/janamen-int-20261018-gateway:latest
+#18 unpacking to docker.io/library/janamen-int-20261018-gateway:latest 0.1s done
+#18 DONE 0.5s
+
+#19 [integration-worker] exporting to image
+#19 exporting layers 0.2s done
+#19 exporting manifest sha256:edb3468b99af30fd71d4afbac65aba37b28d383f8d4cbb84328d681af009d9d3 0.0s done
+#19 exporting config sha256:68267674e352ea99acb37a3af5fe3f3e75c256d395d3a492a546c38a32bb9e1e 0.0s done
+#19 exporting attestation manifest sha256:9bd4219964e8bb4ff9639bc8730461871743b62d3bf4eb792c516c83d83f1b36 0.0s done
+#19 exporting manifest list sha256:119853b0a8379df48ca9e54a3b5d4e0136e325871e0630d9f32afdbbd42f231e 0.0s done
+#19 naming to docker.io/library/janamen-int-20261018-integration-worker:latest done
+#19 unpacking to docker.io/library/janamen-int-20261018-integration-worker:latest 0.1s done
+#19 DONE 0.5s
+
+#20 [web] exporting to image
+#20 exporting layers 0.2s done
+#20 exporting manifest sha256:0e1dffff796435ef57ad92deb04b4e5f743e204e0f208273c7f8ab1c0a077a5b 0.0s done
+#20 exporting config sha256:016ebacce686a1f217c8eb43bac79423603743f58d0de35bb17a349b169bc0d6 0.0s done
+#20 exporting attestation manifest sha256:e6cdf366353652ff4b5de7879725dea57f023a28f65510cc6b3fccfbee2253a2 0.0s done
+#20 exporting manifest list sha256:cecd84d9180227bebfb3a68c705f52e06cb1b58e166862d444508c1172493dc8 0.0s done
+#20 naming to docker.io/library/janamen-int-20261018-web:latest done
+#20 unpacking to docker.io/library/janamen-int-20261018-web:latest 0.1s done
+#20 DONE 0.5s
+
+#21 [integration-worker] resolving provenance for metadata file
+#21 DONE 0.1s
+
+#22 [gateway] resolving provenance for metadata file
+#22 DONE 0.1s
+
+#23 [web] resolving provenance for metadata file
+#23 DONE 0.0s
+ Image janamen-int-20261018-integration-worker Built
+ Image janamen-int-20261018-web Built
+ Image janamen-int-20261018-gateway Built
+ Container janamen-int-20261018-db-1 Running
+ Container janamen-int-20261018-gateway-1 Recreate
+ Container janamen-int-20261018-web-1 Recreate
+ Container janamen-int-20261018-gateway-1 Recreated
+ Container janamen-int-20261018-web-1 Recreated
+ Container janamen-int-20261018-integration-worker-1 Recreate
+ Container janamen-int-20261018-integration-worker-1 Recreated
+ Container janamen-int-20261018-gateway-1 Starting
+ Container janamen-int-20261018-db-1 Waiting
+ Container janamen-int-20261018-gateway-1 Started
+ Container janamen-int-20261018-db-1 Healthy
+ Container janamen-int-20261018-web-1 Starting
+ Container janamen-int-20261018-web-1 Started
+ Container janamen-int-20261018-web-1 Waiting
+ Container janamen-int-20261018-db-1 Waiting
+ Container janamen-int-20261018-db-1 Healthy
+ Container janamen-int-20261018-web-1 Healthy
+ Container janamen-int-20261018-integration-worker-1 Starting
+ Container janamen-int-20261018-integration-worker-1 Started

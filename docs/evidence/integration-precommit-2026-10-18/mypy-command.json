@@ -1,0 +1,9 @@
+{
+  "command": [
+    ".venv/bin/python",
+    "-m",
+    "mypy",
+    "app"
+  ],
+  "exit_code": 0
+}

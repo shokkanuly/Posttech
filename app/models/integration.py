@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -29,6 +29,13 @@ class IntegrationOutbox(Base):
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
 
+    payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    gateway_job_id: Mapped[str | None] = mapped_column(String(36))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    retry_key: Mapped[str | None] = mapped_column(String(32))
+    recovery_key: Mapped[str | None] = mapped_column(String(32))
     request: Mapped[Request] = relationship("Request")
 
 
@@ -39,6 +46,24 @@ class IntegrationNonce(Base):
 
     nonce: Mapped[str] = mapped_column(String(64), primary_key=True)
     seen_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+
+
+class IntegrationSyncState(Base):
+    __tablename__ = "integration_sync_state"
+    name: Mapped[str] = mapped_column(String(30), primary_key=True)
+    mode: Mapped[str] = mapped_column(String(20), default="UNCONNECTED", nullable=False)
+    cursor: Mapped[datetime | None] = mapped_column(DateTime)
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_error: Mapped[str | None] = mapped_column(String(40))
+    records_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+
+class IntegrationReview(Base):
+    __tablename__ = "integration_reviews"
+    employee_code: Mapped[str] = mapped_column(String(50), primary_key=True)
+    reason: Mapped[str] = mapped_column(String(40), nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 if TYPE_CHECKING:

@@ -26,6 +26,7 @@ class Course(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     duration_minutes: Mapped[int] = mapped_column(Integer, default=20, nullable=False)
     is_mandatory: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_synthetic: Mapped[bool | None] = mapped_column(Boolean)
     due_date: Mapped[date | None] = mapped_column(SQLDate, nullable=True)
     total_lessons: Mapped[int] = mapped_column(Integer, default=4, nullable=False)
     cover_gradient: Mapped[str] = mapped_column(

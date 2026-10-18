@@ -1,0 +1,24 @@
+{
+  "baseline_commit": "eafbaa7c73fe639ad14f1d0131ff5cf4bf19d872",
+  "baseline_branch": "codex/fix-plan",
+  "working_branch": "codex/integration-blueprint-hardening",
+  "initial_dirty_files": [],
+  "python": "3.14.0",
+  "node": "v24.14.1",
+  "core_head": "0011_merge_profile_updates (head)",
+  "local_settings": {
+    "environment": "development",
+    "demo_mode": true,
+    "gateway_enabled": false,
+    "ai_provider": "gemini"
+  },
+  "owned_compose_project": "janamen-int-20261018",
+  "web_url": "http://127.0.0.1:18778",
+  "postgres_port": 15448,
+  "mode": "MOCK",
+  "private_environment_committed": false,
+  "existing_projects_untouched": [
+    "janamen-qa-check",
+    "janamen-gateway-check"
+  ]
+}

@@ -1,6 +1,7 @@
 .git
 .venv
 .env
+.env.gateway
 *.db
 *.db-*
 __pycache__

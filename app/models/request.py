@@ -1,9 +1,22 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    true,
+)
 from sqlalchemy import Date as SQLDate
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -14,6 +27,7 @@ from app.models.enums import RequestEventType, RequestStatus, RequestType
 
 class Request(Base):
     __tablename__ = "requests"
+    __table_args__ = (UniqueConstraint("user_id", "submission_key", name="uq_request_submission"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     request_code: Mapped[str] = mapped_column(
@@ -25,10 +39,12 @@ class Request(Base):
     type: Mapped[RequestType] = mapped_column(SQLEnum(RequestType), nullable=False)
     start_date: Mapped[date] = mapped_column(SQLDate, nullable=False)
     end_date: Mapped[date | None] = mapped_column(SQLDate, nullable=True)
-    amount: Mapped[float | None] = mapped_column(
-        Float, nullable=True
+    amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), nullable=True
     )  # For advance payments (e.g., KZT)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    submission_key: Mapped[str | None] = mapped_column(String(80))
+    submission_hash: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[RequestStatus] = mapped_column(
         SQLEnum(RequestStatus), default=RequestStatus.PENDING, nullable=False, index=True
     )
@@ -39,10 +55,17 @@ class Request(Base):
     external_sync_id: Mapped[str | None] = mapped_column(
         String(100), nullable=True
     )  # Reference to Documentolog/1C
-    # Forward-only gateway progress: QUEUED, ORDER_CREATED, SIGNING, SIGNED or SIGN_REJECTED.
+    # Separate from employee-facing approval: PENDING/SENT/REGISTERED/FAILED/DEAD.
     integration_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    integration_mode: Mapped[str | None] = mapped_column(String(20))
+    gateway_job_id: Mapped[str | None] = mapped_column(String(36))
+    integration_completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    charged_leave_days: Mapped[float | None] = mapped_column(Float)
+    leave_balance_confirmed: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=true()
+    )
     # Profile update only: {field: {"from": old, "to": new}}, applied when approved.
-    profile_changes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    profile_changes: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

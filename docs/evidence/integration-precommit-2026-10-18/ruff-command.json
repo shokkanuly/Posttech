@@ -1,0 +1,13 @@
+{
+  "command": [
+    ".venv/bin/python",
+    "-m",
+    "ruff",
+    "check",
+    "app",
+    "tests",
+    "migrations",
+    "smoke_test.py"
+  ],
+  "exit_code": 0
+}

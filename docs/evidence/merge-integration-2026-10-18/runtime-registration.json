@@ -1,0 +1,7 @@
+{
+  "command": ".venv/bin/python /tmp/janamen-merged-runtime-check.py",
+  "executed": true,
+  "exit_code": 0,
+  "seconds": 1.65,
+  "output": "runtime-registration.txt"
+}

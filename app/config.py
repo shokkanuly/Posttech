@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     AI_RETRIEVAL_MODEL_PATH: str = ""
     AI_CONFIDENCE_THRESHOLD: float = Field(default=0.8, ge=0.0, le=1.0)
     GEMINI_API_KEY: str = Field(default="", repr=False)
+    # Operator approval applies to the knowledge text sent externally, not employee queries.
+    GEMINI_DATA_SHARING_APPROVED: bool = False
     GEMINI_MODEL: str = Field(default="gemini-3.8-flash", pattern=r"^[a-z0-9.\-]{3,64}$")
     GEMINI_TIMEOUT_SECONDS: float = Field(default=12.0, gt=0, le=60)
     MAX_ADVANCE_AMOUNT: float = Field(default=1_000_000, gt=0, allow_inf_nan=False)
@@ -45,8 +47,12 @@ class Settings(BaseSettings):
     INTEGRATION_TLS_CERT: str = ""
     INTEGRATION_TLS_KEY: str = Field(default="", repr=False)
     INTEGRATION_TLS_CA: str = ""
+    INTEGRATION_SYNC_INTERVAL_SECONDS: int = Field(default=900, ge=60, le=86400)
+    INTEGRATION_REFRESH_COOLDOWN_SECONDS: int = Field(default=60, ge=10, le=3600)
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore", hide_input_in_errors=True
+    )
 
     @model_validator(mode="after")
     def validate_security(self):

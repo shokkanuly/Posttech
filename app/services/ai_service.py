@@ -27,6 +27,9 @@ from app.schemas.ai import AIChatRequest, AIChatResponse, SourceCitation
 from app.services import ml_retrieval
 from app.services.ai_personal import personal_facts
 from app.services.audit_service import audit_service
+from app.services.knowledge_conflicts import has_conflicting_numeric_claims
+from app.services.policy_selection import ambiguous_policy, current_passages
+from app.services.request_service import request_today
 
 # ponytail: Latin→Cyrillic first-pass transliteration, enough to match seeded names
 # (Timur → тимур) in Russian questions. Use a name-alias table for real HR data.
@@ -666,7 +669,7 @@ class AIService:
         target_lang = language or current_language.get()
         chunks = [
             c
-            for c in cls.accessible_chunks(db, user_role)
+            for c in current_passages(list(cls.accessible_chunks(db, user_role)), request_today())
             if source_text(c, target_lang) is not None
         ]
         if not chunks:
@@ -803,7 +806,7 @@ class AIService:
                     "chunk": chunk,
                 }
             )
-        result = gemini.generate_grounded_answer(question, passages, target_lang)
+        result = gemini.generate_grounded_answer(passages, target_lang)
         if result is None:
             return None, "unavailable"
         verified = cls.verify_llm_answer(result, passages)
@@ -877,9 +880,24 @@ class AIService:
         else:
             ranked = cls.rank_chunks(db, question, user.role, language=effective_language)
             similarity = {chunk.id: sim for chunk, _cov, sim in ranked}
-            chunks = cls.strict_matches(question, ranked, language=effective_language)
+            # Check every eligible passage before the two-citation limit or model reranking.
+            conflicting = ambiguous_policy(
+                ranked, settings.AI_CONFIDENCE_THRESHOLD
+            ) or has_conflicting_numeric_claims(
+                text["content"]
+                for chunk, coverage, _sim in ranked
+                if coverage >= settings.AI_CONFIDENCE_THRESHOLD
+                and (text := source_text(chunk, effective_language)) is not None
+            )
+            chunks = (
+                []
+                if conflicting
+                else cls.strict_matches(question, ranked, language=effective_language)
+            )
             llm_answer = None
-            if gemini.enabled():
+            if conflicting:
+                llm_status = "conflicting_sources"
+            elif gemini.enabled():
                 verified, llm_status = cls.answer_with_llm(
                     question, ranked, language=effective_language
                 )

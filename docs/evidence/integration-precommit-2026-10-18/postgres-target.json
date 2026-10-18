@@ -1,0 +1,9 @@
+{
+  "purpose": "Disposable PostgreSQL verification only; never used by demo/development services",
+  "directory": "/var/folders/c7/hdw9k4tn52z32sbg0dld44100000gn/T/janamen-precommit-20261018-kjg5e_uo",
+  "container": "janamen-disposable-check-b5930545",
+  "host_port": 63407,
+  "database": "janamen_verify",
+  "storage": "tmpfs; no named volume or pre-existing database mounted",
+  "credential_values_committed": false
+}

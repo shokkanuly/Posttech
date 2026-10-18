@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
@@ -30,6 +31,21 @@ class DocumentCreate(BaseModel):
     is_synthetic: StrictBool = False
     language: Language = "en"
     translations: dict[Language, DocumentTranslation] = Field(default_factory=dict)
+    policy_key: str | None = Field(default=None, min_length=1, max_length=100)
+    priority: int = Field(default=0, ge=-100, le=100, strict=True)
+    effective_from: date | None = None
+    effective_until: date | None = None
+    known_conflict: StrictBool = False
+
+    @model_validator(mode="after")
+    def valid_period(self):
+        if (
+            self.effective_from
+            and self.effective_until
+            and self.effective_from > self.effective_until
+        ):
+            raise ValueError("Invalid policy effective period")
+        return self
 
 
 class DocumentPatch(BaseModel):
@@ -43,6 +59,11 @@ class DocumentPatch(BaseModel):
     expected_revision: BodyDatabaseID | None = None
     language: Language | None = None
     translations: dict[Language, DocumentTranslation] | None = None
+    policy_key: str | None = Field(default=None, min_length=1, max_length=100)
+    priority: int | None = Field(default=None, ge=-100, le=100, strict=True)
+    effective_from: date | None = None
+    effective_until: date | None = None
+    known_conflict: StrictBool | None = None
 
     @model_validator(mode="after")
     def require_reviewed_revision(self):
@@ -102,6 +123,11 @@ class KnowledgeDocumentResponse(BaseModel):
     updated_at: UTCDateTime
     language: str
     translations: dict[Language, DocumentTranslation]
+    policy_key: str | None
+    priority: int
+    effective_from: date | None
+    effective_until: date | None
+    known_conflict: bool
 
 
 class KnowledgeDocumentSummary(BaseModel):

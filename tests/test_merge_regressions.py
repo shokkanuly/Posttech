@@ -6,6 +6,7 @@ from datetime import date
 import httpx
 import pytest
 
+from app.config import settings
 from app.integrations import gemini
 from app.integrations.one_c_zup import one_c_adapter
 from app.services.ai_service import AIService
@@ -58,7 +59,10 @@ def test_gemini_error_logs_are_redacted(monkeypatch, caplog):
         raise httpx.ConnectError("private-question SECRET-KEY private-document")
 
     monkeypatch.setattr(httpx, "post", fail)
-    assert gemini.generate_grounded_answer("private-question", [], "ru") is None
+    monkeypatch.setattr(settings, "AI_PROVIDER", "gemini")
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key-not-real")
+    monkeypatch.setattr(settings, "GEMINI_DATA_SHARING_APPROVED", True)
+    assert gemini.generate_grounded_answer([], "ru") is None
     assert "ConnectError" in caplog.text
     assert all(
         value not in caplog.text for value in ["private-question", "SECRET-KEY", "private-document"]

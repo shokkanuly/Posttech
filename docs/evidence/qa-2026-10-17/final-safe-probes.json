@@ -1,0 +1,7 @@
+{
+  "command": "env PYTHONPATH=. .venv/bin/python docs/evidence/qa-2026-10-17/safe_probes.py",
+  "executed": true,
+  "exit_code": 0,
+  "seconds": 4.97,
+  "output": "final-safe-probes.txt"
+}

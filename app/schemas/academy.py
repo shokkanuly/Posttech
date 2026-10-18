@@ -21,6 +21,7 @@ class CourseResponse(BaseModel):
     description: str
     duration_minutes: int
     is_mandatory: bool
+    is_synthetic: bool | None = None
     due_date: date | None = None
     total_lessons: int
     cover_gradient: str

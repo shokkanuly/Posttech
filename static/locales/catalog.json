@@ -804,6 +804,10 @@
       "ru": "Результаты назначенного обучения",
       "kk": "Тағайындалған оқу нәтижелері"
     },
+    "None (Department Head)": {
+      "ru": "Не назначен (руководитель подразделения)",
+      "kk": "Тағайындалмаған (бөлімше басшысы)"
+    },
     "No requests found.": {
       "ru": "Заявки не найдены.",
       "kk": "Өтініштер табылмады."
@@ -929,8 +933,8 @@
       "kk": "Бапталмаған"
     },
     "UNCONNECTED": {
-      "ru": "НЕ ПОДКЛЮЧЕНО",
-      "kk": "ҚОСЫЛМАҒАН"
+      "ru": "Не подключено",
+      "kk": "Қосылмаған"
     },
     "Draft saved. Review its text, then approve it for AI retrieval.": {
       "ru": "Черновик сохранён. Проверьте текст и утвердите его для ответов Jana.",
@@ -2789,8 +2793,8 @@
       "kk": "Бұйрық қабылданбады"
     },
     "Integration delivery failed": {
-      "ru": "Сбой передачи в интеграцию",
-      "kk": "Интеграцияға жіберу сәтсіз аяқталды"
+      "ru": "Ошибка доставки в интеграцию",
+      "kk": "Интеграцияға жеткізу қатесі"
     },
     "Profile update": {
       "ru": "Изменение профиля",
@@ -3128,6 +3132,198 @@
       "ru": "Командировка",
       "kk": "Іссапар"
     },
+    "Refresh HR snapshots": {
+      "ru": "Обновить кадровые данные",
+      "kk": "Кадр деректерін жаңарту"
+    },
+    "Data as of": {
+      "ru": "Данные на",
+      "kk": "Деректер күні"
+    },
+    "Stale snapshot": {
+      "ru": "Данные устарели",
+      "kk": "Деректер ескірген"
+    },
+    "MOCK · Read-only": {
+      "ru": "MOCK · Только чтение",
+      "kk": "MOCK · Тек оқу"
+    },
+    "Failed deliveries": {
+      "ru": "Ошибки передачи",
+      "kk": "Жеткізу қателері"
+    },
+    "Profile mapping review": {
+      "ru": "Проверка сопоставления сотрудников",
+      "kk": "Қызметкерлерді сәйкестендіруді тексеру"
+    },
+    "Pending deliveries": {
+      "ru": "Ожидают передачи",
+      "kk": "Жеткізуді күтуде"
+    },
+    "Last success": {
+      "ru": "Последнее успешное действие",
+      "kk": "Соңғы сәтті әрекет"
+    },
+    "No failed deliveries.": {
+      "ru": "Ошибок передачи нет.",
+      "kk": "Жеткізу қателері жоқ."
+    },
+    "No mapping issues.": {
+      "ru": "Проблем сопоставления нет.",
+      "kk": "Сәйкестендіру мәселелері жоқ."
+    },
+    "MOCK connectors only. No live enterprise connection.": {
+      "ru": "Только MOCK-коннекторы. Подключения к реальным системам нет.",
+      "kk": "Тек MOCK-коннекторлар. Нақты жүйелерге қосылым жоқ."
+    },
+    "Gateway unavailable; last snapshot retained.": {
+      "ru": "Шлюз недоступен; сохранены последние данные.",
+      "kk": "Шлюз қолжетімсіз; соңғы деректер сақталды."
+    },
+    "Integration gateway is disabled.": {
+      "ru": "Интеграционный шлюз выключен.",
+      "kk": "Интеграция шлюзі өшірілген."
+    },
+    "REGISTERED": {
+      "ru": "Зарегистрировано",
+      "kk": "Тіркелген"
+    },
+    "SENT": {
+      "ru": "Отправлено",
+      "kk": "Жіберілген"
+    },
+    "FAILED": {
+      "ru": "Ошибка",
+      "kk": "Қате"
+    },
+    "DEAD": {
+      "ru": "Попытки исчерпаны",
+      "kk": "Әрекеттер таусылды"
+    },
+    "MOCK gateway only. Synthetic connectors; no live 1C or Documentolog connection.": {
+      "ru": "Только MOCK-шлюз и вымышленные данные; реальные 1С и Documentolog не подключены.",
+      "kk": "Тек MOCK-шлюз және ойдан шығарылған деректер; нақты 1С пен Documentolog қосылмаған."
+    },
+    "Gateway disabled. Local synthetic records; no enterprise connection.": {
+      "ru": "Шлюз выключен. Данные локальные и вымышленные; корпоративные системы не подключены.",
+      "kk": "Шлюз өшірілген. Деректер жергілікті әрі ойдан шығарылған; корпоративтік жүйелер қосылмаған."
+    },
+    "Review recovery": {
+      "ru": "Проверить восстановление",
+      "kk": "Қалпына келтіруді тексеру"
+    },
+    "Resolve mapping": {
+      "ru": "Настроить соответствие",
+      "kk": "Сәйкестікті реттеу"
+    },
+    "Operator correction required": {
+      "ru": "Требуется исправление оператором",
+      "kk": "Оператордың түзетуі қажет"
+    },
+    "Existing employee account": {
+      "ru": "Существующая учётная запись сотрудника",
+      "kk": "Қызметкердің қолданыстағы тіркелгісі"
+    },
+    "Recheck current mapping": {
+      "ru": "Повторно проверить соответствие",
+      "kk": "Ағымдағы сәйкестікті қайта тексеру"
+    },
+    "Reason for recovery": {
+      "ru": "Причина восстановления",
+      "kk": "Қалпына келтіру себебі"
+    },
+    "Recovery action saved.": {
+      "ru": "Действие восстановления сохранено.",
+      "kk": "Қалпына келтіру әрекеті сақталды."
+    },
+    "Verify the employee code and account. This changes the existing profile code; no account or role is created.": {
+      "ru": "Проверьте код сотрудника и учётную запись. Изменится код существующего профиля; новая запись или роль не создаётся.",
+      "kk": "Қызметкер кодын және тіркелгісін тексеріңіз. Қолданыстағы профиль коды өзгереді; жаңа тіркелгі немесе рөл жасалмайды."
+    },
+    "The gateway is reconciled first. The original document key is preserved; validation failures and missing accepted jobs require investigation.": {
+      "ru": "Сначала проверяется состояние шлюза. Исходный ключ документа сохраняется; ошибки проверки и потерянные принятые задания требуют расследования.",
+      "kk": "Алдымен шлюз күйі тексеріледі. Бастапқы құжат кілті сақталады; тексеру қателері мен жоғалған қабылданған тапсырмалар зерттеуді қажет етеді."
+    },
+    "Policy precedence": {
+      "ru": "Приоритет кадровых правил",
+      "kk": "Кадрлық ережелер басымдығы"
+    },
+    "Approved policy key": {
+      "ru": "Ключ кадрового правила",
+      "kk": "Кадрлық ереже кілті"
+    },
+    "Priority": {
+      "ru": "Приоритет",
+      "kk": "Басымдық"
+    },
+    "Effective from": {
+      "ru": "Действует с",
+      "kk": "Күшіне енетін күні"
+    },
+    "Effective until": {
+      "ru": "Действует до",
+      "kk": "Қолданылу мерзімінің соңы"
+    },
+    "Known source conflict": {
+      "ru": "Известное противоречие источника",
+      "kk": "Дереккөздің белгілі қайшылығы"
+    },
+    "Changes require a new review and approval. Equal policy precedence causes fallback; flagged approved sources are withheld.": {
+      "ru": "Изменения требуют повторной проверки и утверждения. При равном приоритете или отмеченном противоречии утверждённого источника помощник направит вопрос в HR.",
+      "kk": "Өзгерістер қайта тексеріліп, бекітілуі тиіс. Басымдықтар тең болса немесе бекітілген дереккөзде қайшылық белгіленсе, көмекші сұрақты HR бөліміне бағыттайды."
+    },
+    "Save as draft": {
+      "ru": "Сохранить как черновик",
+      "kk": "Жоба ретінде сақтау"
+    },
+    "Unverified course provenance": {
+      "ru": "Происхождение курса не подтверждено",
+      "kk": "Курстың шығу тегі расталмаған"
+    },
+    "MOCK document registered": {
+      "ru": "MOCK: документ зарегистрирован в имитации",
+      "kk": "MOCK: құжат үлгілік жүйеде тіркелді"
+    },
+    "MOCK document registration failed": {
+      "ru": "MOCK: ошибка имитации регистрации документа",
+      "kk": "MOCK: құжатты үлгілік тіркеу қатесі"
+    },
+    "Integration gateway is disabled": {
+      "ru": "Шлюз интеграции отключён",
+      "kk": "Интеграция шлюзі өшірілген"
+    },
+    "Integration task not found": {
+      "ru": "Задание интеграции не найдено",
+      "kk": "Интеграция тапсырмасы табылмады"
+    },
+    "This task requires operator correction, not replay": {
+      "ru": "Для задания требуется исправление оператором",
+      "kk": "Тапсырманы оператор түзетуі қажет"
+    },
+    "Recovery state changed; reload the queue": {
+      "ru": "Состояние восстановления изменилось; обновите очередь",
+      "kk": "Қалпына келтіру күйі өзгерді; кезекті жаңартыңыз"
+    },
+    "Review changed; reload before resolving": {
+      "ru": "Данные проверки изменились; обновите их перед исправлением",
+      "kk": "Тексеру деректері өзгерді; түзетуден бұрын жаңартыңыз"
+    },
+    "Snapshot still conflicts; resolve source or manager mapping first": {
+      "ru": "Снимок содержит противоречие; сначала исправьте источник или соответствие руководителя",
+      "kk": "Деректерде қайшылық бар; алдымен дереккөзді немесе басшы сәйкестігін түзетіңіз"
+    },
+    "Snapshot unavailable; review retained": {
+      "ru": "Снимок недоступен; проверка сохранена",
+      "kk": "Деректер қолжетімсіз; тексеру сақталды"
+    },
+    "Employee code already belongs to another account": {
+      "ru": "Код сотрудника уже принадлежит другой учётной записи",
+      "kk": "Қызметкер коды басқа тіркелгіге тиесілі"
+    },
+    "Invalid policy effective period": {
+      "ru": "Неверный срок действия кадрового правила",
+      "kk": "Кадрлық ереженің қолданылу мерзімі қате"
+    },
     "Enroll in course": {
       "ru": "Записаться на курс",
       "kk": "Курсқа жазылу"
@@ -3203,10 +3399,6 @@
     "Profile data is kept in Documentolog and 1C and is read-only here. To correct it, contact HR.": {
       "ru": "Данные профиля ведутся в Documentolog и 1С, здесь доступны только для чтения. Чтобы исправить их, обратитесь в HR.",
       "kk": "Профиль деректері Documentolog пен 1С жүйесінде жүргізіледі, мұнда тек оқуға қолжетімді. Түзету үшін HR-ға хабарласыңыз."
-    },
-    "Profile data is kept in Documentolog and is read-only here; contact HR to correct it": {
-      "ru": "Данные профиля ведутся в Documentolog и здесь доступны только для чтения; для исправления обратитесь в HR",
-      "kk": "Профиль деректері Documentolog жүйесінде жүргізіледі және мұнда тек оқуға қолжетімді; түзету үшін HR-ға хабарласыңыз"
     },
     "Vacation calendar": {
       "ru": "Календарь отпусков",
@@ -3299,6 +3491,10 @@
     "Print": {
       "ru": "Печать",
       "kk": "Басып шығару"
+    },
+    "Profile data is kept in 1C and Documentolog and is read-only here; contact HR to correct it": {
+      "ru": "Данные профиля ведутся в 1С и Documentolog и здесь доступны только для чтения; для исправления обратитесь в HR",
+      "kk": "Профиль деректері 1С пен Documentolog жүйесінде жүргізіледі және мұнда тек оқуға қолжетімді; түзету үшін HR-ға хабарласыңыз"
     }
   },
   "rules": [
@@ -3418,27 +3614,27 @@
       "kk": "Демалыс күндері жеткіліксіз: сұралғаны {0}, қолжетімдісі {1}."
     },
     {
-      "pattern": "Your (Vacation|Advance payment|Profile update) request \\((REQ-[A-Z0-9-]+)\\) was submitted and sent to (your manager|HR) for review\\.",
+      "pattern": "Your (Vacation|Advance payment) request \\((REQ-[A-Z0-9-]+)\\) was submitted and sent to (your manager|HR) for review\\.",
       "ru": "Заявка «{0}» ({1}) направлена на рассмотрение: {2}.",
       "kk": "«{0}» өтініші ({1}) қарауға жіберілді: {2}."
     },
     {
-      "pattern": "Your (Vacation|Advance payment|Profile update) request \\((REQ-[A-Z0-9-]+)\\) was submitted\\. An authorized reviewer must be configured; contact HR\\.",
+      "pattern": "Your (Vacation|Advance payment) request \\((REQ-[A-Z0-9-]+)\\) was submitted\\. An authorized reviewer must be configured; contact HR\\.",
       "ru": "Заявка «{0}» ({1}) подана. Обратитесь в кадровую службу для назначения уполномоченного согласующего.",
       "kk": "«{0}» өтініші ({1}) берілді. Өкілетті келісушіні тағайындау үшін кадр қызметіне хабарласыңыз."
     },
     {
-      "pattern": "(.+) submitted a (Vacation|Advance payment|Profile update) request \\((REQ-[A-Z0-9-]+)\\)\\.",
+      "pattern": "(.+) submitted a (Vacation|Advance payment) request \\((REQ-[A-Z0-9-]+)\\)\\.",
       "ru": "{0}: новая заявка «{1}» ({2}).",
       "kk": "{0}: жаңа «{1}» өтініші ({2})."
     },
     {
-      "pattern": "Your (Vacation|Advance payment|Profile update) request \\((REQ-[A-Z0-9-]+)\\) was (approved|rejected) by (.+?)\\. ?(.*)",
+      "pattern": "Your (Vacation|Advance payment) request \\((REQ-[A-Z0-9-]+)\\) was (approved|rejected) by (.+?)\\. ?(.*)",
       "ru": "По заявке «{0}» ({1}) принято решение: {2}. Ответственный: {3}. {4}",
       "kk": "«{0}» өтініші ({1}) бойынша шешім: {2}. Жауапты: {3}. {4}"
     },
     {
-      "pattern": "Submitted (Vacation|Advance payment|Profile update) request\\. (.*)",
+      "pattern": "Submitted (Vacation|Advance payment) request\\. (.*)",
       "ru": "Подана заявка «{0}». {1}",
       "kk": "«{0}» өтініші берілді. {1}"
     },
@@ -3511,6 +3707,41 @@
       "pattern": "Request (REQ-N\\d+) could not be delivered to the integration gateway\\. Check the integration queue\\.",
       "ru": "Заявку {0} не удалось передать в интеграционный шлюз. Проверьте очередь интеграции.",
       "kk": "{0} өтінімін интеграциялық шлюзге жіберу мүмкін болмады. Интеграция кезегін тексеріңіз."
+    },
+    {
+      "pattern": "(REQ-[A-Z0-9]+): (REGISTERED|FAILED|DEAD)\\. MOCK only; no official document or signature was created\\.",
+      "ru": "{0}: {1}. Только имитация MOCK; официальный документ или подпись не созданы.",
+      "kk": "{0}: {1}. Тек MOCK үлгісі; ресми құжат немесе қолтаңба жасалған жоқ."
+    },
+    {
+      "pattern": "(REQ-[A-Z0-9]+): ([A-Z0-9_]+)\\. Review the integration queue\\.",
+      "ru": "{0}: {1}. Проверьте очередь интеграции.",
+      "kk": "{0}: {1}. Интеграция кезегін тексеріңіз."
+    },
+    {
+      "pattern": "Your (Vacation|Advance payment|Profile update) request \\((REQ-[A-Z0-9-]+)\\) was submitted and sent to (your manager|HR) for review\\.",
+      "ru": "Заявка «{0}» ({1}) направлена на рассмотрение: {2}.",
+      "kk": "«{0}» өтініші ({1}) қарауға жіберілді: {2}."
+    },
+    {
+      "pattern": "Your (Vacation|Advance payment|Profile update) request \\((REQ-[A-Z0-9-]+)\\) was submitted\\. An authorized reviewer must be configured; contact HR\\.",
+      "ru": "Заявка «{0}» ({1}) подана. Обратитесь в кадровую службу для назначения уполномоченного согласующего.",
+      "kk": "«{0}» өтініші ({1}) берілді. Өкілетті келісушіні тағайындау үшін кадр қызметіне хабарласыңыз."
+    },
+    {
+      "pattern": "(.+) submitted a (Vacation|Advance payment|Profile update) request \\((REQ-[A-Z0-9-]+)\\)\\.",
+      "ru": "{0}: новая заявка «{1}» ({2}).",
+      "kk": "{0}: жаңа «{1}» өтініші ({2})."
+    },
+    {
+      "pattern": "Your (Vacation|Advance payment|Profile update) request \\((REQ-[A-Z0-9-]+)\\) was (approved|rejected) by (.+?)\\. ?(.*)",
+      "ru": "По заявке «{0}» ({1}) принято решение: {2}. Ответственный: {3}. {4}",
+      "kk": "«{0}» өтініші ({1}) бойынша шешім: {2}. Жауапты: {3}. {4}"
+    },
+    {
+      "pattern": "Submitted (Vacation|Advance payment|Profile update) request\\. (.*)",
+      "ru": "Подана заявка «{0}». {1}",
+      "kk": "«{0}» өтініші берілді. {1}"
     },
     {
       "pattern": "Course assigned: (.+)",

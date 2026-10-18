@@ -1,0 +1,286 @@
+FFFFFF.....                                                              [100%]
+=================================== FAILURES ===================================
+_ test_conflicting_approved_numbers_fall_back_before_provider[en-Qacheckpolicy vacation days?-Qacheckpolicy vacation days are {} calendar days.-False] _
+
+client = <starlette.testclient.TestClient object at 0x10df44d70>
+db_session = <sqlalchemy.orm.session.Session object at 0x10e0de3c0>
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10dec50f0>
+provider_enabled = False, language = 'en'
+question = 'Qacheckpolicy vacation days?'
+claim = 'Qacheckpolicy vacation days are {} calendar days.'
+
+    @pytest.mark.parametrize("provider_enabled", [False, True])
+    @pytest.mark.parametrize(
+        "language,question,claim",
+        [
+            ("en", "Qacheckpolicy vacation days?", "Qacheckpolicy vacation days are {} calendar days."),
+            ("ru", "Qacheckpolicy отпуск дней?", "Qacheckpolicy отпуск составляет {} дней."),
+            ("kk", "Qacheckpolicy демалыс күндері?", "Qacheckpolicy демалыс ұзақтығы {} күн."),
+        ],
+    )
+    def test_conflicting_approved_numbers_fall_back_before_provider(
+        client, db_session, employee_headers, monkeypatch, provider_enabled, language, question, claim
+    ):
+        # The third passage must still be checked when an answer would cite only two.
+        for days in (24, 24, 40):
+            approved_claim(db_session, language, "Qacheckpolicy vacation", claim.format(days))
+        calls = []
+        monkeypatch.setattr(gemini, "enabled", lambda: provider_enabled)
+        monkeypatch.setattr(gemini, "generate_grounded_answer", lambda *args: calls.append(args))
+        result = client.post(
+            "/api/v1/ai/chat",
+            headers={**employee_headers, "Accept-Language": language},
+            json={"question": question},
+        )
+        assert result.status_code == 200
+        answer = result.json()
+>       assert answer["answer_status"] == "fallback"
+E       AssertionError: assert 'grounded' == 'fallback'
+E
+E         - fallback
+E         + grounded
+
+tests/test_qa_acceptance.py:53: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+Seeding database with deterministic synthetic data...
+Database seeded successfully with deterministic accounts and scenario data!
+_ test_conflicting_approved_numbers_fall_back_before_provider[en-Qacheckpolicy vacation days?-Qacheckpolicy vacation days are {} calendar days.-True] _
+
+client = <starlette.testclient.TestClient object at 0x10e00e990>
+db_session = <sqlalchemy.orm.session.Session object at 0x10e0dcad0>
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10dec5810>
+provider_enabled = True, language = 'en'
+question = 'Qacheckpolicy vacation days?'
+claim = 'Qacheckpolicy vacation days are {} calendar days.'
+
+    @pytest.mark.parametrize("provider_enabled", [False, True])
+    @pytest.mark.parametrize(
+        "language,question,claim",
+        [
+            ("en", "Qacheckpolicy vacation days?", "Qacheckpolicy vacation days are {} calendar days."),
+            ("ru", "Qacheckpolicy отпуск дней?", "Qacheckpolicy отпуск составляет {} дней."),
+            ("kk", "Qacheckpolicy демалыс күндері?", "Qacheckpolicy демалыс ұзақтығы {} күн."),
+        ],
+    )
+    def test_conflicting_approved_numbers_fall_back_before_provider(
+        client, db_session, employee_headers, monkeypatch, provider_enabled, language, question, claim
+    ):
+        # The third passage must still be checked when an answer would cite only two.
+        for days in (24, 24, 40):
+            approved_claim(db_session, language, "Qacheckpolicy vacation", claim.format(days))
+        calls = []
+        monkeypatch.setattr(gemini, "enabled", lambda: provider_enabled)
+        monkeypatch.setattr(gemini, "generate_grounded_answer", lambda *args: calls.append(args))
+        result = client.post(
+            "/api/v1/ai/chat",
+            headers={**employee_headers, "Accept-Language": language},
+            json={"question": question},
+        )
+        assert result.status_code == 200
+        answer = result.json()
+>       assert answer["answer_status"] == "fallback"
+E       AssertionError: assert 'grounded' == 'fallback'
+E
+E         - fallback
+E         + grounded
+
+tests/test_qa_acceptance.py:53: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+Seeding database with deterministic synthetic data...
+Database seeded successfully with deterministic accounts and scenario data!
+_ test_conflicting_approved_numbers_fall_back_before_provider[ru-Qacheckpolicy \u043e\u0442\u043f\u0443\u0441\u043a \u0434\u043d\u0435\u0439?-Qacheckpolicy \u043e\u0442\u043f\u0443\u0441\u043a \u0441\u043e\u0441\u0442\u0430\u0432\u043b\u044f\u0435\u0442 {} \u0434\u043d\u0435\u0439.-False] _
+
+client = <starlette.testclient.TestClient object at 0x10e34d090>
+db_session = <sqlalchemy.orm.session.Session object at 0x10e0de120>
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e117650>
+provider_enabled = False, language = 'ru'
+question = 'Qacheckpolicy отпуск дней?'
+claim = 'Qacheckpolicy отпуск составляет {} дней.'
+
+    @pytest.mark.parametrize("provider_enabled", [False, True])
+    @pytest.mark.parametrize(
+        "language,question,claim",
+        [
+            ("en", "Qacheckpolicy vacation days?", "Qacheckpolicy vacation days are {} calendar days."),
+            ("ru", "Qacheckpolicy отпуск дней?", "Qacheckpolicy отпуск составляет {} дней."),
+            ("kk", "Qacheckpolicy демалыс күндері?", "Qacheckpolicy демалыс ұзақтығы {} күн."),
+        ],
+    )
+    def test_conflicting_approved_numbers_fall_back_before_provider(
+        client, db_session, employee_headers, monkeypatch, provider_enabled, language, question, claim
+    ):
+        # The third passage must still be checked when an answer would cite only two.
+        for days in (24, 24, 40):
+            approved_claim(db_session, language, "Qacheckpolicy vacation", claim.format(days))
+        calls = []
+        monkeypatch.setattr(gemini, "enabled", lambda: provider_enabled)
+        monkeypatch.setattr(gemini, "generate_grounded_answer", lambda *args: calls.append(args))
+        result = client.post(
+            "/api/v1/ai/chat",
+            headers={**employee_headers, "Accept-Language": language},
+            json={"question": question},
+        )
+        assert result.status_code == 200
+        answer = result.json()
+>       assert answer["answer_status"] == "fallback"
+E       AssertionError: assert 'grounded' == 'fallback'
+E
+E         - fallback
+E         + grounded
+
+tests/test_qa_acceptance.py:53: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+Seeding database with deterministic synthetic data...
+Database seeded successfully with deterministic accounts and scenario data!
+_ test_conflicting_approved_numbers_fall_back_before_provider[ru-Qacheckpolicy \u043e\u0442\u043f\u0443\u0441\u043a \u0434\u043d\u0435\u0439?-Qacheckpolicy \u043e\u0442\u043f\u0443\u0441\u043a \u0441\u043e\u0441\u0442\u0430\u0432\u043b\u044f\u0435\u0442 {} \u0434\u043d\u0435\u0439.-True] _
+
+client = <starlette.testclient.TestClient object at 0x10e3bfce0>
+db_session = <sqlalchemy.orm.session.Session object at 0x10e5bc050>
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e0abdf0>
+provider_enabled = True, language = 'ru'
+question = 'Qacheckpolicy отпуск дней?'
+claim = 'Qacheckpolicy отпуск составляет {} дней.'
+
+    @pytest.mark.parametrize("provider_enabled", [False, True])
+    @pytest.mark.parametrize(
+        "language,question,claim",
+        [
+            ("en", "Qacheckpolicy vacation days?", "Qacheckpolicy vacation days are {} calendar days."),
+            ("ru", "Qacheckpolicy отпуск дней?", "Qacheckpolicy отпуск составляет {} дней."),
+            ("kk", "Qacheckpolicy демалыс күндері?", "Qacheckpolicy демалыс ұзақтығы {} күн."),
+        ],
+    )
+    def test_conflicting_approved_numbers_fall_back_before_provider(
+        client, db_session, employee_headers, monkeypatch, provider_enabled, language, question, claim
+    ):
+        # The third passage must still be checked when an answer would cite only two.
+        for days in (24, 24, 40):
+            approved_claim(db_session, language, "Qacheckpolicy vacation", claim.format(days))
+        calls = []
+        monkeypatch.setattr(gemini, "enabled", lambda: provider_enabled)
+        monkeypatch.setattr(gemini, "generate_grounded_answer", lambda *args: calls.append(args))
+        result = client.post(
+            "/api/v1/ai/chat",
+            headers={**employee_headers, "Accept-Language": language},
+            json={"question": question},
+        )
+        assert result.status_code == 200
+        answer = result.json()
+>       assert answer["answer_status"] == "fallback"
+E       AssertionError: assert 'grounded' == 'fallback'
+E
+E         - fallback
+E         + grounded
+
+tests/test_qa_acceptance.py:53: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+Seeding database with deterministic synthetic data...
+Database seeded successfully with deterministic accounts and scenario data!
+_ test_conflicting_approved_numbers_fall_back_before_provider[kk-Qacheckpolicy \u0434\u0435\u043c\u0430\u043b\u044b\u0441 \u043a\u04af\u043d\u0434\u0435\u0440\u0456?-Qacheckpolicy \u0434\u0435\u043c\u0430\u043b\u044b\u0441 \u04b1\u0437\u0430\u049b\u0442\u044b\u0493\u044b {} \u043a\u04af\u043d.-False] _
+
+client = <starlette.testclient.TestClient object at 0x10e57e190>
+db_session = <sqlalchemy.orm.session.Session object at 0x10e5bc2f0>
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e3ba250>
+provider_enabled = False, language = 'kk'
+question = 'Qacheckpolicy демалыс күндері?'
+claim = 'Qacheckpolicy демалыс ұзақтығы {} күн.'
+
+    @pytest.mark.parametrize("provider_enabled", [False, True])
+    @pytest.mark.parametrize(
+        "language,question,claim",
+        [
+            ("en", "Qacheckpolicy vacation days?", "Qacheckpolicy vacation days are {} calendar days."),
+            ("ru", "Qacheckpolicy отпуск дней?", "Qacheckpolicy отпуск составляет {} дней."),
+            ("kk", "Qacheckpolicy демалыс күндері?", "Qacheckpolicy демалыс ұзақтығы {} күн."),
+        ],
+    )
+    def test_conflicting_approved_numbers_fall_back_before_provider(
+        client, db_session, employee_headers, monkeypatch, provider_enabled, language, question, claim
+    ):
+        # The third passage must still be checked when an answer would cite only two.
+        for days in (24, 24, 40):
+            approved_claim(db_session, language, "Qacheckpolicy vacation", claim.format(days))
+        calls = []
+        monkeypatch.setattr(gemini, "enabled", lambda: provider_enabled)
+        monkeypatch.setattr(gemini, "generate_grounded_answer", lambda *args: calls.append(args))
+        result = client.post(
+            "/api/v1/ai/chat",
+            headers={**employee_headers, "Accept-Language": language},
+            json={"question": question},
+        )
+        assert result.status_code == 200
+        answer = result.json()
+>       assert answer["answer_status"] == "fallback"
+E       AssertionError: assert 'grounded' == 'fallback'
+E
+E         - fallback
+E         + grounded
+
+tests/test_qa_acceptance.py:53: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+Seeding database with deterministic synthetic data...
+Database seeded successfully with deterministic accounts and scenario data!
+_ test_conflicting_approved_numbers_fall_back_before_provider[kk-Qacheckpolicy \u0434\u0435\u043c\u0430\u043b\u044b\u0441 \u043a\u04af\u043d\u0434\u0435\u0440\u0456?-Qacheckpolicy \u0434\u0435\u043c\u0430\u043b\u044b\u0441 \u04b1\u0437\u0430\u049b\u0442\u044b\u0493\u044b {} \u043a\u04af\u043d.-True] _
+
+client = <starlette.testclient.TestClient object at 0x10e5a9c70>
+db_session = <sqlalchemy.orm.session.Session object at 0x10e5bcd70>
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e66bb50>
+provider_enabled = True, language = 'kk'
+question = 'Qacheckpolicy демалыс күндері?'
+claim = 'Qacheckpolicy демалыс ұзақтығы {} күн.'
+
+    @pytest.mark.parametrize("provider_enabled", [False, True])
+    @pytest.mark.parametrize(
+        "language,question,claim",
+        [
+            ("en", "Qacheckpolicy vacation days?", "Qacheckpolicy vacation days are {} calendar days."),
+            ("ru", "Qacheckpolicy отпуск дней?", "Qacheckpolicy отпуск составляет {} дней."),
+            ("kk", "Qacheckpolicy демалыс күндері?", "Qacheckpolicy демалыс ұзақтығы {} күн."),
+        ],
+    )
+    def test_conflicting_approved_numbers_fall_back_before_provider(
+        client, db_session, employee_headers, monkeypatch, provider_enabled, language, question, claim
+    ):
+        # The third passage must still be checked when an answer would cite only two.
+        for days in (24, 24, 40):
+            approved_claim(db_session, language, "Qacheckpolicy vacation", claim.format(days))
+        calls = []
+        monkeypatch.setattr(gemini, "enabled", lambda: provider_enabled)
+        monkeypatch.setattr(gemini, "generate_grounded_answer", lambda *args: calls.append(args))
+        result = client.post(
+            "/api/v1/ai/chat",
+            headers={**employee_headers, "Accept-Language": language},
+            json={"question": question},
+        )
+        assert result.status_code == 200
+        answer = result.json()
+>       assert answer["answer_status"] == "fallback"
+E       AssertionError: assert 'grounded' == 'fallback'
+E
+E         - fallback
+E         + grounded
+
+tests/test_qa_acceptance.py:53: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+Seeding database with deterministic synthetic data...
+Database seeded successfully with deterministic accounts and scenario data!
+=============================== warnings summary ===============================
+.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /Users/aibek/post tech /.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_qa_acceptance.py::test_conflicting_approved_numbers_fall_back_before_provider[en-Qacheckpolicy vacation days?-Qacheckpolicy vacation days are {} calendar days.-False]
+FAILED tests/test_qa_acceptance.py::test_conflicting_approved_numbers_fall_back_before_provider[en-Qacheckpolicy vacation days?-Qacheckpolicy vacation days are {} calendar days.-True]
+FAILED tests/test_qa_acceptance.py::test_conflicting_approved_numbers_fall_back_before_provider[ru-Qacheckpolicy \u043e\u0442\u043f\u0443\u0441\u043a \u0434\u043d\u0435\u0439?-Qacheckpolicy \u043e\u0442\u043f\u0443\u0441\u043a \u0441\u043e\u0441\u0442\u0430\u0432\u043b\u044f\u0435\u0442 {} \u0434\u043d\u0435\u0439.-False]
+FAILED tests/test_qa_acceptance.py::test_conflicting_approved_numbers_fall_back_before_provider[ru-Qacheckpolicy \u043e\u0442\u043f\u0443\u0441\u043a \u0434\u043d\u0435\u0439?-Qacheckpolicy \u043e\u0442\u043f\u0443\u0441\u043a \u0441\u043e\u0441\u0442\u0430\u0432\u043b\u044f\u0435\u0442 {} \u0434\u043d\u0435\u0439.-True]
+FAILED tests/test_qa_acceptance.py::test_conflicting_approved_numbers_fall_back_before_provider[kk-Qacheckpolicy \u0434\u0435\u043c\u0430\u043b\u044b\u0441 \u043a\u04af\u043d\u0434\u0435\u0440\u0456?-Qacheckpolicy \u0434\u0435\u043c\u0430\u043b\u044b\u0441 \u04b1\u0437\u0430\u049b\u0442\u044b\u0493\u044b {} \u043a\u04af\u043d.-False]
+FAILED tests/test_qa_acceptance.py::test_conflicting_approved_numbers_fall_back_before_provider[kk-Qacheckpolicy \u0434\u0435\u043c\u0430\u043b\u044b\u0441 \u043a\u04af\u043d\u0434\u0435\u0440\u0456?-Qacheckpolicy \u0434\u0435\u043c\u0430\u043b\u044b\u0441 \u04b1\u0437\u0430\u049b\u0442\u044b\u0493\u044b {} \u043a\u04af\u043d.-True]
+6 failed, 5 passed, 1 warning in 6.29s

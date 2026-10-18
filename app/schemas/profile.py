@@ -27,6 +27,10 @@ class EmployeeProfileResponse(BaseModel):
     # Changes awaiting manager/HR approval: {field: {"from": old, "to": new}}.
     pending_profile_change: Optional[dict[str, dict[str, Optional[str]]]] = None
     data_source: str = "Local HR records; 1C is unconnected"
+    source_mode: str = "LOCAL"
+    synced_at: Optional[UTCDateTime] = None
+    as_of: Optional[UTCDateTime] = None
+    is_stale: bool = False
     learning_progress_percent: float = 0
     courses: list[CourseResponse] = Field(default_factory=list)
     is_official_hr_data: bool = False
@@ -64,7 +68,8 @@ class EmployeeDetailResponse(TeamMemberResponse):
 
     location: str
     phone: Optional[str] = None
-    # HR only (None for managers): account and personal details.
+    # Current account/emergency-contact projection is HR only. Assigned reviewers
+    # can see submitted contact changes in requests, including emergency contact.
     email: Optional[str] = None
     role: Optional[str] = None
     is_active: Optional[bool] = None

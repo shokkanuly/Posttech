@@ -389,6 +389,15 @@ textarea.field { resize: vertical; }
 .notice p { font-size: 14px; color: var(--text-2); margin-top: 2px; }
 .notice .small-btn { margin: 8px 8px 0 0; }
 button.notice { width: 100%; }
+.clickable-card { cursor: pointer; }
+.clickable-card:hover b, .clickable-card:focus-visible b, button.notice:hover b { color: var(--primary); }
+.notice-banner { display: flex; gap: 14px; align-items: flex-start; padding: 16px; margin-top: 16px; border-radius: var(--r-input); background: var(--primary-bg); }
+.notice-banner p { font-size: 14px; color: var(--text-2); margin: 4px 0; }
+.notice-banner small { font-size: 12px; color: var(--text-3); }
+.lesson-list button:disabled { opacity: .55; cursor: not-allowed; }
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.action-grid form { display: grid; gap: 10px; align-content: start; }
+@media (max-width: 720px) { .action-grid { grid-template-columns: 1fr; } }
 .unread-dot { width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--primary); flex: 0 0 auto; }
 
 /* Timeline */

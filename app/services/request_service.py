@@ -168,8 +168,14 @@ class RequestService:
 
     @classmethod
     def create_request(
-        cls, db: Session, user: User, payload: RequestCreate, ip_address: Optional[str] = None
+        cls,
+        db: Session,
+        user: User,
+        payload: RequestCreate,
+        ip_address: Optional[str] = None,
+        actor: Optional[User] = None,
     ) -> Request:
+        """actor: a manager/HR filing on the employee's behalf; they decide it right after."""
         # 1. Validate Vacation Balance if applicable
         # Serialize reservations for this employee on both SQLite and PostgreSQL.
         # An UPDATE locks the row until commit, before checking balance or overlaps.
@@ -298,7 +304,7 @@ class RequestService:
         # 4. Record initial event history
         initial_event = RequestEvent(
             request_id=new_req.id,
-            actor_id=user.id,
+            actor_id=(actor or user).id,
             event_type=RequestEventType.SUBMITTED,
             comment=f"Submitted {payload.type.value} request. {payload.reason or 'No comment'}",
         )
@@ -306,22 +312,23 @@ class RequestService:
 
         # 5. Send persistent notifications
         # Notification to requester
-        notification_service.create_notification(
-            db=db,
-            user_id=user.id,
-            title="Request submitted",
-            message=(
-                f"Your {payload.type.value} request ({req_code}) was submitted and sent to {review_destination} for review."
-                if reviewers
-                else f"Your {payload.type.value} request ({req_code}) was submitted. An authorized reviewer must be configured; contact HR."
-            ),
-            type=NotificationType.REQUEST,
-            reference_type="request",
-            reference_id=req_code,
-        )
+        if not actor:  # a filer decides right away; the decision notification tells the employee
+            notification_service.create_notification(
+                db=db,
+                user_id=user.id,
+                title="Request submitted",
+                message=(
+                    f"Your {payload.type.value} request ({req_code}) was submitted and sent to {review_destination} for review."
+                    if reviewers
+                    else f"Your {payload.type.value} request ({req_code}) was submitted. An authorized reviewer must be configured; contact HR."
+                ),
+                type=NotificationType.REQUEST,
+                reference_type="request",
+                reference_id=req_code,
+            )
 
         # Notify only active, authorized reviewers; HR covers missing/unavailable managers.
-        for reviewer in reviewers:
+        for reviewer in [] if actor else reviewers:
             notification_service.create_notification(
                 db=db,
                 user_id=reviewer.id,
@@ -336,7 +343,7 @@ class RequestService:
         audit_service.log_event(
             db=db,
             action="REQUEST_SUBMITTED",
-            actor_id=user.id,
+            actor_id=(actor or user).id,
             target_type="request",
             target_id=req_code,
             details={

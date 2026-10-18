@@ -67,3 +67,8 @@ class EnrollmentCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     user_id: BodyDatabaseID
     course_id: BodyDatabaseID
+
+
+class CourseAssign(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    course_id: BodyDatabaseID

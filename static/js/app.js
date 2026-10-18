@@ -393,12 +393,13 @@ async function loadDashboard() {
     banner.querySelector("[data-open-academy]")?.addEventListener("click", () => go("academy"));
 
     document.getElementById("homeActivity").innerHTML = notifications.length ? notifications.map(n => `
-      <article class="update-card">
+      <article class="update-card clickable-card" tabindex="0" role="button" data-notification="${n.id}">
         <span class="notice-icon">${notificationIcon(n.type)}</span>
         <b>${esc(n.title)}</b>
         <p>${esc(n.message)}</p>
         <small>${esc(n.time_ago)}</small>
       </article>`).join("") : `<div class="empty">No updates yet.</div>`;
+    bindNotificationClicks("homeActivity");
   } catch (err) {
     toast(`Error: ${err.message}`);
   }
@@ -409,18 +410,19 @@ async function loadProfilePage() {
   try {
     const [p, notifications] = await Promise.all([api("/me/profile"), api("/notifications?limit=3")]);
     document.getElementById("profNotifications").innerHTML = notifications.length ? notifications.map(n => `
-      <div class="course-line">
+      <div class="course-line clickable-card" tabindex="0" role="button" data-notification="${n.id}">
         <span class="notice-icon">${notificationIcon(n.type)}</span>
         <div><b>${esc(n.title)}</b><div class="req-sub">${esc(n.time_ago)}</div></div>
         ${n.is_read ? "" : `<span class="unread-dot" aria-label="unread"></span>`}
       </div>`).join("") : `<div class="empty">No updates yet.</div>`;
+    bindNotificationClicks("profNotifications");
     document.getElementById("profAvatar").textContent = initials(p.full_name);
     document.getElementById("profName").textContent = p.full_name;
     document.getElementById("profPosition").textContent = p.position;
     document.getElementById("profEmpCode").textContent = p.employee_code;
     document.getElementById("profDept").textContent = p.department;
     document.getElementById("profCompany").textContent = p.company;
-    document.getElementById("profManager").textContent = p.manager_name || "None (Department Head)";
+    document.getElementById("profManager").textContent = p.manager_name || "No direct manager — HR approves your requests";
     document.getElementById("profHireDate").textContent = formatDate(p.hire_date);
     document.getElementById("profLocation").textContent = p.location;
     document.getElementById("profPhone").textContent = p.phone || "—";
@@ -495,7 +497,7 @@ async function loadAcademyPage() {
             <span>${c.assigned ? (c.due_date ? `Due ${esc(formatDate(c.due_date))}` : "Assigned") : "Available to enroll"}</span>
           </div>
         </div>
-        <button class="btn ${done ? "btn-light" : "btn-primary"}" onclick="openCoursePlayer(${c.id})"><span>${action}</span>${icon("arrow")}</button>
+        <button class="btn ${done ? "btn-light" : "btn-primary"}" onclick="${c.assigned ? "openCoursePlayer" : "openCoursePreview"}(${c.id})"><span>${action}</span>${icon("arrow")}</button>
       </article>`;
     }).join("");
   } catch (err) {
@@ -509,7 +511,7 @@ async function loadNotificationsPage() {
     const notifs = await apiAll("/notifications");
     state.notifications = notifs;
     document.getElementById("notificationsList").innerHTML = notifs.length ? notifs.map(n => `
-      <button class="notice" onclick="markNotificationRead(${n.id})">
+      <button class="notice" onclick="openNotification(${n.id})">
         <span class="notice-icon">${notificationIcon(n.type)}</span>
         <span style="flex:1">
           <b>${esc(n.title)}</b>
@@ -524,11 +526,34 @@ async function loadNotificationsPage() {
   }
 }
 
-async function markNotificationRead(id) {
+function bindNotificationClicks(containerId) {
+  document.querySelectorAll(`#${containerId} [data-notification]`).forEach(el => {
+    const open = () => openNotification(Number(el.dataset.notification));
+    el.addEventListener("click", open);
+    el.addEventListener("keydown", e => { if (e.key === "Enter") open(); });
+  });
+}
+
+// The notification itself, shown on top of the request or course it is about.
+function noticeBanner(n) {
+  return `<div class="notice-banner">
+    <span class="notice-icon">${notificationIcon(n.type)}</span>
+    <div><b>${esc(n.title)}</b><p>${esc(n.message)}</p>
+      <small><span data-verbatim>${esc(formatDate(n.created_at))} ${esc(formatTime(n.created_at))}</span> · ${esc(n.time_ago)}</small></div>
+  </div>`;
+}
+
+// Opening marks it read, then shows the linked request or course in full.
+async function openNotification(id) {
   try {
-    await api(`/notifications/${id}`, { method: "PATCH", body: JSON.stringify({ is_read: true }) });
-    await loadNotificationsPage();
-    await updateNotificationBadge();
+    const n = await api(`/notifications/${id}`, { method: "PATCH", body: JSON.stringify({ is_read: true }) });
+    if (n.reference_type === "request" && n.reference_record_id) await openRequestDetailModal(n.reference_record_id, n);
+    else if (n.reference_type === "course" && n.reference_record_id) await openCoursePreview(n.reference_record_id, n);
+    else {
+      document.getElementById("notificationModalBody").innerHTML = noticeBanner(n);
+      document.getElementById("notificationModal").classList.add("open");
+    }
+    await refreshCurrentPage();
   } catch (err) {
     toast(err.message);
   }
@@ -588,8 +613,10 @@ function renderDirectory(tbodyId, members) {
 
 async function openEmployeeCard(userId) {
   try {
-    const e = await api(`/manager/team/${userId}`);
+    const [e, courses] = await Promise.all([api(`/manager/team/${userId}`), apiAll("/courses")]);
     document.getElementById("employeeModalName").textContent = e.full_name;
+    const assigned = new Set(e.courses.map(c => c.id));
+    const open = courses.filter(c => !assigned.has(c.id));
     const stat = (value, label, green) => `<div class="mini-stat ${green ? "green" : ""}"><strong>${days(value)}</strong><span>${label}</span></div>`;
     document.getElementById("employeeModalBody").innerHTML = `
       <p class="muted">${esc(e.position)} · ${esc(e.department)}</p>
@@ -597,6 +624,29 @@ async function openEmployeeCard(userId) {
         ${stat(e.leave_balance_days, "Leave balance")}${stat(e.used_days, "Used")}
         ${stat(e.pending_days, "Pending")}${stat(e.available_days, "Available", true)}
       </div>
+      ${e.user_id === state.user.id ? "" : `
+      <h4 class="sub-title">Actions</h4>
+      <div class="action-grid">
+        <form class="panel-gray" id="assignCourseForm">
+          <b>Assign a course</b>
+          ${open.length ? `<select class="field" name="course" aria-label="Course">${open.map(c => `<option value="${c.id}">${esc(c.title)}</option>`).join("")}</select>
+          <button class="btn btn-primary btn-sm" type="submit">Assign course</button>`
+          : `<p class="muted small">All courses are already assigned.</p>`}
+        </form>
+        <form class="panel-gray" id="fileRequestForm">
+          <b>File a request for the employee</b>
+          <select class="field" name="type" aria-label="Request type">
+            <option value="Advance payment">Advance payment</option>
+            <option value="Vacation">Vacation</option>
+          </select>
+          <input class="field" type="date" name="start" required aria-label="Start date">
+          <input class="field" type="date" name="end" aria-label="End date" hidden>
+          <input class="field" type="number" name="amount" min="5000" step="5000" placeholder="Amount (₸)" aria-label="Amount (₸)" required>
+          <input class="field" name="reason" maxlength="2000" placeholder="Reason / comment" aria-label="Reason / comment">
+          <p class="muted small">You file and approve it in one step; the employee is notified.</p>
+          <button class="btn btn-primary btn-sm" type="submit">File and approve</button>
+        </form>
+      </div>`}
       <dl class="detail-grid">
         <div class="detail"><dt>Employee ID</dt><dd data-verbatim>${esc(e.employee_code)}</dd></div>
         <div class="detail"><dt>Company</dt><dd>${esc(e.company)}</dd></div>
@@ -646,10 +696,57 @@ async function openEmployeeCard(userId) {
             <p>${h.detail ? `<span>${esc(h.detail)}</span> · ` : ""}${h.actor ? `<span>${esc(h.actor)}</span> · ` : ""}${esc(formatDate(h.at))} ${esc(formatTime(h.at))}</p>
           </div>
         </div>`).join("") : `<div class="empty">No history yet.</div>`}</div>`;
+    bindEmployeeActions(e);
     document.getElementById("employeeModal").classList.add("open");
   } catch (err) {
     toast(err.message);
   }
+}
+
+// Manager/HR actions in the employee card; scope and rules are enforced by the API.
+function bindEmployeeActions(e) {
+  const courseForm = document.getElementById("assignCourseForm");
+  courseForm?.addEventListener("submit", async ev => {
+    ev.preventDefault();
+    if (!courseForm.elements.course) return;
+    try {
+      const course = await api(`/manager/team/${e.user_id}/courses`, { method: "POST",
+        body: JSON.stringify({ course_id: Number(courseForm.elements.course.value) }) });
+      toast(`Course assigned: ${course.title}`);
+      await openEmployeeCard(e.user_id);
+    } catch (err) { toast(err.message); }
+  });
+  const form = document.getElementById("fileRequestForm");
+  if (!form) return;
+  const { type, start, end, amount } = form.elements;
+  const today = new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
+  start.min = end.min = today;
+  const sync = () => {
+    const advance = type.value === "Advance payment";
+    amount.hidden = !advance; amount.required = advance;
+    end.hidden = advance; end.required = !advance;
+  };
+  type.addEventListener("change", sync);
+  start.addEventListener("change", () => { end.min = start.value || today; });
+  sync();
+  form.addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    const advance = type.value === "Advance payment";
+    try {
+      const r = await api(`/manager/team/${e.user_id}/requests`, { method: "POST", body: JSON.stringify({
+        type: type.value, start_date: start.value,
+        end_date: advance ? null : end.value || null,
+        amount: advance ? parseFloat(amount.value) : null,
+        reason: form.elements.reason.value.trim() || null,
+      }) });
+      toast(`${r.request_code} ${r.status.toLowerCase()}`);
+      await openEmployeeCard(e.user_id);
+      await refreshCurrentPage();
+    } catch (err) { toast(err.message); }
+    finally { submit.disabled = false; }
+  });
 }
 
 async function loadTeamPage() {
@@ -815,7 +912,7 @@ function setupModals() {
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") document.querySelectorAll(".modal-backdrop").forEach(m => m.classList.remove("open"));
   });
-  ["closeModal", "cancelModal", "closeDetailModal", "closeCourseModal", "closeCitationModal", "cancelReview", "closeEmployeeModal", "closeContactModal", "cancelContactModal"].forEach(id => {
+  ["closeModal", "cancelModal", "closeDetailModal", "closeCourseModal", "closeCitationModal", "cancelReview", "closeEmployeeModal", "closeContactModal", "cancelContactModal", "closeNotificationModal", "closeCoursePreview", "cancelCoursePreview"].forEach(id => {
     document.getElementById(id).addEventListener("click", () => document.getElementById(id).closest(".modal-backdrop").classList.remove("open"));
   });
 
@@ -893,6 +990,10 @@ function setupModals() {
   document.querySelectorAll('[data-action="new-request"]').forEach(b => {
     b.addEventListener("click", () => {
       if (b.dataset.type) reqType.value = b.dataset.type;
+      // Without a direct manager the server routes the request to HR.
+      document.getElementById("requestRouteHint").textContent = state.profile?.manager_name
+        ? "The server validates your request and routes it to your direct manager."
+        : "The server validates your request and routes it to HR.";
       reqStart.min = reqEnd.min = isoDay(0);
       reqStart.max = reqEnd.max = isoDay(365);
       syncRequestType();
@@ -964,9 +1065,10 @@ function setupModals() {
   });
 }
 
-async function openRequestDetailModal(id) {
+async function openRequestDetailModal(id, notice = null) {
   try {
     const r = await api(`/requests/${id}`);
+    document.getElementById("detailModalNotice").innerHTML = notice ? noticeBanner(notice) : "";
     document.getElementById("detailModalTitle").innerHTML = `<span data-verbatim>${esc(r.request_code)}</span> · <span>${esc(r.type)}</span>`;
     document.getElementById("detailModalCode").textContent = r.request_code;
     document.getElementById("detailModalStatus").innerHTML = statusBadge(r.status);
@@ -986,6 +1088,16 @@ async function openRequestDetailModal(id) {
           <p>${ev.comment ? `<span>${esc(ev.comment)}</span> · ` : ""}${esc(formatDate(ev.created_at))} ${esc(formatTime(ev.created_at))}</p>
         </div>
       </div>`).join("");
+    // Reviewers decide right here; the server re-checks scope and status.
+    const actions = document.getElementById("detailModalActions");
+    actions.hidden = !(r.status === "Pending" && r.user_id !== state.user.id && state.user.role !== "employee");
+    actions.innerHTML = actions.hidden ? "" : `
+      <button class="small-btn danger" data-review="reject">Decline</button>
+      <button class="small-btn primary" data-review="approve">Approve</button>`;
+    actions.querySelectorAll("[data-review]").forEach(b => b.addEventListener("click", () => {
+      document.getElementById("requestDetailModal").classList.remove("open");
+      reviewRequestPrompt(r.id, b.dataset.review);
+    }));
     document.getElementById("requestDetailModal").classList.add("open");
   } catch (err) {
     toast(err.message);
@@ -999,16 +1111,64 @@ function renderCourse(course) {
   document.getElementById("playerProgressBar").style.width = `${course.progress_percent}%`;
   document.getElementById("playerProgressLabel").textContent = `${Math.round(course.progress_percent)}% complete`;
   const currentId = state.currentLesson?.id ?? course.current_lesson_id;
-  document.getElementById("playerLessonsList").innerHTML = course.lessons.map(l => `
-    <button class="${l.id === currentId ? "current" : ""}" data-lesson="${l.id}" onclick="loadLessonInPlayer(${l.id})">
-      <span>${esc(l.title)}</span><span class="done">${l.is_completed ? "✓" : "○"}</span>
-    </button>`).join("");
+  // Lessons open in order: everything after the first unfinished lesson stays locked.
+  const firstOpen = course.lessons.findIndex(l => !l.is_completed);
+  document.getElementById("playerLessonsList").innerHTML = course.lessons.map((l, i) => {
+    const locked = firstOpen !== -1 && i > firstOpen;
+    return `
+    <button class="${l.id === currentId ? "current" : ""}" data-lesson="${l.id}" onclick="loadLessonInPlayer(${l.id})"${locked ? ` disabled title="Pass the previous lesson first"` : ""}>
+      <span>${esc(l.title)}</span><span class="done">${l.is_completed ? "✓" : locked ? "🔒" : "○"}</span>
+    </button>`;
+  }).join("");
+}
+
+// Course overview before enrolling; the player opens only for assigned courses.
+async function openCoursePreview(courseId, notice = null) {
+  try {
+    const c = await api(`/courses/${courseId}`);
+    const done = c.status === "COMPLETED";
+    document.getElementById("previewCourseTitle").textContent = c.title;
+    document.getElementById("previewCourseNotice").innerHTML = notice ? noticeBanner(notice) : "";
+    document.getElementById("previewCourseBody").innerHTML = `
+      <div class="course-meta" style="margin-top:16px">
+        <span class="chip">${c.is_mandatory ? "Mandatory" : "Recommended"}</span>
+        <span class="chip">${c.duration_minutes} min</span>
+        <span class="chip">${c.total_lessons} lessons</span>
+        ${c.due_date ? `<span class="chip">Due ${esc(formatDate(c.due_date))}</span>` : ""}
+      </div>
+      <p class="muted" style="margin-top:16px">${esc(c.description)}</p>
+      ${c.assigned ? `<div class="progress" style="margin-top:16px"><span style="width:${c.progress_percent}%"></span></div>
+        <div class="progress-label"><span>${Math.round(c.progress_percent)}% complete</span><span>Assigned</span></div>`
+        : `<p class="small muted" style="margin-top:16px">After you enroll, the course appears in your assigned training. Lessons open in order: each quiz unlocks after the previous lesson is passed.</p>`}
+      <h4 class="sub-title">Lessons</h4>
+      ${c.lessons.map(l => `<div class="course-line"><span class="notice-icon">${icon(l.is_completed ? "check" : "book")}</span><div><b>${esc(l.title)}</b></div></div>`).join("")}`;
+    const action = document.getElementById("previewCourseAction");
+    action.querySelector("span").textContent = !c.assigned ? "Enroll in course" : done ? "Review course" : c.progress_percent > 0 ? "Continue learning" : "Start course";
+    action.onclick = async () => {
+      if (c.assigned) {
+        document.getElementById("coursePreviewModal").classList.remove("open");
+        await openCoursePlayer(c.id);
+        return;
+      }
+      action.disabled = true;
+      try {
+        await api(`/courses/${c.id}/enroll`, { method: "POST" });
+        toast("You are enrolled. The course is now in your assigned training.");
+        await openCoursePreview(c.id, notice);
+        await refreshCurrentPage();
+      } catch (err) { toast(err.message); }
+      finally { action.disabled = false; }
+    };
+    document.getElementById("coursePreviewModal").classList.add("open");
+  } catch (err) {
+    toast(err.message);
+  }
 }
 
 async function openCoursePlayer(courseId) {
   try {
-    let course = await api(`/courses/${courseId}`);
-    if (!course.assigned) course = await api(`/courses/${courseId}/enroll`, { method: "POST" });
+    const course = await api(`/courses/${courseId}`);
+    if (!course.assigned) { await openCoursePreview(courseId); return; }
     state.currentLesson = null;
     renderCourse(course);
     const firstLesson = course.current_lesson_id || course.lessons[0]?.id;

@@ -58,6 +58,14 @@ OPERATIONS = [
     ("GET", "/api/v1/manager/requests", None, 200, "manager"),
     ("GET", "/api/v1/manager/team", None, 200, "manager"),
     ("GET", "/api/v1/manager/team/{user_id}", None, 200, "manager"),
+    ("POST", "/api/v1/manager/team/{user_id}/courses", {"course_id": 2}, 200, "manager"),
+    (
+        "POST",
+        "/api/v1/manager/team/{user_id}/requests",
+        {"type": "Advance payment", "start_date": "2027-01-11", "amount": 50000},
+        201,
+        "manager",
+    ),
     ("GET", "/api/v1/admin/knowledge/documents", None, 200, "hr_admin"),
     (
         "POST",

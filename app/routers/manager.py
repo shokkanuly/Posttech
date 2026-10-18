@@ -2,21 +2,23 @@ from datetime import datetime
 from typing import List, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import Request as FastAPIRequest
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.localization import LocalizedRoute
 from app.models.academy import Enrollment, LessonProgress
-from app.models.enums import RequestStatus, UserRole
+from app.models.enums import RequestStatus, RequestType, UserRole
 from app.models.profile import EmployeeProfile
 from app.models.request import Request, RequestEvent
 from app.models.session import AuthSession
 from app.models.user import User
 from app.pagination import Page
+from app.schemas.academy import CourseAssign, CourseDetailResponse
 from app.schemas.common import DatabaseID, TeamMemberResponse
 from app.schemas.profile import EmployeeDetailResponse
-from app.schemas.request import RequestResponse
+from app.schemas.request import RequestCreate, RequestDetailResponse, RequestResponse
 from app.services.academy_service import academy_service
 from app.services.auth_service import require_role
 from app.services.request_service import request_service
@@ -48,6 +50,14 @@ def scoped_profiles(db: Session, current_user: User):
     if current_user.role != UserRole.HR_ADMIN:
         query = query.filter(EmployeeProfile.manager_id == current_user.id)
     return query.filter(User.is_active.is_(True))
+
+
+def profile_in_scope(db: Session, current_user: User, user_id: int) -> EmployeeProfile:
+    profile = scoped_profiles(db, current_user).filter(EmployeeProfile.user_id == user_id).first()
+    if not profile:
+        # Same answer for "missing" and "not in your team": scope does not leak existence.
+        raise HTTPException(404, "Employee not found in your scope")
+    return profile
 
 
 def learning_progress(db: Session, user_ids: list[int]) -> dict[int, float]:
@@ -167,10 +177,7 @@ def get_manager_team_members(
 def get_team_member(
     user_id: DatabaseID, current_user: User = Depends(reviewer), db: Session = Depends(get_db)
 ):
-    profile = scoped_profiles(db, current_user).filter(EmployeeProfile.user_id == user_id).first()
-    if not profile:
-        # Same answer for "missing" and "not in your team": scope does not leak existence.
-        raise HTTPException(404, "Employee not found in your scope")
+    profile = profile_in_scope(db, current_user, user_id)
     requests = (
         db.query(Request)
         .options(joinedload(Request.user).joinedload(User.profile), joinedload(Request.reviewer))
@@ -207,3 +214,38 @@ def get_team_member(
         "courses": [c for c in academy_service.get_user_courses(db, person) if c.assigned],
         "history": employee_history(db, user_id),
     }
+
+
+@router.post("/team/{user_id}/courses", response_model=CourseDetailResponse)
+def assign_team_course(
+    user_id: DatabaseID,
+    payload: CourseAssign,
+    current_user: User = Depends(reviewer),
+    db: Session = Depends(get_db),
+):
+    """A manager assigns training to a direct report; HR to anyone."""
+    profile_in_scope(db, current_user, user_id)
+    return academy_service.enroll(db, user_id, payload.course_id, current_user.id)
+
+
+@router.post("/team/{user_id}/requests", response_model=RequestDetailResponse, status_code=201)
+def file_team_request(
+    user_id: DatabaseID,
+    payload: RequestCreate,
+    request: FastAPIRequest,
+    current_user: User = Depends(reviewer),
+    db: Session = Depends(get_db),
+):
+    """Vacation or advance filed for an employee and approved by the filer in one step."""
+    if user_id == current_user.id:
+        raise HTTPException(422, "Use the request form for your own requests")
+    if payload.type == RequestType.PROFILE_UPDATE:
+        raise HTTPException(422, "Only the employee can request contact changes")
+    profile = profile_in_scope(db, current_user, user_id)
+    ip_addr = request.client.host if request.client else None
+    req = request_service.create_request(
+        db, profile.user, payload, ip_address=ip_addr, actor=current_user
+    )
+    # ponytail: two commits; if approval loses a race, the request stays Pending in this queue.
+    req = request_service.review_request(db, req.id, current_user, "approve", ip_address=ip_addr)
+    return request_service.to_detail_response(req)

@@ -15,6 +15,8 @@ class NotificationResponse(BaseModel):
     is_read: bool
     reference_type: Optional[str] = None
     reference_id: Optional[str] = None
+    # Database id of the referenced request or course, so the client can open its details.
+    reference_record_id: Optional[int] = None
     created_at: UTCDateTime
     time_ago: str
 

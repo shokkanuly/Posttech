@@ -616,7 +616,7 @@
         <h3 class="h4" id="requestModalTitle">Create a request</h3>
         <button class="close" id="closeModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
       </div>
-      <p class="muted small">The server validates your request and routes it to your direct manager.</p>
+      <p class="muted small" id="requestRouteHint">The server validates your request and routes it to your direct manager.</p>
       <form id="requestForm">
         <div class="form-grid">
           <div class="form-group full">
@@ -659,6 +659,7 @@
         <h3 class="h4" id="detailModalTitle">Request</h3>
         <button class="close" id="closeDetailModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
       </div>
+      <div id="detailModalNotice"></div>
       <dl class="detail-grid">
         <div class="detail"><dt>ID</dt><dd id="detailModalCode">—</dd></div>
         <div class="detail"><dt>Status</dt><dd id="detailModalStatus"></dd></div>
@@ -670,6 +671,34 @@
       <div id="detailModalExtra"></div>
       <h4 class="sub-title">History</h4>
       <div class="timeline" id="detailModalTimeline"></div>
+      <div class="form-actions" id="detailModalActions" hidden></div>
+    </div>
+  </div>
+
+  <!-- MODAL: NOTIFICATION (notices without a linked request or course) -->
+  <div class="modal-backdrop" id="notificationModal" role="dialog" aria-modal="true" aria-labelledby="notificationModalTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 class="h4" id="notificationModalTitle">Notification</h3>
+        <button class="close" id="closeNotificationModal" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
+      </div>
+      <div id="notificationModalBody"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: COURSE OVERVIEW (enroll first, then the player opens) -->
+  <div class="modal-backdrop" id="coursePreviewModal" role="dialog" aria-modal="true" aria-labelledby="previewCourseTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 class="h4" id="previewCourseTitle">Course</h3>
+        <button class="close" id="closeCoursePreview" aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
+      </div>
+      <div id="previewCourseNotice"></div>
+      <div id="previewCourseBody"></div>
+      <div class="form-actions">
+        <button class="btn btn-light" type="button" id="cancelCoursePreview">Close</button>
+        <button class="btn btn-primary" type="button" id="previewCourseAction"><span>Enroll in course</span><svg class="ic"><use href="#i-arrow"/></svg></button>
+      </div>
     </div>
   </div>
 

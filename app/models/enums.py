@@ -10,6 +10,7 @@ class UserRole(str, Enum):
 class RequestType(str, Enum):
     VACATION = "Vacation"
     ADVANCE_PAYMENT = "Advance payment"
+    PROFILE_UPDATE = "Profile update"
 
 
 class RequestStatus(str, Enum):

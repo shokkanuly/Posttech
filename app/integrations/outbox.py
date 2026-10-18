@@ -50,6 +50,8 @@ def aware(value: datetime) -> datetime:
 
 def enqueue(db: Session, req: Request) -> None:
     """Snapshot minimal canonical data now so retries never change the signed content."""
+    if req.type not in {RequestType.VACATION, RequestType.ADVANCE_PAYMENT}:
+        raise HTTPException(409, "Only vacation and advance requests have document jobs")
     employee = req.user.profile
     approver = req.reviewer.profile if req.reviewer else None
     data: dict = {

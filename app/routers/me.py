@@ -5,7 +5,7 @@ from app.database import get_db
 from app.integrations.profile_sync import profile_metadata
 from app.localization import LocalizedRoute
 from app.models.academy import Enrollment
-from app.models.enums import RequestStatus, UserRole
+from app.models.enums import RequestStatus, RequestType, UserRole
 from app.models.profile import EmployeeProfile
 from app.models.request import Request
 from app.models.user import User
@@ -63,6 +63,15 @@ def get_my_profile(current_user: User = Depends(get_current_user), db: Session =
         leave_balance_days=profile.leave_balance_days if profile else 0.0,
         location=profile.location if profile else "Almaty, Kazakhstan",
         **profile_metadata(db, profile),
+        phone=profile.phone,
+        emergency_contact=profile.emergency_contact,
+        pending_profile_change=db.query(Request.profile_changes)
+        .filter(
+            Request.user_id == current_user.id,
+            Request.type == RequestType.PROFILE_UPDATE,
+            Request.status == RequestStatus.PENDING,
+        )
+        .scalar(),
         learning_progress_percent=academy_service.get_user_overall_learning_progress(
             db, current_user.id
         ),

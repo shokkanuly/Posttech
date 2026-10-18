@@ -47,9 +47,8 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_DATA_SHARING_APPROVED: ${GEMINI_DATA_SHARING_APPROVED:-false}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
-      # Labour Code RK art. 90: public holidays inside a vacation are not charged.
-      # Fixed-date public holidays 2026–2027; HR can replace the list in .env.
-      LEAVE_EXCLUDED_DATES: '${LEAVE_EXCLUDED_DATES:-["2026-01-01","2026-01-02","2026-03-08","2026-03-21","2026-03-22","2026-03-23","2026-05-01","2026-05-07","2026-05-09","2026-07-06","2026-08-30","2026-10-25","2026-12-16","2027-01-01","2027-01-02","2027-03-08","2027-03-21","2027-03-22","2027-03-23","2027-05-01","2027-05-07","2027-05-09","2027-07-06","2027-08-30","2027-10-25","2027-12-16"]}'
+      # Public holidays are built in (app/leave_calendar.py); this adds HR-approved extra dates.
+      LEAVE_EXCLUDED_DATES: '${LEAVE_EXCLUDED_DATES:-[]}'
       MAX_ADVANCE_AMOUNT: ${MAX_ADVANCE_AMOUNT:-1000000}
       REQUEST_HORIZON_DAYS: ${REQUEST_HORIZON_DAYS:-365}
       AI_CONFIDENCE_THRESHOLD: ${AI_CONFIDENCE_THRESHOLD:-0.8}

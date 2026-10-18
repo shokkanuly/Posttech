@@ -11,7 +11,7 @@ branch_labels = None
 depends_on = None
 
 DOMAINS = {
-    "requests": "status IN ('PENDING','APPROVED','REJECTED') AND type IN ('VACATION','ADVANCE_PAYMENT') AND (end_date IS NULL OR end_date >= start_date) AND (amount IS NULL OR amount > 0) AND (charged_leave_days IS NULL OR charged_leave_days >= 0) AND ((type='VACATION' AND amount IS NULL) OR (type='ADVANCE_PAYMENT' AND amount IS NOT NULL AND end_date IS NULL))",
+    "requests": "status IN ('PENDING','APPROVED','REJECTED') AND CAST(type AS VARCHAR) IN ('VACATION','ADVANCE_PAYMENT','PROFILE_UPDATE') AND (end_date IS NULL OR end_date >= start_date) AND (amount IS NULL OR amount > 0) AND (charged_leave_days IS NULL OR charged_leave_days >= 0) AND ((type='VACATION' AND amount IS NULL) OR (CAST(type AS VARCHAR)='ADVANCE_PAYMENT' AND amount IS NOT NULL AND end_date IS NULL) OR (CAST(type AS VARCHAR)='PROFILE_UPDATE' AND amount IS NULL AND end_date IS NULL))",
     "employee_profiles": "leave_balance_days >= 0 AND (source_balance_days IS NULL OR source_balance_days >= 0)",
 }
 

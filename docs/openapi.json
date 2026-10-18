@@ -806,10 +806,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Filter by type (Vacation, Advance payment)",
+              "description": "Filter by type (Vacation, Advance payment, Profile update)",
               "title": "Type"
             },
-            "description": "Filter by type (Vacation, Advance payment)"
+            "description": "Filter by type (Vacation, Advance payment, Profile update)"
           },
           {
             "name": "limit",
@@ -1002,6 +1002,155 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/requests/leave-calendar": {
+      "get": {
+        "tags": [
+          "Employee Requests"
+        ],
+        "summary": "Preview Leave Calendar",
+        "description": "Marked weekends and public holidays of a planned vacation, before it is submitted.",
+        "operationId": "preview_leave_calendar_api_v1_requests_leave_calendar_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Start Date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "End Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaveCalendarResponse"
                 }
               }
             }
@@ -6341,6 +6490,7 @@
             "type": "string",
             "enum": [
               "grounded",
+              "personal",
               "fallback",
               "unauthorized"
             ],
@@ -7297,6 +7447,85 @@
             "type": "string",
             "title": "Location"
           },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "account_created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Created At"
+          },
+          "last_sign_in_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sign In At"
+          },
+          "emergency_contact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emergency Contact"
+          },
           "requests": {
             "items": {
               "$ref": "#/components/schemas/RequestResponse"
@@ -7401,6 +7630,52 @@
           "location": {
             "type": "string",
             "title": "Location"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "emergency_contact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emergency Contact"
+          },
+          "pending_profile_change": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Profile Change"
           },
           "data_source": {
             "type": "string",
@@ -8177,6 +8452,83 @@
         ],
         "title": "KnowledgeSourceResponse"
       },
+      "LeaveCalendarResponse": {
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/LeaveDay"
+            },
+            "type": "array",
+            "title": "Days"
+          },
+          "calendar_days": {
+            "type": "integer",
+            "title": "Calendar Days"
+          },
+          "weekend_days": {
+            "type": "integer",
+            "title": "Weekend Days"
+          },
+          "holiday_days": {
+            "type": "integer",
+            "title": "Holiday Days"
+          },
+          "charged_days": {
+            "type": "number",
+            "title": "Charged Days"
+          },
+          "available_days": {
+            "type": "number",
+            "title": "Available Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "days",
+          "calendar_days",
+          "weekend_days",
+          "holiday_days",
+          "charged_days",
+          "available_days"
+        ],
+        "title": "LeaveCalendarResponse",
+        "description": "Every day of a planned vacation, marked, with what will be charged."
+      },
+      "LeaveDay": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "workday",
+              "weekend",
+              "holiday"
+            ],
+            "title": "Kind"
+          },
+          "holiday": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holiday"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "kind"
+        ],
+        "title": "LeaveDay"
+      },
       "LessonBrief": {
         "properties": {
           "id": {
@@ -8474,6 +8826,52 @@
         ],
         "title": "ProfileBrief"
       },
+      "ProfileChanges": {
+        "properties": {
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\+?[0-9][0-9 ()\\-]{5,30}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "emergency_contact": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emergency Contact"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ProfileChanges",
+        "description": "Contact details an employee may change; HR-owned fields are not accepted."
+      },
       "PublicConfig": {
         "properties": {
           "demo_mode": {
@@ -8572,8 +8970,15 @@
             "$ref": "#/components/schemas/RequestType"
           },
           "start_date": {
-            "type": "string",
-            "format": "date",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Start Date"
           },
           "end_date": {
@@ -8615,13 +9020,22 @@
               }
             ],
             "title": "Reason"
+          },
+          "profile_changes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileChanges"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "type",
-          "start_date"
+          "type"
         ],
         "title": "RequestCreate"
       },
@@ -8782,6 +9196,52 @@
             ],
             "title": "Vacation Days"
           },
+          "weekend_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekend Days"
+          },
+          "holiday_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holiday Days"
+          },
+          "profile_changes": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Changes"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -8798,6 +9258,14 @@
             },
             "type": "array",
             "title": "Events",
+            "default": []
+          },
+          "leave_days": {
+            "items": {
+              "$ref": "#/components/schemas/LeaveDay"
+            },
+            "type": "array",
+            "title": "Leave Days",
             "default": []
           }
         },
@@ -9035,6 +9503,52 @@
             ],
             "title": "Vacation Days"
           },
+          "weekend_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekend Days"
+          },
+          "holiday_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holiday Days"
+          },
+          "profile_changes": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Changes"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -9110,7 +9624,8 @@
         "type": "string",
         "enum": [
           "Vacation",
-          "Advance payment"
+          "Advance payment",
+          "Profile update"
         ],
         "title": "RequestType"
       },

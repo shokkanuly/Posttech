@@ -510,3 +510,35 @@ tr.clickable:hover td, tr.clickable:focus-visible td { background: var(--bg); }
   .chat-compose { flex-direction: column; }
   .toast { left: 16px; right: 16px; bottom: 16px; }
 }
+
+/* Leave calendar: every vacation day marked (weekend charged, public holiday not) */
+.leave-cal { display: flex; flex-direction: column; gap: 12px; }
+.cal-summary { display: flex; flex-wrap: wrap; gap: 8px; }
+.cal-summary > span { padding: 6px 10px; border-radius: 10px; background: var(--bg); font-size: 13px; }
+.cal-summary b { font-weight: 600; margin-left: 4px; }
+.cal-summary .weekend { background: #fff6db; color: #8a6100; }
+.cal-summary .holiday { background: #fdecec; color: var(--error); }
+.cal-summary .charged { background: var(--primary); color: var(--white); }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-2); }
+.cal-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+.cal-legend .workday, .cal-day.workday { background: var(--primary-bg); color: var(--primary); }
+.cal-legend .weekend, .cal-day.weekend { background: #fff6db; color: #8a6100; }
+.cal-legend .holiday, .cal-day.holiday { background: #fdecec; color: var(--error); }
+.cal-months { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; max-height: 320px; overflow-y: auto; }
+.cal-month b { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font-size: 12px; }
+.cal-wd { color: var(--text-3); font-size: 11px; }
+.cal-day { padding: 4px 0; border-radius: 6px; color: var(--text-3); }
+.cal-day.workday, .cal-day.weekend, .cal-day.holiday { font-weight: 600; }
+.cal-day.holiday { text-decoration: line-through; }
+.cal-holidays { font-size: 13px; color: var(--text-2); }
+.cal-balance { font-size: 14px; }
+.cal-balance.bad { color: var(--error); font-weight: 600; }
+.notice-box { margin-top: 20px; padding: 14px 16px; border-radius: var(--r-input); background: #fff6db; color: #8a6100; font-size: 14px; }
+.table-compact { min-width: 0; }
+.table-compact td { word-break: break-word; }
+.cal-day.booked, .cal-legend .booked { box-shadow: inset 0 0 0 2px #2563eb; }
+.cal-day.booked { color: #1d4ed8; font-weight: 600; }
+.cal-day.booked:not(.workday, .weekend, .holiday) { background: #e8f0fe; }
+.cal-plans { font-size: 13px; padding: 10px 12px; border-radius: 10px; background: #e8f0fe; color: #1d4ed8; }
+.cal-plans ul { margin-top: 4px; display: grid; gap: 2px; }

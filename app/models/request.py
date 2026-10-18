@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     Float,
@@ -63,6 +64,8 @@ class Request(Base):
     leave_balance_confirmed: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=true()
     )
+    # Profile update only: {field: {"from": old, "to": new}}, applied when approved.
+    profile_changes: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

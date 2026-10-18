@@ -30,6 +30,9 @@ class EmployeeProfile(Base):
     hire_date: Mapped[date] = mapped_column(Date, nullable=False)
     leave_balance_days: Mapped[float] = mapped_column(Float, default=24.0, nullable=False)
     location: Mapped[str] = mapped_column(String(255), default="Almaty, Kazakhstan", nullable=False)
+    # Contact details the employee may change through an approved profile update request.
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    emergency_contact: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     source_mode: Mapped[str] = mapped_column(String(20), default="LOCAL", server_default="LOCAL")
     source_balance_days: Mapped[float | None] = mapped_column(Float)

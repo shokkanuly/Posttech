@@ -24,7 +24,8 @@ class AIChatRequest(BaseModel):
 class AIChatResponse(BaseModel):
     question: str
     answer: str
-    answer_status: Literal["grounded", "fallback", "unauthorized"]
+    # personal: built from the asker's own records only (no knowledge source matched)
+    answer_status: Literal["grounded", "personal", "fallback", "unauthorized"]
     sources: list[SourceCitation] = Field(default_factory=list)
     escalation_guidance: str | None = None
     engine: str = "extractive"  # or "gemini:<model>" when a verified model answer is shown

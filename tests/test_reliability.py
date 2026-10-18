@@ -355,8 +355,11 @@ def test_ai_unsupported_details_fallback(client, employee_headers, question):
     result = client.post(
         "/api/v1/ai/chat", headers=employee_headers, json={"question": question}
     ).json()
-    assert result["answer_status"] == "fallback"
+    # "...can I carry over" also gets the asker's own balance (personal), never a policy.
+    assert result["answer_status"] in {"fallback", "personal"}
     assert result["sources"] == []
+    assert "carry" not in result["answer"].lower()
+    assert "hr-support@janapost.kz" in result["answer"]
 
 
 def test_ai_audit_is_persisted_without_raw_questions(client, employee_headers, db_session):
@@ -475,7 +478,7 @@ def test_production_settings_and_synthetic_boundaries(client, hr_admin_headers):
 def test_knowledge_summary_and_notification_counts(client, employee_headers):
     summaries = client.get("/api/v1/ai/documents", headers=employee_headers)
     assert summaries.status_code == 200
-    assert len(summaries.json()) == 3
+    assert len(summaries.json()) == 4  # incl. the life events guide
     assert all(doc["is_synthetic"] for doc in summaries.json())
     count = client.get("/api/v1/notifications/unread-count", headers=employee_headers)
     assert count.json()["unread"] == 2

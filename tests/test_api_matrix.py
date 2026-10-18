@@ -29,6 +29,7 @@ OPERATIONS = [
         201,
         "employee",
     ),
+    ("GET", "/api/v1/requests/leave-calendar", None, 200, "employee"),
     ("GET", "/api/v1/requests/{request_id}", None, 200, "employee"),
     (
         "POST",
@@ -135,6 +136,7 @@ IDS = {
     "user_id": 1,
 }
 PROTECTED = [case for case in OPERATIONS if case[4] != "public"]
+QUERY = {"/api/v1/requests/leave-calendar": "?start_date=2027-01-11&end_date=2027-01-24"}
 
 
 def case_name(case):
@@ -207,7 +209,8 @@ def test_each_operation_has_a_working_authorized_request(client, case, request, 
         reviews = client.get("/api/v1/admin/integrations/reviews", headers=headers).json()
         review = next(r for r in reviews if r["employee_code"] == ids["employee_code"])
         payload = {**payload, "observed_at": review["observed_at"]}
-    response = client.request(method, path.format(**ids), headers=headers, json=payload)
+    url = path.format(**ids) + QUERY.get(path, "")
+    response = client.request(method, url, headers=headers, json=payload)
     assert response.status_code == expected, response.text
     assert response.headers["Cache-Control"] == "no-store"
     assert response.headers["X-Request-ID"]
@@ -217,7 +220,7 @@ def test_each_operation_has_a_working_authorized_request(client, case, request, 
 @pytest.mark.parametrize("case", PROTECTED, ids=case_name)
 def test_every_protected_operation_rejects_anonymous_access(client, case):
     method, path, payload, _, _ = case
-    response = client.request(method, path.format(**IDS), json=payload)
+    response = client.request(method, path.format(**IDS) + QUERY.get(path, ""), json=payload)
     assert response.status_code == 401, response.text
     assert response.json()["error"]["code"] == "unauthenticated"
     assert response.headers["WWW-Authenticate"] == "Bearer"

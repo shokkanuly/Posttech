@@ -49,3 +49,29 @@ jobs:
       - run: node --test tests/*.test.cjs
       - name: JavaScript syntax
         run: for file in static/js/*.js; do node --check "$file"; done
+  mock-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Generate private isolated MOCK configuration
+        run: >-
+          python -m app.gateway.configure_mock
+          --output "$RUNNER_TEMP/janamen-private.env"
+          --project-name janamen-mock-ci
+          --web-port 18778 --postgres-port 15448
+      - name: Build and start disposable services
+        run: >-
+          docker compose --env-file "$RUNNER_TEMP/janamen-private.env"
+          --profile integrations up --build --wait --wait-timeout 180
+      - name: Registration smoke twice without resetting data
+        run: |
+          for attempt in 1 2; do
+            docker compose --env-file "$RUNNER_TEMP/janamen-private.env" exec -T web \
+              python -m app.integrations.demo_smoke --scenario ci-repeatable
+          done
+      - name: Stop owned services and retain volumes
+        if: always()
+        run: docker compose --env-file "$RUNNER_TEMP/janamen-private.env" --profile integrations down

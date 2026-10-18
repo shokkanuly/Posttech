@@ -9,13 +9,13 @@ The older two-step `/v1/1c/orders` → `/v1/documentolog/documents` design has b
 From a configured Python environment:
 
 ```bash
-python -m app.gateway.configure_mock
-# Creates .env.gateway with mode0600, fresh directional keys and local-only demo settings.
+python -m app.gateway.configure_mock --web-port 18778 --postgres-port 15448
+# Creates .env.gateway with mode0600, generated passwords/keys and a unique Compose project.
 # It refuses to overwrite an existing file and never prints the keys.
 docker compose --env-file .env.gateway --profile integrations up --build -d
 ```
 
-Open `http://127.0.0.1:8000`. The usual synthetic seed accounts are `aruzhan@janapost.kz` (employee), `timur@janapost.kz` (manager), `aigerim@janapost.kz` (HR), with the documented synthetic demo password `Password123!`. They are not enterprise credentials. The optional generated environment deliberately disables Gemini. Set alternate ports with `configure_mock --web-port 18765 --postgres-port 15439` if the default local app is already running.
+Open `http://127.0.0.1:18778`. The usual synthetic seed accounts are `aruzhan@janapost.kz` (employee), `timur@janapost.kz` (manager), `aigerim@janapost.kz` (HR). Their generated password is stored only in the private environment file. The generated environment disables external AI and selects a unique `janamen-mock-*` Compose project. The generator refuses to overwrite files or run in production. Select unused ports before startup. See [the repeatable integration demo runbook](INTEGRATION_DEMO_RUNBOOK.md) for isolated demo accounts, registration assertions and outage/recovery.
 
 `INTEGRATION_GATEWAY_URL` is still the switch. Empty means no new outbox tasks, no profile network reads and no integration delivery. The ordinary default Compose startup does not start the optional integration services. To enable them, use the generated environment and `--profile integrations` together. Setting the URL alone while leaving the gateway offline is allowed: approvals still succeed and delivery retries independently.
 
@@ -52,6 +52,12 @@ X-Signature = base64(HMAC-SHA256(key, that message))
 Headers: **`X-Key-Id`, `X-Timestamp`, `X-Nonce`, `X-Signature`**. `Idempotency-Key` also accompanies document POSTs and must match the body. Unknown/retired key, wrong body/path/query signature, clock skew beyond300 seconds or an already seen nonce is rejected with401. Comparison uses `hmac.compare_digest`. Nonces persist in `gateway_nonces` and existing app `integration_nonces`; cleanup retains900 seconds, exceeding the signature window. Replaying captured signed requests remains rejected after a service restart. Retrying a legitimate operation uses a fresh nonce and the same idempotency key.
 
 Each direction has a separate key. Verification maps support overlapping current/previous key IDs during operator-controlled rotation. There is no bearer-token fallback, anonymous health route, browser CORS or public Swagger/OpenAPI route on the gateway. Its container readiness check signs `/health`. Callback `nonce` must equal signed `X-Nonce`. The shared signing helper gained an optional nonce argument solely to bind that field into the body/signature.
+
+Golden vectors in `tests/test_integration_hardening.py` pin UTF-8 bytes, uppercase method, literal encoded path/query, decimal timestamp, LF separators, lowercase hex SHA-256 and Base64 HMAC. They also pin the inclusive ±300-second boundary. The signer itself is unchanged.
+
+All authenticated gateway routes share a durable fixed UTC-minute limit per verified key ID: `GATEWAY_REQUESTS_PER_MINUTE` (default 600, range 1–100000). Admission and nonce consumption commit together before a handler runs. Concurrent processes cannot exceed the bucket; restarts retain counts. Rejected requests return `429`, `Retry-After` seconds until the next minute and `Cache-Control: no-store`, without creating a job or nonce. Invalid/replayed signatures return 401. Rotated key IDs have separate buckets; fixed windows permit a burst across a minute boundary. This controls authenticated callers, including health probes, and is not a public-internet denial-of-service defense. Keep the gateway private. Safe rejection logs contain only the category/status, never headers or bodies.
+
+Gateway startup upgrades its independent store additively to **v3**, creating `gateway_rate_limits` without rewriting jobs, references, callback state or nonces. Deploy one gateway instance for migration first. Core head remains `0011_merge_profile_updates`. An internal [OpenAPI snapshot](gateway-openapi.json) documents our canonical routes; no public schema endpoint is enabled.
 
 No AES/JWE/custom encryption was added. Integration logs contain only technical state/counters/codes; canonical bodies, names, amounts, API keys and callback secrets are not logged or included in validation error responses. State includes the minimum canonical payload needed for restart-safe retries; storage is different from logging. Production storage/access/retention controls remain an operational requirement.
 

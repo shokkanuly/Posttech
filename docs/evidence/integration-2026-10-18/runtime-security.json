@@ -1,0 +1,15 @@
+{
+  "mode": "MOCK",
+  "checks": {
+    "valid": 200,
+    "replay": 401,
+    "expired": 401,
+    "unknown_key": 401,
+    "body_tamper": 401,
+    "strict_schema": 422,
+    "oversize": 413
+  },
+  "jobs_before": 3,
+  "jobs_after": 3,
+  "private_input_echoed": false
+}

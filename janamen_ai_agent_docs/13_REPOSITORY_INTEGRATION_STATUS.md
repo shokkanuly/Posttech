@@ -1,5 +1,7 @@
 # Current repository integration status — 18 October 2026
 
+Latest follow-up: [integration implementation report](../docs/INTEGRATION_IMPLEMENTATION_REPORT.md), [INT-001..INT-030 results](../docs/INTEGRATION_ACCEPTANCE_RESULTS.md) and [repeatable isolated demo](../docs/INTEGRATION_DEMO_RUNBOOK.md). It preserves the features below and adds durable signed-call quotas (gateway v3), generated private demo credentials, callback atomicity/golden vectors and separate PostgreSQL application-worker crash/claim tests. Current full runs: **493 passed + 2 PostgreSQL-only skips on SQLite; 495 passed on PostgreSQL17**. The older results below remain a baseline. The supplied [blueprint](reference/integration_blueprint_2026-10-18.md) is saved as design context, with actual implementation/evidence taking precedence.
+
 This is the follow-up to the supplied 17 October QA baseline. The source is the existing `codex/fix-plan` branch combined with `main` at `0ec30d2`, not a new gateway implementation. See [the PR5 integration report](../docs/PR5_INTEGRATION_REPORT.md) for actual test commands, results, screenshots and remaining gates.
 
 ## Implemented in this repository

@@ -12,7 +12,9 @@ from uuid import uuid4
 
 import httpx
 from fastapi import HTTPException
-from sqlalchemy import and_, create_engine, delete, event, or_, update
+from sqlalchemy import and_, case, create_engine, delete, event, or_, update
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
@@ -24,7 +26,7 @@ from app.gateway.connectors import (
     MockOneC,
     TemporaryConnectorError,
 )
-from app.gateway.models import GatewayJob, GatewayNonce, utcnow
+from app.gateway.models import GatewayJob, GatewayNonce, GatewayRateLimit, utcnow
 from app.integrations import signing
 from app.integrations.contracts import (
     BACKOFF_SECONDS,
@@ -115,9 +117,46 @@ class GatewayRuntime:
             db.refresh(job)
             return status_for(job)
 
-    def remember_nonce(self, nonce: str) -> None:
+    def remember_nonce(self, nonce: str, key_id: str | None = None) -> None:
+        """Atomically admit a verified caller and consume its nonce before any handler.
+
+        A fixed UTC minute permits at most the configured number per key. Counts are
+        durable; denied calls cannot grow the nonce store. A replay rolls back its
+        quota increment. No signed timestamp, payload or client IP owns the window.
+        """
         now = utcnow()
         with self.sessions() as db:
+            if key_id is not None:
+                window = int(now.timestamp()) // 60 * 60
+                row = GatewayRateLimit
+                insert = sqlite_insert if self.engine.dialect.name == "sqlite" else postgres_insert
+                statement = insert(row).values(
+                    key_hash=hashlib.sha256(key_id.encode()).hexdigest(),
+                    window_start=window,
+                    requests=1,
+                )
+                accepted = db.execute(
+                    statement.on_conflict_do_update(
+                        index_elements=[row.key_hash],
+                        set_={
+                            "window_start": window,
+                            "requests": case(
+                                (row.window_start == window, row.requests + 1), else_=1
+                            ),
+                        },
+                        where=or_(
+                            row.window_start < window,
+                            (row.window_start == window)
+                            & (row.requests < self.config.REQUESTS_PER_MINUTE),
+                        ),
+                    ).returning(row.key_hash)
+                ).scalar_one_or_none()
+                if accepted is None:
+                    raise HTTPException(
+                        429,
+                        "Integration request limit exceeded",
+                        headers={"Retry-After": str(60 - int(now.timestamp()) % 60)},
+                    )
             db.execute(
                 delete(GatewayNonce).where(GatewayNonce.seen_at < now - timedelta(seconds=900))
             )

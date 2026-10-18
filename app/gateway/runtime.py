@@ -117,21 +117,34 @@ class GatewayRuntime:
             db.refresh(job)
             return status_for(job)
 
-    def remember_nonce(self, nonce: str, key_id: str | None = None) -> None:
+    def remember_nonce(
+        self, nonce: str, key_id: str | None = None, *, health_check: bool = False
+    ) -> None:
         """Atomically admit a verified caller and consume its nonce before any handler.
 
         A fixed UTC minute permits at most the configured number per key. Counts are
-        durable; denied calls cannot grow the nonce store. A replay rolls back its
-        quota increment. No signed timestamp, payload or client IP owns the window.
+        durable; denied calls cannot grow the nonce store. Signed GET /health uses
+        its own budget. A replay rolls back its quota increment. No signed
+        timestamp, payload or client IP owns the window or selects the budget.
         """
         now = utcnow()
         with self.sessions() as db:
             if key_id is not None:
                 window = int(now.timestamp()) // 60 * 60
+                # Preserve the v3 business hash and its existing counts. Health
+                # gets a separate namespace; no table/data migration is needed.
+                identity = key_id.encode()
+                if health_check:
+                    identity = b"\x00health\x00" + identity
+                limit = (
+                    self.config.HEALTH_REQUESTS_PER_MINUTE
+                    if health_check
+                    else self.config.REQUESTS_PER_MINUTE
+                )
                 row = GatewayRateLimit
                 insert = sqlite_insert if self.engine.dialect.name == "sqlite" else postgres_insert
                 statement = insert(row).values(
-                    key_hash=hashlib.sha256(key_id.encode()).hexdigest(),
+                    key_hash=hashlib.sha256(identity).hexdigest(),
                     window_start=window,
                     requests=1,
                 )
@@ -146,8 +159,7 @@ class GatewayRuntime:
                         },
                         where=or_(
                             row.window_start < window,
-                            (row.window_start == window)
-                            & (row.requests < self.config.REQUESTS_PER_MINUTE),
+                            (row.window_start == window) & (row.requests < limit),
                         ),
                     ).returning(row.key_hash)
                 ).scalar_one_or_none()

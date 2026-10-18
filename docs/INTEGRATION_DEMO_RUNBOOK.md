@@ -4,11 +4,13 @@ This runs JanaМен's existing application → outbox → private gateway → s
 
 ## Create a new isolated environment
 
-From the repository, with Docker Desktop running and the Python environment installed:
+From the repository, with Docker Desktop running and the Python environment installed, choose unused loopback ports and set `DEMO_WEB_PORT` and `DEMO_POSTGRES_PORT` in your shell:
 
 ```sh
 .venv/bin/python -m app.gateway.configure_mock \
-  --output .env.gateway --web-port 18778 --postgres-port 15448
+  --output .env.gateway \
+  --web-port "${DEMO_WEB_PORT:?Set an unused web port}" \
+  --postgres-port "${DEMO_POSTGRES_PORT:?Set an unused PostgreSQL port}"
 docker compose --env-file .env.gateway --profile integrations up --build --wait --wait-timeout 180
 ```
 
@@ -16,7 +18,7 @@ Choose unused ports first. The generated `COMPOSE_PROJECT_NAME=janamen-mock-<ran
 
 `.env.gateway` is ignored by Git and excluded from the Docker build context. It is created exclusively with mode 0600, random database/demo passwords and independent signing keys. Keep it private and reuse it for this demo. Read the demo password in your private editor for interactive sign-in; do not paste credentials into chat, screenshots or evidence. External AI is disabled. Do not use the repository's historical predictable password with a newly generated environment.
 
-Open [the local demo](http://127.0.0.1:18778). This is a local development deployment using HTTP on the private Compose network, not production TLS/mTLS evidence. The gateway has no published host port. Application and PostgreSQL ports bind only to loopback. Gateway schema startup upgrades to v3; the app migration head is `0011_merge_profile_updates`.
+After startup and health checks succeed, open the application on `127.0.0.1` using the configured `WEB_PORT`. Availability depends on that run's services and environment. This is a local development deployment using HTTP on the private Compose network, not production TLS/mTLS evidence. The gateway has no published host port. Application and PostgreSQL ports bind only to loopback. Gateway schema startup upgrades to v3; the app migration head is `0011_merge_profile_updates`.
 
 ## Synthetic identities
 
@@ -58,7 +60,7 @@ docker compose --env-file .env.gateway exec -T web \
 
 During the outage, approval persists and the profile loads from local storage. The employee retains approval while integration is pending. After restart the durable worker retries the same key; the command waits up to 90 seconds. It recovers to one reference/notification without another leave debit. If retries have already exhausted, inspect the HR failed queue; use the audited recovery action with an explicit reason. Do not mutate the payload/key or delete accepted jobs to force a result. Known accepted jobs missing from gateway storage require investigation/restoration, not blind resubmission.
 
-In this session the existing worker and web were also recreated during recovery, retaining both database volumes. Both gateway callbacks were delivered. Exact observed IDs/counts are in [runtime evidence](evidence/integration-2026-10-18/runtime-journey.json).
+Record the selected project, environment path, ports, observed IDs and results under a new evidence directory for each verification session. A previous session's availability or successful result does not establish that the next environment is running or verified.
 
 ## Security and verification
 
@@ -69,7 +71,7 @@ In this session the existing worker and web were also recreated during recovery,
 
 The second command requires `TEST_DATABASE_URL` pointing to an explicitly disposable PostgreSQL database; otherwise its two cases skip. Each owns a random schema and drops only that schema. Never configure production/user storage as a test target. The complete suite also covers recovery authorization, mapping, migration preflight, key rotation, raw-body/query signing, nonce persistence, callback rollback and wrong employee/manager scopes. Read [acceptance results](INTEGRATION_ACCEPTANCE_RESULTS.md) for exact executed commands and limitations.
 
-Signed gateway requests share a durable per-key UTC-minute quota, default 600. `429` includes `Retry-After`; invalid signatures receive 401. The gateway health probe also uses this quota. Configure an operationally suitable limit, retain private networking and monitor safe rejection logs. Fixed-window throttling does not replace an edge/network defense.
+Signed business requests use a durable per-key UTC-minute quota, `GATEWAY_REQUESTS_PER_MINUTE`, default 600. Signed `GET /health` uses an independent `GATEWAY_HEALTH_REQUESTS_PER_MINUTE` quota, default 60, so monitoring cannot spend business capacity. Both remain signed, replay-protected and bounded; a different method/route cannot select the health budget. `429` includes `Retry-After`; invalid signatures receive 401. Configure operationally suitable limits, retain private networking and monitor safe rejection logs. Fixed-window throttling does not replace an edge/network defense.
 
 ## Preserve and stop
 
@@ -79,7 +81,7 @@ docker compose --env-file .env.gateway --profile integrations stop
 
 This retains the generated environment and both stores for the next run. Do not use volume deletion, prune, row removal or credential replacement as a repeatability technique. Back up the independent gateway store using the [existing recovery runbook](RECOVERY_AND_OPERATIONS.md) before any intended deployment upgrade.
 
-The verified session used project `janamen-int-20261018`, ports 18778/15448 and a private mode-0600 environment outside the repository at `/tmp/janamen-integration-20261018/private.env`. That project was explicitly created for this work. It is distinct from the older `janamen-qa-check`/`janamen-gateway-check` projects. The browser demo remains available locally; temporary credentials are not committed.
+Observed deployments, temporary credentials' file locations and session-specific outcomes are recorded in [verification evidence](evidence/integration-precommit-2026-10-18/REVIEW.md). They are historical observations, not a promise that a browser demo remains available. Private credential values are never included in committed evidence.
 
 ## Real vendor gate
 

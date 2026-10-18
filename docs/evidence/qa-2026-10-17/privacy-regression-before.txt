@@ -4,7 +4,7 @@ _ test_employee_free_text_is_absent_from_provider_http_body[synthetic-national-i
 
 client = <starlette.testclient.TestClient object at 0x109d48980>
 db_session = <sqlalchemy.orm.session.Session object at 0x109ef9e80>
-employee_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwianRpIjoiYmZmNzRiMDNmOTE4YWEyNzVmOWZhMjE...TQ2ZTg5YmRjYjY5NmU5YzUwMCIsImV4cCI6MTc5MjMzMDcyMSwiaWF0IjoxNzkyMjQ0MzIxfQ.qpLOYWZ8awyp8XnZnfq7jsFcUUYm0yVz6RZ73Yhefso'}
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
 gemini_on = None
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109c995b0>
 suffix = 'My IIN is 990101123456.'
@@ -55,7 +55,7 @@ __ test_employee_free_text_is_absent_from_provider_http_body[synthetic-email] __
 
 client = <starlette.testclient.TestClient object at 0x109dd87d0>
 db_session = <sqlalchemy.orm.session.Session object at 0x109ef8590>
-employee_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwianRpIjoiY2I4ODA2MzU5ODBmZjkwOWNhNjZkODA...GYwY2RiMGRhYjNhYzM1ODFmYiIsImV4cCI6MTc5MjMzMDcyMSwiaWF0IjoxNzkyMjQ0MzIxfQ.hphr-UCVb_Sw-G6d2-BjlHc3viBKGSspMY5Cuj_-aQQ'}
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
 gemini_on = None
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109c99cd0>
 suffix = 'My email is qa-probe@example.test.'
@@ -106,7 +106,7 @@ __ test_employee_free_text_is_absent_from_provider_http_body[synthetic-phone] __
 
 client = <starlette.testclient.TestClient object at 0x10a12d090>
 db_session = <sqlalchemy.orm.session.Session object at 0x109ef9be0>
-employee_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwianRpIjoiZWFjODRjYWU0NTIwMGM3OTQyMGIzNGY...zc0MDQ4Nzc1OWY4ZDEyNDE0YSIsImV4cCI6MTc5MjMzMDcyMiwiaWF0IjoxNzkyMjQ0MzIyfQ.iFQmYd27GF7YADEJdpITjCt1zcKNQ13mepwFMi_IHy0'}
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
 gemini_on = None
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109eff770>
 suffix = 'Contact me at +7 700 111 2233.'

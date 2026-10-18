@@ -71,7 +71,12 @@ def create_app(config: GatewaySettings | None = None) -> FastAPI:
             nonce = signing.verify(
                 request.headers, runtime.config.JANAMEN_KEYS, request.method, path, body
             )
-            await asyncio.to_thread(runtime.remember_nonce, nonce, request.headers["x-key-id"])
+            await asyncio.to_thread(
+                runtime.remember_nonce,
+                nonce,
+                request.headers["x-key-id"],
+                health_check=request.method == "GET" and request.url.path == "/health",
+            )
         except signing.SignatureError:
             logger.warning("Gateway authentication rejected")
             return JSONResponse(

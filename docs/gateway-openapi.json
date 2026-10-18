@@ -3,7 +3,7 @@
   "info": {
     "title": "JanaMen gateway — MOCK ONLY",
     "version": "0.1.0",
-    "description": "JanaMen-owned MOCK canonical API; not a vendor API. Every operation requires X-Key-Id, X-Timestamp, X-Nonce and X-Signature. See INTEGRATIONS.md for exact raw-body HMAC signing. Authenticated requests are limited per key per fixed UTC minute; 429 includes Retry-After."
+    "description": "JanaMen-owned MOCK canonical API; not a vendor API. Every operation requires X-Key-Id, X-Timestamp, X-Nonce and X-Signature. See INTEGRATIONS.md for exact raw-body HMAC signing. Business routes and signed GET /health use independent durable per-key UTC-minute quotas; 429 includes Retry-After."
   },
   "paths": {
     "/v1/documents": {

@@ -1,73 +1,26 @@
-# Integration implementation — 18 October 2026
+# JanaМен MOCK integration implementation
 
-The existing MOCK vertical slice is preserved and verified. This follow-up adds durable gateway admission limits, generated private demo credentials, a repeatable registration/outage command and independent PostgreSQL application-worker evidence. It does not implement undocumented vendor APIs.
+The application owns authenticated HR requests, approvals, history, audit, notifications and immutable integration outbox events. A separate worker sends signed canonical requests to the private gateway. The gateway persists jobs, mock documents, nonces and callback state. Signed callbacks and reconciliation apply terminal results atomically. Business approval remains independent from registration status; employee snapshots remain available from local storage during outages.
 
-## Baseline and source references
+## Current behavior
 
-Started from clean branch `codex/fix-plan`, commit `eafbaa7c73fe639ad14f1d0131ff5cf4bf19d872`; changes are saved on `codex/integration-blueprint-hardening`. The supplied 17 October 400-test QA report is older than the current repository. The merged-source report already documented 484 tests, request submission keys, audited recovery/remapping, safe constraints, repeatable smoke and gateway v2 migrations. Those features were inspected and tested, not rebuilt.
+- Employee-scoped, body-bound submission keys prevent duplicate logical requests. Browser retries reuse the key; callers without a key retain the create contract.
+- HR-only recovery queues audited, version-checked intent. The worker reconciles before retry, retains the original payload/key, rejects superseded generations and refuses blind replay of a known accepted job missing from gateway storage.
+- HR-only mapping resolution uses fresh signed employee-code snapshots and existing accounts, with stale-command checks and audit. It never matches by name or creates an account.
+- Signed business requests and signed `GET /health` have independent durable per-key UTC-minute quotas. Both retain signature, timestamp, nonce and body-size checks. Health probes cannot consume business capacity.
+- Synthetic demo configuration generates private credentials and a unique Compose project without overwriting existing files. The repeatable registration and outage command checks stable submission identity, one debit and one registration notice.
 
-Inspected the local `janamen_ai_agent_docs` pack, blueprint Markdown/DOCX and pasted agent prompt as design/context documents. The user's request and repository state determine the work. A byte-identical Markdown copy is saved at [reference/integration_blueprint_2026-10-18.md](../janamen_ai_agent_docs/reference/integration_blueprint_2026-10-18.md); source checksums are in [provenance evidence](evidence/integration-2026-10-18/source-provenance.json). Its proposed field names/receipt examples are not a mandate to break existing canonical contracts.
+Core migration head: **`0011_merge_profile_updates`**. Gateway schema: **v3**. Health quota separation reuses the existing quota table, preserves business hashes/counts and requires no new migration. Back up stores before deployment and retain idempotency/nonce history.
 
-Graph discovery and source inspection confirmed the application service, signing helper, outbox, profile sync, recovery, admin/internal routes, gateway models/config/runtime/connectors, migrations, Compose and integration tests. Runtime: Python3.14.0, Node24.14.1, PostgreSQL17. Core head stays **`0011_merge_profile_updates`**. Initial tracked worktree was clean. Existing local settings select Gemini and no gateway; those private settings were left unchanged. Tests explicitly select offline AI, and the new isolated runtime selects `grounded_knowledge` with Gemini disabled. No live provider was contacted.
+## Verification records
 
-## Delivered behavior and changed files
+Exact commands/exits, database targets, test counts, selected ports, observed request/reference IDs, availability observations and review details belong to the corresponding session:
 
-| Files | Result |
-|---|---|
-| `app/gateway/config.py`, `models.py`, `runtime.py`, `main.py` | Per verified key ID, fixed UTC-minute admission quota, default600. Atomic database upsert and nonce consumption prevent concurrent over-admission; counters survive restarts. Rejections preserve no business effects, return safe429/Retry-After/no-store, and do not grow the nonce store. Authentication failure logs contain only category/status. Existing HMAC bytes and keys remain unchanged |
-| `app/gateway/migrate.py` | Additive independent gateway **v3** table for quota state. v1/v2 job/reference/callback/nonce retention and future-version refusal remain tested |
-| `app/gateway/configure_mock.py`, `docker-compose.yml`, `.env.example` | Random demo password, private exclusive env creation, unique generated Compose project, explicit offline AI, small synthetic seed and configurable gateway quota. Invalid ports/project names and production invocation are refused. Existing credentials/files are never overwritten |
-| `app/integrations/demo_smoke.py` | Non-production local-only HTTP journey using real synthetic bearer sessions. Stable submission key, fresh unused date, repeated submit/approval, single debit, one MOCK reference/registration notice, privilege denials, session logout and explicit gateway-offline mode. No row deletion or reset |
-| `tests/test_integration_hardening.py` | OpenSSL-derived golden vectors; exact skew boundaries; durable/concurrent quota, replay rollback and key isolation; v2 upgrade; input/log redaction/size rejection; private env/no overwrite/production guard; repeated pending smoke; callback audit fault rollback and one set of terminal effects |
-| `tests/test_outbox_processes.py` | Two separate application processes prove PostgreSQL SKIP LOCKED; a process crash after committed gateway acceptance but before local ack proves stable-key recovery to one job/document/notice. The transport seam uses a real persisted local gateway runtime; signed HTTP is separately exercised |
-| `docs/INTEGRATIONS.md`, `gateway-openapi.json`, `RECOVERY_AND_OPERATIONS.md` | Updated actual contract, admission semantics, internal schema snapshot, v3 deployment/rollback boundary and generated credential instructions |
-| `docs/ci/quality.yml`, `docs/ci/README.md` | Inactive CI template additionally builds an isolated MOCK deployment and runs the integration smoke twice. Existing PostgreSQL matrix automatically includes the separate-process cases. No active workflow/permission was changed |
-| `README.md`, `janamen_ai_agent_docs/13_REPOSITORY_INTEGRATION_STATUS.md`, source reference and the three `INTEGRATION_*` documents | Link current implementation, all 30 acceptance statuses, repeatable runbook and limitations; retain historical QA provenance |
-| `docs/evidence/integration-2026-10-18/` | Exact command/exits, baseline/final logs and JUnit, runtime counts/security probes, environment summary, scoped secret/log scan and review notes. Credentials, raw runtime logs, databases and private environment files stay outside Git |
+- [Initial implementation session](evidence/integration-2026-10-18/implementation-report.md) and [initial acceptance matrix](evidence/integration-2026-10-18/acceptance-results.md).
+- [Five-check precommit verification](evidence/integration-precommit-2026-10-18/REVIEW.md).
 
-## Architecture retained
+[Acceptance records](INTEGRATION_ACCEPTANCE_RESULTS.md) distinguish executed MOCK assertions from remaining gates. [The demo runbook](INTEGRATION_DEMO_RUNBOOK.md) contains reusable startup, repeat and outage/recovery instructions. A recorded available deployment is a historical observation, not a promise that it is still running.
 
-Browser → application bearer auth and database-owned scopes → request transaction/history/audit/notifications → immutable outbox → separate signed worker → private gateway → persisted mock registration → signed callback or reconciliation. Approval stays `Approved` during external failure. Registration status remains separate. Employee snapshots are local read-only projections with source/as-of/freshness; unknown mappings enter HR review and do not create accounts. Profile contact approvals remain local and create no vendor document task.
+## Remaining gates
 
-Submission keys remain employee-scoped and body-bound. Recovery retains immutable payload/key, requires HR authorization/reason/version checks and reconciles the gateway before replay. A known accepted job absent from the store is an incident. Callback generation checks and atomic terminal effects remain intact. The gateway retains existing PENDING/PROCESSING receipt states and `:v1` event keys; no incompatible illustrative `schema_version` field was introduced.
-
-## Actual verification
-
-All commands below exited **0**, except the two corrected invocation mistakes noted afterward. Commands, environment selection and output files are in [commands.json](evidence/integration-2026-10-18/commands.json).
-
-| Execution | Result | Evidence |
-|---|---|---|
-| Existing focused gateway/integration/reliability/fix/merge tests | **94 passed** | [baseline-targeted.txt](evidence/integration-2026-10-18/baseline-targeted.txt) |
-| Existing full SQLite / PostgreSQL17 suites | **484 passed each** | [SQLite](evidence/integration-2026-10-18/baseline-sqlite.txt), [PostgreSQL](evidence/integration-2026-10-18/baseline-postgresql.txt) |
-| Final full SQLite suite | **493 passed, 2 skipped**, one existing deprecation warning | [log](evidence/integration-2026-10-18/final-sqlite.txt), [JUnit](evidence/integration-2026-10-18/final-sqlite.xml) |
-| Final full PostgreSQL17 suite | **495 passed**, one existing deprecation warning | [log](evidence/integration-2026-10-18/final-postgresql.txt), [JUnit](evidence/integration-2026-10-18/final-postgresql.xml) |
-| Ruff / changed-file formatting / mypy / pip check / JS syntax | **PASS**, mypy84 application sources | [quality logs](evidence/integration-2026-10-18/commands.json) |
-| Frontend locale suite | **5 passed** | [frontend.txt](evidence/integration-2026-10-18/frontend.txt) |
-| Docker build/start and health | Web/db/gateway healthy; worker running; no gateway published port | [runtime record](evidence/integration-2026-10-18/runtime-journey.json) |
-| New HTTP registration smoke first/repeat | **PASS twice**, same request/reference, no second debit/notice | [first](evidence/integration-2026-10-18/smoke-first.txt), [repeat](evidence/integration-2026-10-18/smoke-repeat.txt) |
-| Actual gateway stop, approval, service restart and recovery | **PASS**; approval retained, original key registered once | [pending](evidence/integration-2026-10-18/outage-pending.txt), [recovered](evidence/integration-2026-10-18/outage-recovered.txt) |
-| Existing ten-step application API smoke | **PASS twice** | [first](evidence/integration-2026-10-18/full-smoke-first.txt), [repeat](evidence/integration-2026-10-18/full-smoke-repeat.txt) |
-| Running gateway signature/schema/size probes | Expected200/401/422/413; no added jobs; no private input echo | [runtime-security.json](evidence/integration-2026-10-18/runtime-security.json) |
-| Scoped nonignored-file and container-log scan | No known generated private values or selected secret/payload markers found | [scan](evidence/integration-2026-10-18/log-and-secret-scan.json) |
-
-The two SQLite skips are intentionally PostgreSQL-only application worker tests; the same cases pass on PostgreSQL. Test fixtures use disposable unique schemas; no existing schema or volume was reset. Gateway migration tests cover fresh install, unversioned v1, v2 retention and repeated upgrade. Callback fault injection confirms no partial reference/history/notice on audit failure and exactly one set after retry and duplicate delivery.
-
-Two command errors were corrected: the first targeted command named nonexistent `tests/test_integrations.py` (exit4); it was replaced by the actual gateway test files and passed94. Attempting to run the root `smoke_test.py` inside the image failed because Docker does not copy that root helper (exit2). It then ran twice successfully from the host against the isolated port using private credentials. Neither invocation error is reported as a test pass.
-
-The isolated project is **`janamen-int-20261018`**, web `127.0.0.1:18778`, PostgreSQL `127.0.0.1:15448`, with separate new app/gateway volumes and an external mode-0600 private environment. Older `janamen-qa-check` and `janamen-gateway-check` projects were not rebuilt, stopped or reset. The new synthetic demo is left running for review. [Environment metadata](evidence/integration-2026-10-18/environment.json) contains no credential values.
-
-## Acceptance and remaining gates
-
-[INT-001 through INT-030](INTEGRATION_ACCEPTANCE_RESULTS.md): **29 PASS, one PARTIAL**. INT-029 is partial because backend mode truth is proven but no new browser/mobile check was performed this session. Existing frontend locale tests pass; historical UI screenshots remain historical. The source and UI architecture were not replaced.
-
-The gateway quota is fixed-window, permits boundary bursts and allocates a separate budget per rotating key ID. It includes signed health checks, so production sizing/monitoring is still required. The new table stores a hash of a public key identifier, not signing secrets. Quota limits apply to the gateway; callback ingress relies on existing machine authentication/body limits/private deployment, and user-login throttling still needs a shared production control. No exhaustive security certification is claimed.
-
-Back up the gateway before deploying v3; start one migrator/gateway before additional workers. Older versions reject a v3 store. Core application migration head does not change. Do not delete nonce/idempotency history to roll back. Production TLS/mTLS, key/certificate operations, HA/capacity, monitoring, legal/data governance and production PostgreSQL restore objectives remain unverified.
-
-CI remains an **inactive template** because prior GitHub authentication lacked workflow-publication scope. It now includes local Docker smoke/build coverage, but no Actions execution, continuous vulnerability scan or general CI secret scanner is claimed. Local dependency consistency and scoped secret checks actually ran. No dependency was added.
-
-Real 1C:ЗУП and Documentolog require partner-approved sandbox contracts/access, exact field/leave semantics, service scopes, supported authentication/webhook/signature behavior and network/TLS requirements. Creating demo vendor accounts is useful once these are available; it is not needed for the completed MOCK work. No CONNECTED label, real document/signature or production readiness is claimed.
-
-## Saving work
-
-Source, documentation, tests and review evidence are saved locally and pushed on [codex/integration-blueprint-hardening](https://github.com/shokkanuly/Posttech/tree/codex/integration-blueprint-hardening). The final chat reports the actual commit and verified remote result. Runtime stores, secrets and private logs remain ignored/outside the repository.
+Real 1C/Documentolog adapters require approved sandbox contracts, credentials, exact field/leave/signature semantics and network/TLS requirements. Production TLS/mTLS, key operations, shared login throttling, monitoring/HA/load, data governance and restore objectives remain unverified. Both connectors remain MOCK. CI is an inactive template pending authorized workflow publication; no Actions execution is implied. Browser/mobile revalidation remains separate from API and database tests.

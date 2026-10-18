@@ -4,7 +4,7 @@ _ test_conflicting_approved_numbers_fall_back_before_provider[en-Qacheckpolicy v
 
 client = <starlette.testclient.TestClient object at 0x10df44d70>
 db_session = <sqlalchemy.orm.session.Session object at 0x10e0de3c0>
-employee_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwianRpIjoiYjVlMzE5MzI3ZjZmYzIwOWZkOGUxMjY...zdjYWFjOTJjMTViMDIwZTlkZiIsImV4cCI6MTc5MjMzMDMwNSwiaWF0IjoxNzkyMjQzOTA1fQ.HyxQlTVui8dc-gtJYlNLx7BtRa2GJFuF-owYbRqkn6k'}
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10dec50f0>
 provider_enabled = False, language = 'en'
 question = 'Qacheckpolicy vacation days?'
@@ -49,7 +49,7 @@ _ test_conflicting_approved_numbers_fall_back_before_provider[en-Qacheckpolicy v
 
 client = <starlette.testclient.TestClient object at 0x10e00e990>
 db_session = <sqlalchemy.orm.session.Session object at 0x10e0dcad0>
-employee_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwianRpIjoiODE0MDY4M2JhYWJkNmFmMzEzNjQ2Zjd...jU2NDY0Nzk5YmI3MTk2ZWMxZSIsImV4cCI6MTc5MjMzMDMwNiwiaWF0IjoxNzkyMjQzOTA2fQ.3DRmiTOXbA23kVFRRwMNtybZpPq1OXmDBn5dGZconPk'}
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10dec5810>
 provider_enabled = True, language = 'en'
 question = 'Qacheckpolicy vacation days?'
@@ -94,7 +94,7 @@ _ test_conflicting_approved_numbers_fall_back_before_provider[ru-Qacheckpolicy \
 
 client = <starlette.testclient.TestClient object at 0x10e34d090>
 db_session = <sqlalchemy.orm.session.Session object at 0x10e0de120>
-employee_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwianRpIjoiMGI0Zjg3NWFkZmFkZWMxY2U0YTRjYTE...2FiNjRmOTczODZmNzhmYmQ3MyIsImV4cCI6MTc5MjMzMDMwNiwiaWF0IjoxNzkyMjQzOTA2fQ.f0TCFL5XU7I_POthRHfukO-rbRWoBjHM2UjqX1Nzo7A'}
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e117650>
 provider_enabled = False, language = 'ru'
 question = 'Qacheckpolicy отпуск дней?'
@@ -139,7 +139,7 @@ _ test_conflicting_approved_numbers_fall_back_before_provider[ru-Qacheckpolicy \
 
 client = <starlette.testclient.TestClient object at 0x10e3bfce0>
 db_session = <sqlalchemy.orm.session.Session object at 0x10e5bc050>
-employee_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwianRpIjoiZWNjZmRhNTFkODU3NmY5MzJlYmJjNGM...jZlNTY5MjQ4ZmVlZDQyODE5OSIsImV4cCI6MTc5MjMzMDMwNywiaWF0IjoxNzkyMjQzOTA3fQ.relaKBTg-9PJz7NLFTMoNSrcN1RdXwWFbLFetwiVKqI'}
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e0abdf0>
 provider_enabled = True, language = 'ru'
 question = 'Qacheckpolicy отпуск дней?'
@@ -184,7 +184,7 @@ _ test_conflicting_approved_numbers_fall_back_before_provider[kk-Qacheckpolicy \
 
 client = <starlette.testclient.TestClient object at 0x10e57e190>
 db_session = <sqlalchemy.orm.session.Session object at 0x10e5bc2f0>
-employee_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwianRpIjoiYWJiOTFiMmMxNTU1YjBjMGY3N2FhZjk...zg5YmNmYmNhY2FiMDc3YWI2MCIsImV4cCI6MTc5MjMzMDMwNywiaWF0IjoxNzkyMjQzOTA3fQ.H-1-lsNm28g1FjBqg57TqVTNOm7Hk6q5NzpabrsDeZo'}
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e3ba250>
 provider_enabled = False, language = 'kk'
 question = 'Qacheckpolicy демалыс күндері?'
@@ -229,7 +229,7 @@ _ test_conflicting_approved_numbers_fall_back_before_provider[kk-Qacheckpolicy \
 
 client = <starlette.testclient.TestClient object at 0x10e5a9c70>
 db_session = <sqlalchemy.orm.session.Session object at 0x10e5bcd70>
-employee_headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwianRpIjoiNDg5NTNmMDA5NmIzMjFmNmM5ZmIyODR...jE3NGU4NjZhMDQ1NDA5M2ZmYyIsImV4cCI6MTc5MjMzMDMwOCwiaWF0IjoxNzkyMjQzOTA4fQ.uw-hECNGsiHI_cjYp7nM6IWqW0aEl5M5tgZCG8BCu3I'}
+employee_headers = {'Authorization': 'Bearer [REDACTED SYNTHETIC SESSION TOKEN]'}
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10e66bb50>
 provider_enabled = True, language = 'kk'
 question = 'Qacheckpolicy демалыс күндері?'

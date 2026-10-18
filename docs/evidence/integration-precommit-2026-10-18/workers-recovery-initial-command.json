@@ -1,0 +1,13 @@
+{
+  "command": [
+    ".venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/test_outbox_processes.py",
+    "tests/test_fix_plan.py",
+    "-q",
+    "--junitxml=/var/folders/c7/hdw9k4tn52z32sbg0dld44100000gn/T/janamen-precommit-20261018-kjg5e_uo/workers-recovery.xml"
+  ],
+  "exit_code": 1,
+  "target": "Fresh dedicated disposable PostgreSQL container; no demo/development DB"
+}

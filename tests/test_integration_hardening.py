@@ -94,29 +94,58 @@ def test_signed_limits_survive_restart_and_reset_per_key_per_minute(tmp_path, mo
     monkeypatch.setattr(runtime_module, "utcnow", lambda: clock)
     config = config_for(tmp_path / "limited.db")
     config.REQUESTS_PER_MINUTE = 1
+    config.HEALTH_REQUESTS_PER_MINUTE = 1
     replay = signing.sign("app-1", APP_KEY, "GET", "/health", b"")
     with TestClient(create_app(config)) as first:
         assert first.get("/health", headers=replay).status_code == 200
+        assert signed(first, "POST", "/v1/documents", document()).status_code == 202
         denied = signed(first, "POST", "/v1/documents", document())
         assert denied.status_code == 429 and denied.headers["Retry-After"] == "60"
         assert denied.headers["Cache-Control"] == "no-store"
         with first.app.state.runtime.sessions() as db:
-            assert db.query(GatewayJob).count() == 0
-            assert db.query(GatewayNonce).count() == 1
+            assert db.query(GatewayJob).count() == 1
+            assert db.query(GatewayNonce).count() == 2
     config.JANAMEN_KEYS["rotated"] = APP_KEY
     with TestClient(create_app(config)) as restarted:
         assert signed(restarted, "GET", "/health").status_code == 429
+        assert signed(restarted, "POST", "/v1/documents", document()).status_code == 429
         other = signing.sign("rotated", APP_KEY, "GET", "/health", b"")
         assert restarted.get("/health", headers=other).status_code == 200
         clock += timedelta(minutes=1)
         # Replay still fails, and its rolled-back quota increment does not consume the window.
         assert restarted.get("/health", headers=replay).status_code == 401
+        assert signed(restarted, "GET", "/health").status_code == 200
         assert signed(restarted, "POST", "/v1/documents", document()).status_code == 202
 
 
-def test_concurrent_quota_is_atomic_on_supported_databases(db_engine, tmp_path, monkeypatch):
+def test_health_budget_remains_available_when_business_is_exhausted(tmp_path, monkeypatch):
+    config = config_for(tmp_path / "independent-health.db")
+    config.REQUESTS_PER_MINUTE, config.HEALTH_REQUESTS_PER_MINUTE = 1, 2
+    clock = datetime(2026, 10, 18, 9, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(runtime_module, "utcnow", lambda: clock)
+    with TestClient(create_app(config)) as client:
+        assert signed(client, "POST", "/v1/documents", document()).status_code == 202
+        assert signed(client, "POST", "/v1/documents", document()).status_code == 429
+        assert signed(client, "GET", "/health").status_code == 200
+        # A non-GET method and a different route cannot borrow the health budget.
+        assert signed(client, "POST", "/health").status_code == 429
+        assert signed(client, "GET", "/v1/employees?health=true").status_code == 429
+        assert signed(client, "GET", "/health?probe=1").status_code == 200
+        assert signed(client, "GET", "/health").status_code == 429
+        assert client.get("/health").status_code == 401
+        with client.app.state.runtime.sessions() as db:
+            assert db.query(GatewayRateLimit).count() == 2
+            assert db.query(GatewayNonce).count() == 3
+            assert db.query(GatewayJob).count() == 1
+
+
+@pytest.mark.parametrize("health_check", [False, True])
+def test_concurrent_quota_is_atomic_on_supported_databases(
+    db_engine, tmp_path, monkeypatch, health_check
+):
     config = config_for(tmp_path / "unused.db")
     config.REQUESTS_PER_MINUTE = 3
+    config.HEALTH_REQUESTS_PER_MINUTE = 3
     runtime = GatewayRuntime(config)
     runtime.engine.dispose()
     runtime.engine = db_engine
@@ -127,7 +156,7 @@ def test_concurrent_quota_is_atomic_on_supported_databases(db_engine, tmp_path, 
 
     def admit(i):
         try:
-            runtime.remember_nonce(f"concurrent-nonce-{i:04d}", "app-1")
+            runtime.remember_nonce(f"concurrent-nonce-{i:04d}", "app-1", health_check=health_check)
             return 200
         except HTTPException as error:
             return error.status_code

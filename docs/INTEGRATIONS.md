@@ -9,13 +9,15 @@ The older two-step `/v1/1c/orders` → `/v1/documentolog/documents` design has b
 From a configured Python environment:
 
 ```bash
-python -m app.gateway.configure_mock --web-port 18778 --postgres-port 15448
+python -m app.gateway.configure_mock \
+  --web-port "${DEMO_WEB_PORT:?Set an unused web port}" \
+  --postgres-port "${DEMO_POSTGRES_PORT:?Set an unused PostgreSQL port}"
 # Creates .env.gateway with mode0600, generated passwords/keys and a unique Compose project.
 # It refuses to overwrite an existing file and never prints the keys.
 docker compose --env-file .env.gateway --profile integrations up --build -d
 ```
 
-Open `http://127.0.0.1:18778`. The usual synthetic seed accounts are `aruzhan@janapost.kz` (employee), `timur@janapost.kz` (manager), `aigerim@janapost.kz` (HR). Their generated password is stored only in the private environment file. The generated environment disables external AI and selects a unique `janamen-mock-*` Compose project. The generator refuses to overwrite files or run in production. Select unused ports before startup. See [the repeatable integration demo runbook](INTEGRATION_DEMO_RUNBOOK.md) for isolated demo accounts, registration assertions and outage/recovery.
+After successful startup, open the application on loopback using the configured `WEB_PORT`. The usual synthetic seed accounts are `aruzhan@janapost.kz` (employee), `timur@janapost.kz` (manager), `aigerim@janapost.kz` (HR). Their generated password is stored only in the private environment file. The generated environment disables external AI and selects a unique `janamen-mock-*` Compose project. The generator refuses to overwrite files or run in production. Select unused ports before startup. See [the repeatable integration demo runbook](INTEGRATION_DEMO_RUNBOOK.md) for isolated demo accounts, registration assertions and outage/recovery.
 
 `INTEGRATION_GATEWAY_URL` is still the switch. Empty means no new outbox tasks, no profile network reads and no integration delivery. The ordinary default Compose startup does not start the optional integration services. To enable them, use the generated environment and `--profile integrations` together. Setting the URL alone while leaving the gateway offline is allowed: approvals still succeed and delivery retries independently.
 
@@ -55,7 +57,9 @@ Each direction has a separate key. Verification maps support overlapping current
 
 Golden vectors in `tests/test_integration_hardening.py` pin UTF-8 bytes, uppercase method, literal encoded path/query, decimal timestamp, LF separators, lowercase hex SHA-256 and Base64 HMAC. They also pin the inclusive ±300-second boundary. The signer itself is unchanged.
 
-All authenticated gateway routes share a durable fixed UTC-minute limit per verified key ID: `GATEWAY_REQUESTS_PER_MINUTE` (default 600, range 1–100000). Admission and nonce consumption commit together before a handler runs. Concurrent processes cannot exceed the bucket; restarts retain counts. Rejected requests return `429`, `Retry-After` seconds until the next minute and `Cache-Control: no-store`, without creating a job or nonce. Invalid/replayed signatures return 401. Rotated key IDs have separate buckets; fixed windows permit a burst across a minute boundary. This controls authenticated callers, including health probes, and is not a public-internet denial-of-service defense. Keep the gateway private. Safe rejection logs contain only the category/status, never headers or bodies.
+Authenticated business routes use a durable fixed UTC-minute limit per verified key ID: `GATEWAY_REQUESTS_PER_MINUTE` (default 600, range 1–100000). Signed `GET /health`, including the container probe, has an independent `GATEWAY_HEALTH_REQUESTS_PER_MINUTE` limit (default 60, same range); neither quota can spend the other's capacity. The server selects the health budget only for that method and exact path. Query parameters remain signed; other methods/routes cannot borrow that quota. Admission and nonce consumption commit together before a handler runs. Concurrent processes cannot exceed either bucket; restarts retain counts. Rejected requests return `429`, `Retry-After` seconds until the next minute and `Cache-Control: no-store`, without creating a job or nonce. Invalid/replayed signatures return 401. Rotated key IDs have separate buckets; fixed windows permit a burst across a minute boundary. This is not a public-internet denial-of-service defense. Keep the gateway private. Safe rejection logs contain only the category/status, never headers or bodies.
+
+The existing v3 business key hashes/counts are preserved; health uses additional namespaced rows in the same table. No schema change or quota reset is required. Health remains private, signed and replay-protected; no anonymous probe endpoint is introduced.
 
 Gateway startup upgrades its independent store additively to **v3**, creating `gateway_rate_limits` without rewriting jobs, references, callback state or nonces. Deploy one gateway instance for migration first. Core head remains `0011_merge_profile_updates`. An internal [OpenAPI snapshot](gateway-openapi.json) documents our canonical routes; no public schema endpoint is enabled.
 

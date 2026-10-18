@@ -1,7 +1,0 @@
-{
-  "command": "node --check static/js/app.js",
-  "executed": true,
-  "exit_code": 0,
-  "seconds": 0.03,
-  "output": "javascript.txt"
-}

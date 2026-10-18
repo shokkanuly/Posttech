@@ -1,7 +1,0 @@
-{
-  "command": ".venv/bin/python -m pytest -q tests/test_fix_plan.py tests/test_fix_operations.py tests/test_policy_precedence.py tests/test_knowledge_files_and_ml.py tests/test_api_matrix.py",
-  "executed": true,
-  "exit_code": 0,
-  "seconds": 60.88,
-  "output": "targeted-acceptance.txt"
-}

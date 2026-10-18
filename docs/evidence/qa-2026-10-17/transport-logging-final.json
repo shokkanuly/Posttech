@@ -1,7 +1,0 @@
-{
-  "command": ".venv/bin/python -m pytest -q tests/test_merge_regressions.py -k gemini_error_logs",
-  "executed": true,
-  "exit_code": 0,
-  "seconds": 1.16,
-  "output": "transport-logging-final.txt"
-}

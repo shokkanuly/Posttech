@@ -1,65 +1,69 @@
-# Recovery and operations
+# Восстановление и эксплуатация
 
-This runbook applies to JanaМен's canonical **MOCK** gateway. It does not describe a 1C or Documentolog vendor API. Keep `INTEGRATION_GATEWAY_URL` empty to disable gateway delivery. The gateway has no host port and runs on Compose's internal `integration` network. TLS configuration remains available for a future approved deployment; the local Compose demo is not evidence of production TLS or a live connection.
+Регламент относится к каноническому **MOCK**-шлюзу JanaМен и не описывает API вендоров 1С или Documentolog. Чтобы выключить доставку через шлюз, оставьте `INTEGRATION_GATEWAY_URL` пустым. У шлюза нет порта на хосте, он работает во внутренней сети Compose `integration`. Настройки TLS сохранены для будущего согласованного развёртывания; локальный стенд Compose не доказывает TLS в продакшене или реальное подключение.
 
-## HR recovery
+## Восстановление силами HR
 
-The HR integration card displays the observed mode, pending count, failed count and last successful operation. The failed queue exposes recovery only for eligible canonical deliveries. HR must enter a reason; employee and manager accounts receive 403.
+Карточка интеграций у HR показывает наблюдаемый режим, число ожидающих и ошибочных доставок и время последней успешной операции. В очереди ошибок восстановление доступно только для допустимых канонических доставок. HR обязан указать причину; учётные записи сотрудника и руководителя получают 403.
 
-`POST /api/v1/admin/integrations/queue/{task_id}/retry` takes `expected_retry_count` and `reason`. A compare-and-set update rejects stale or repeated commands with 409. It queues durable intent; it does not change the business approval, leave debit, original document payload or idempotency key. The worker first queries the gateway by that key:
+`POST /api/v1/admin/integrations/queue/{task_id}/retry` принимает `expected_retry_count` и `reason`. Условное обновление («сравнить и записать») отклоняет устаревшие и повторные команды с кодом 409. Команда сохраняет намерение и **не меняет** решение по заявке, списание дней, исходное тело документа и ключ идемпотентности. Обработчик сначала запрашивает шлюз по этому ключу:
 
-- Existing pending jobs are reattached; registered jobs are reconciled without another registration.
-- Exhausted transient (`DEAD`) gateway jobs receive a signed `POST /v1/documents/{idempotency_key}/retry` containing the existing `gateway_job_id` and a fresh `recovery_key`. The command is idempotent within that generation. Only DEAD jobs can reset attempts.
-- Validation rejections and invalid legacy contracts require correction. They are not replayable.
-- A missing **known accepted** job stops with an operator incident. Restore/reconcile gateway storage before proceeding. Normal polling also refuses automatic resubmission of such a job.
-- If no gateway acceptance was ever recorded, a missing job may be submitted using the same immutable key and payload.
+- Существующее ожидающее задание привязывается заново; зарегистрированное — сверяется без повторной регистрации.
+- Исчерпавшее попытки задание (`DEAD`) получает подписанный `POST /v1/documents/{idempotency_key}/retry` с текущим `gateway_job_id` и новым `recovery_key`. В пределах одного поколения команда идемпотентна. Сбросить попытки можно только у `DEAD`.
+- Отказы проверки и недопустимые старые контракты требуют исправления и повторно не отправляются.
+- Если пропало **известное принятое** задание, процесс останавливается с инцидентом для оператора: сначала восстановление или сверка хранилища шлюза. Обычный опрос тоже не отправляет такое задание повторно автоматически.
+- Если шлюз ни разу не подтверждал приём, пропавшее задание можно отправить с тем же неизменяемым ключом и телом.
 
-Callbacks are refused while a recovery command is pending reconciliation. Once accepted, the generation is persisted and callbacks from prior generations receive 409. Signed callbacks and polling share the same terminal state transition. Duplicate success does not add another document, leave debit or registration notification. Existing signing headers, method/path/query/body binding, nonce storage and timestamp checks are reused unchanged.
+Пока команда восстановления ждёт сверки, callback отклоняются. После принятия поколение сохраняется, и callback прежних поколений получают 409. Подписанные callback и опрос используют один итоговый переход: повторный успех не добавляет ещё один документ, списание дней или уведомление. Заголовки подписи, привязка метода, пути, параметров и тела, хранение nonce и проверка времени используются без изменений.
 
-`POST /api/v1/admin/integrations/reviews/{employee_code}/resolve` takes the exact queue `observed_at`, a reason, and optionally an existing `user_id`. It fetches a fresh signed snapshot. HR must verify that the external employee code belongs to that account before choosing it. Resolving manager mappings first can be necessary. No account or role is created. Any unresolved manager/source conflict rolls the command back and retains the review. Stale review versions receive 409.
+`POST /api/v1/admin/integrations/reviews/{employee_code}/resolve` принимает точное значение `observed_at` из очереди, причину и, при необходимости, существующий `user_id`. Команда загружает свежий подписанный снимок. Перед выбором HR должен убедиться, что внешний табельный номер принадлежит этой учётной записи; иногда сначала нужно сопоставить руководителей. Учётные записи и роли не создаются. Любой неразрешённый конфликт руководителя или источника откатывает команду и оставляет запись в очереди. Устаревшая версия записи получает 409.
 
-Mapping changes the existing profile's employee code. Historical queued documents retain their original frozen payload. If the former code later arrives from the source, it requires a new explicit review; matching by a person's name is never automatic. Recovery reasons and mapping decisions appear in the audit trail; integration request bodies, signing keys and employee free text are not logged.
+Сопоставление меняет табельный номер существующего профиля. Документы, уже стоящие в очереди, сохраняют исходное замороженное тело. Если прежний код позже снова придёт из источника, нужна новая явная проверка; автоматического сопоставления по имени нет. Причины восстановления и решения по сопоставлению видны в журнале аудита; тела запросов интеграции, ключи подписи и свободный текст сотрудников в лог не пишутся.
 
-## Submission retry contract
+## Защита от повторной отправки заявки
 
-`POST /api/v1/requests` accepts an optional `Idempotency-Key` of 16–80 ASCII letters, digits, `_` or `-`. The same employee and key must have the same canonical validated body. Matching retries return the existing request (including its current status); changed bodies return 409. Concurrent retries create one request and one initial event. A key is scoped to an employee. Requests without a key retain the existing create behavior.
+`POST /api/v1/requests` принимает необязательный заголовок `Idempotency-Key` длиной 16–80 символов из латинских букв, цифр, `_` и `-`. Для одного сотрудника и ключа тело после проверки должно быть одинаковым. Совпадающий повтор возвращает уже созданную заявку (с её текущим статусом), изменённое тело — 409. Параллельные повторы создают одну заявку и одно первое событие. Ключ действует в пределах сотрудника. Запросы без ключа работают как раньше.
 
-The browser creates a key and reuses it after a failed response while the form body remains unchanged. Successful submission or editing the body starts a new submission. Keys and bearer tokens remain in memory. Reload deliberately requires sign-in; review request history before making a new submission after a reload. Only language preference is stored locally.
+Браузер создаёт ключ и использует его повторно после неудачного ответа, пока тело формы не изменилось. Успешная отправка или изменение формы начинают новую отправку. Ключи и Bearer-токены хранятся только в памяти. После перезагрузки страницы нужно войти заново; перед новой отправкой стоит проверить историю заявок. Локально сохраняется только выбранный язык.
 
-## Database upgrades
+## Обновление базы данных
 
-Back up core and gateway stores before upgrade. Run `python -m app.migrate` for the core. Head `0010_source_metadata` adds submission keys, recovery intent/generations, database domain checks, policy metadata and course provenance. Invalid legacy status/date/balance/amount rows cause an explicit stop for operator review. There is no silent repair. PostgreSQL amounts use `NUMERIC(12,2)`; API amount validation retains the configured limit. SQLite guards inserts and updates with triggers rather than rebuilding referenced parent tables. SQLite is not a fixed-decimal storage engine. Downgrades are forward-only; restore an approved backup to roll back.
+Перед обновлением сделайте резервные копии основной базы и хранилища шлюза. Основная база обновляется командой `python -m app.migrate`; текущая последняя миграция — `0011_merge_profile_updates`. Миграции до `0010_source_metadata` добавили ключи отправки, намерения и поколения восстановления, ограничения целостности, метаданные политик и происхождение курсов. Некорректные старые строки (статус, даты, остаток, сумма) останавливают обновление для проверки оператором — молчаливого исправления нет. В PostgreSQL суммы хранятся как `NUMERIC(12,2)`; проверка суммы в API сохраняет настроенный лимит. В SQLite вставки и обновления защищены триггерами вместо перестройки родительских таблиц; SQLite не хранит числа с фиксированной точностью. Миграции только вперёд: откат — восстановлением утверждённой резервной копии.
 
-Gateway startup upgrades its independent schema from unversioned v1 through **v3**, preserving jobs, mock documents, callbacks and nonces. v2 adds `recovery_key`; v3 adds the durable `gateway_rate_limits` table. Unknown future schema versions stop startup. Run schema upgrades with one gateway instance before starting additional workers. Back up before deployment; older service versions refuse a v3 store, so rollback requires a compatible service or an approved restore/reconciliation plan. The local gateway job store is SQLite on a persistent volume; this is not an HA deployment.
+При запуске шлюз обновляет своё независимое хранилище от неверсионированной v1 до **v3**, сохраняя задания, MOCK-документы, callback и nonce. v2 добавляет `recovery_key`, v3 — таблицу `gateway_rate_limits`. Неизвестная будущая версия схемы останавливает запуск. Обновление выполняет один экземпляр шлюза до запуска остальных обработчиков. Старые версии сервиса не открывают хранилище v3, поэтому откат требует совместимого сервиса или утверждённого плана восстановления и сверки. Хранилище заданий шлюза — SQLite на постоянном томе; это не отказоустойчивое развёртывание.
 
-## Gateway backup and restoration rehearsal
+## Резервная копия шлюза и проверка восстановления
 
-Use the standard SQLite online backup API, not an ordinary file copy of a running WAL database:
+Используйте стандартный онлайн-API резервного копирования SQLite, а не обычное копирование файла работающей базы WAL:
 
 ```sh
 python -m app.gateway.backup --source /data/gateway.db --destination /data/gateway-backup.db
 ```
 
-The destination must not exist; the command creates a private mode-0600 file and verifies integrity. Store backups under restricted operator access, outside Git, with the deployment's approved retention/encryption policy. The store contains canonical document payloads and employee codes. Signing keys are supplied separately through environment/secret management.
+Файл назначения не должен существовать: команда создаёт закрытый файл с правами 0600 и проверяет целостность. Храните копии с ограниченным доступом оператора, вне Git, по утверждённым правилам хранения и шифрования. В хранилище есть канонические тела документов и табельные номера; ключи подписи передаются отдельно через окружение или менеджер секретов.
 
-For restoration, stop gateway and integration workers, retain the incident store, and copy an approved backup to a **new** path:
+Для восстановления остановите шлюз и обработчики интеграции, сохраните хранилище на момент инцидента и скопируйте утверждённую копию в **новый** путь:
 
 ```sh
 python -m app.gateway.backup --source /data/gateway-backup.db --destination /data/gateway-restored.db
 ```
 
-Point `GATEWAY_DATABASE_URL` at the new file, start one gateway, check the version and signed health response, and reconcile queued jobs before enabling workers. Backup age can omit already completed jobs/nonces. Do not clear an idempotency history or blindly replay missing accepted jobs. The acceptance rehearsal restores a fresh disposable file and verifies the same job/reference, one mock document, and retained nonce rejection. It does not establish production RPO/RTO or PostgreSQL disaster recovery. Use the deployment's PostgreSQL backup tooling and verify a separate restore target before production.
+Укажите новый файл в `GATEWAY_DATABASE_URL`, запустите один шлюз, проверьте версию и подписанный ответ `/health` и сверьте задания в очереди до включения обработчиков. Копия может не содержать уже завершённых заданий и nonce. Нельзя очищать историю идемпотентности и вслепую повторять пропавшие принятые задания. Проверка восстановления разворачивает свежий временный файл и подтверждает то же задание и номер, один MOCK-документ и сохранение отказа по повторному nonce. Это не устанавливает RPO/RTO для продакшена и не заменяет аварийное восстановление PostgreSQL: для него используйте штатные средства PostgreSQL и проверяйте отдельную цель восстановления.
 
-## Policy metadata and CI
+## Метаданные политик базы знаний
 
-HR assigns `policy_key`, integer `priority`, optional inclusive `effective_from`/`effective_until`, and `known_conflict`. Changes invalidate approval and increment the document revision. Reapprove after reviewing all content and metadata. Among currently effective, active, approved, role-accessible sources with the same key, higher priority wins; at equal priority the later effective start wins. Equal winners cause fallback. A relevant approved source flagged with a known conflict also causes fallback before an external model is considered. Missing translation does not permit using an older policy instead. Unkeyed legacy documents retain the literal numeric conflict guard. These rules implement explicit HR precedence, not general semantic contradiction detection or automatic policy approval. A draft flag does not globally block another approved document: deactivate affected sources until HR has completed its review if needed.
+HR задаёт `policy_key`, целочисленный `priority`, необязательные границы `effective_from`/`effective_until` (включительно) и `known_conflict`. Изменения снимают утверждение и увеличивают номер редакции документа — после проверки всего содержимого и метаданных его нужно утвердить заново. Среди действующих, активных, утверждённых и доступных роли источников с одинаковым ключом побеждает больший приоритет, при равенстве — более поздняя дата начала действия. Равные победители приводят к безопасному отказу (фоллбэку). Релевантный утверждённый источник с отметкой известного конфликта тоже приводит к фоллбэку ещё до обращения к внешней модели. Отсутствие перевода не разрешает использовать вместо него более старую политику. Для старых документов без ключа сохраняется проверка числовых противоречий. Это явный приоритет HR, а не общее выявление смысловых противоречий и не автоматическое утверждение политик.
 
-File imports preserve hashes of unchanged legacy bundles when new metadata has its defaults. Effective dates serialize as JSON dates; non-default policy changes remain part of the fingerprint and require a new bundle ID/version. Newly seeded example courses are marked synthetic. Older courses with unknown provenance are labelled unverified rather than silently classified.
+Импорт файлов сохраняет хеши неизменённых старых пакетов, если новые метаданные имеют значения по умолчанию. Даты действия сериализуются как даты JSON; изменение политики со значениями не по умолчанию входит в отпечаток и требует нового ID или версии пакета. Новые примеры курсов помечены как синтетические; курсы с неизвестным происхождением отмечены как непроверенные.
 
-`docs/ci/quality.yml` defines the isolated SQLite/PostgreSQL acceptance suites, lint, typing, dependency consistency, JavaScript syntax and locale tests. It uses read-only repository permissions and disables persisted checkout credentials. The official action versions are documented by [checkout](https://github.com/actions/checkout), [setup-python](https://github.com/actions/setup-python), and [setup-node](https://github.com/actions/setup-node). Local execution evidence and any observed GitHub run status are reported separately; adding a workflow does not establish that GitHub has executed it.
+## Шаблон CI
 
-The template is **inactive**. GitHub rejected publishing `.github/workflows/quality.yml` because the current token lacks `workflow` scope. The complete proposed active version is retained locally on branch `codex/fix-plan-ci-local`; its identical YAML is saved on GitHub as `docs/ci/quality.yml`. After GitHub authentication is authorized for workflow updates, move the template into `.github/workflows/quality.yml` and push. No GitHub CI run is claimed.
+`docs/ci/quality.yml` описывает изолированные наборы тестов на SQLite и PostgreSQL, линтер, проверку типов, согласованность зависимостей, синтаксис JavaScript и тесты локализации. Права на репозиторий — только чтение, сохранение учётных данных checkout выключено. Используются официальные действия [checkout](https://github.com/actions/checkout), [setup-python](https://github.com/actions/setup-python) и [setup-node](https://github.com/actions/setup-node).
 
-## Combined profile-update history
+Шаблон **не активирован**: GitHub отклонил публикацию `.github/workflows/quality.yml`, потому что у текущего токена нет права `workflow`. После выдачи права перенесите файл в `.github/workflows/quality.yml` и запушьте. Запуск CI в GitHub не заявляется.
 
-Current head is `0011_merge_profile_updates`, with both `0010_source_metadata` and `0006_profile_updates` as parents. Upgrade from either branch with `python -m app.migrate`; do not rename/stamp one branch over the other. The original `0009` forward path now recognizes valid profile requests; the merge revision refreshes deployed guards and accepts legacy JSON null without changing rows. Contact approvals remain local and do not generate document jobs. See [PR5 report](PR5_INTEGRATION_REPORT.md).
+## Изменение профиля
+
+Последняя миграция `0011_merge_profile_updates` объединяет две ветки истории (`0010_source_metadata` и `0006_profile_updates`). Обновляйтесь с любой из них через `python -m app.migrate`, не переименовывая и не помечая одну ветку поверх другой.
+
+Профиль сейчас **только для чтения**: персональные данные ведутся в 1С и Documentolog, поэтому новые заявки «Изменение профиля» сервер отклоняет (409). Уже сохранённые в базе заявки на изменение контактов можно рассмотреть: их одобрение применяется локально и не создаёт задания для документов.

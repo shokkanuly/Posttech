@@ -1,4 +1,0 @@
-Создана демо-учётная запись: hr.demo@example.com (hr_admin)
-Создана демо-учётная запись: manager.demo@example.com (manager)
-Создана демо-учётная запись: employee.demo@example.com (employee)
-{'scenario': 'happy', 'request_code': 'REQ-N000021', 'business_status': 'Approved', 'integration_status': 'REGISTERED', 'external_ref': 'MOCK-DOC-be4f73785ab74dcd8b38c37e1a55f454', 'reused_request': False}

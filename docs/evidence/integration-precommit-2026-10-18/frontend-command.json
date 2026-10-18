@@ -1,8 +1,0 @@
-{
-  "command": [
-    "node",
-    "--test",
-    "tests/frontend_localization.test.cjs"
-  ],
-  "exit_code": 0
-}

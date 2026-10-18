@@ -38,3 +38,6 @@ ml/artifacts/
 gallant-meninsky-5b66b7/
 posttech-hackathon-frontend-bed507/
 .claude/
+
+# Local agent instructions (kept on disk, not published)
+AGENTS.md

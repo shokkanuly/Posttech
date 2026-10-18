@@ -1,7 +1,0 @@
-{
-  "command": "env JANAMEN_BASE_URL=http://127.0.0.1:18766 python3 smoke_test.py",
-  "executed": true,
-  "exit_code": 0,
-  "seconds": 0.5,
-  "output": "smoke-repeat.txt"
-}

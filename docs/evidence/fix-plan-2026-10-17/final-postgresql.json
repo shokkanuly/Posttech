@@ -1,7 +1,0 @@
-{
-  "command": "TEST_DATABASE_URL=<private disposable PostgreSQL DSN> .venv/bin/python -m pytest -q",
-  "executed": true,
-  "exit_code": 0,
-  "seconds": 237.29,
-  "output": "final-postgresql.txt"
-}

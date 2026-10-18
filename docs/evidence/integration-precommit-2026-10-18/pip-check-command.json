@@ -1,9 +1,0 @@
-{
-  "command": [
-    ".venv/bin/python",
-    "-m",
-    "pip",
-    "check"
-  ],
-  "exit_code": 0
-}

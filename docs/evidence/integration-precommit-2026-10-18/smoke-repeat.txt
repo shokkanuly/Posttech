@@ -1,4 +1,0 @@
-Учётная запись уже существует: hr.demo@example.com
-Учётная запись уже существует: manager.demo@example.com
-Учётная запись уже существует: employee.demo@example.com
-{'scenario': 'happy', 'request_code': 'REQ-N000021', 'business_status': 'Approved', 'integration_status': 'REGISTERED', 'external_ref': 'MOCK-DOC-297cb67558a74d119d89ba06bf4fea0c', 'reused_request': True}

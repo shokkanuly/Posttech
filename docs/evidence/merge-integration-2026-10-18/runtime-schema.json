@@ -1,7 +1,0 @@
-{
-  "command": "docker compose -p janamen-qa-check --env-file /tmp/janamen-qa-check.env exec -T db psql -U janamen -d janamen -c 'SELECT version_num FROM alembic_version;'",
-  "executed": true,
-  "exit_code": 0,
-  "seconds": 0.23,
-  "output": "runtime-schema.txt"
-}

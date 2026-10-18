@@ -1,7 +1,7 @@
-# CI template awaiting GitHub workflow permission
+# Шаблон CI (ожидает права на workflow в GitHub)
 
-`quality.yml` contains the proposed SQLite/PostgreSQL test workflow. It is inactive in this directory. GitHub rejected the active `.github/workflows/quality.yml` push because current authentication lacks `workflow` scope.
+`quality.yml` — предлагаемый процесс проверки: тесты на SQLite и PostgreSQL, линтер, проверка типов, согласованность зависимостей, синтаксис JavaScript и тесты локализации. В этой папке он **не активен**: GitHub отклонил публикацию `.github/workflows/quality.yml`, потому что у текущей аутентификации нет права `workflow`.
 
-After an account owner authorizes GitHub authentication to update workflows, move this file to `.github/workflows/quality.yml` and push. The original active version is also preserved on local branch `codex/fix-plan-ci-local`. No credential was changed or permission expanded by this implementation.
+После того как владелец аккаунта выдаст право на изменение workflow, перенесите файл в `.github/workflows/quality.yml` и запушьте. Учётные данные и права при подготовке шаблона не менялись.
 
-The template also builds an isolated MOCK stack and runs the registration smoke twice with generated private credentials. PostgreSQL verification includes separate application worker processes and a crash after durable gateway acceptance. The local evidence runs backend/lint/typing/locale/syntax, Docker build and smoke commands. This is distinct from a GitHub Actions run. Dependency consistency is checked; continuous vulnerability/secret scanning and activation still need an authorized CI setup. See [the latest integration report](../INTEGRATION_IMPLEMENTATION_REPORT.md).
+Шаблон также собирает изолированный MOCK-стенд и дважды запускает сценарий регистрации со сгенерированными закрытыми учётными данными. Проверка на PostgreSQL включает отдельные процессы-обработчики приложения и сбой после надёжного приёма заданием шлюза. Локальные прогоны описаны в [docs/TESTING.md](../TESTING.md); это не то же самое, что запуск в GitHub Actions. Постоянное сканирование уязвимостей и секретов требует активированного CI.

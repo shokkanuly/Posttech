@@ -1,83 +1,83 @@
-# JanaМен integration gateway — implemented MOCK contract
+# Интеграционный шлюз JanaМен — реализованный MOCK-контракт
 
-**Current mode: MOCK only. No live 1C:ЗУП or Documentolog connection, document registration, payment or electronic signature.** This implements the canonical contracts in sections 5–7 of the supplied *JanaМен — Integration Design 1C ZUP and Documentolog* design. These endpoints are ours, not vendor APIs.
+**Текущий режим: только MOCK. Нет реального подключения к 1С:ЗУП и Documentolog, нет регистрации документов, выплат и электронной подписи.** Здесь описаны канонические контракты из проекта интеграции «JanaМен — 1С:ЗУП и Documentolog». Все перечисленные endpoint-ы — наши, а не API вендоров.
 
-The older two-step `/v1/1c/orders` → `/v1/documentolog/documents` design has been replaced by the requested asynchronous `/v1/documents` contract. Existing signing primitives and header names are retained. The separate worktree's earlier in-memory simulator implementation was inspected but was not merged: it lacks these endpoints, durable jobs and the snapshot flow.
+Подробные спецификации адаптеров и требования к будущему подключению — в [docs/integrations/](integrations/): [1С:ЗУП](integrations/1c-zup.md), [Documentolog](integrations/documentolog.md), [модель данных](integrations/data-model.md), [надёжность](integrations/reliability.md), [безопасность](integrations/security.md), [открытые вопросы](integrations/open-questions.md).
 
-## Run the isolated MOCK stack
+![Архитектура бэкенда и шлюза](images/architecture-backend.png)
 
-From a configured Python environment:
+## Запуск изолированного MOCK-стенда
+
+В настроенном окружении Python:
 
 ```bash
 python -m app.gateway.configure_mock \
-  --web-port "${DEMO_WEB_PORT:?Set an unused web port}" \
-  --postgres-port "${DEMO_POSTGRES_PORT:?Set an unused PostgreSQL port}"
-# Creates .env.gateway with mode0600, generated passwords/keys and a unique Compose project.
-# It refuses to overwrite an existing file and never prints the keys.
+  --web-port "${DEMO_WEB_PORT:?Укажите свободный порт приложения}" \
+  --postgres-port "${DEMO_POSTGRES_PORT:?Укажите свободный порт PostgreSQL}"
+# Создаёт .env.gateway с правами 0600, случайными паролями и ключами и уникальным проектом Compose.
+# Существующий файл не перезаписывается, ключи не выводятся на экран.
 docker compose --env-file .env.gateway --profile integrations up --build -d
 ```
 
-After successful startup, open the application on loopback using the configured `WEB_PORT`. The usual synthetic seed accounts are `aruzhan@janapost.kz` (employee), `timur@janapost.kz` (manager), `aigerim@janapost.kz` (HR). Their generated password is stored only in the private environment file. The generated environment disables external AI and selects a unique `janamen-mock-*` Compose project. The generator refuses to overwrite files or run in production. Select unused ports before startup. See [the repeatable integration demo runbook](INTEGRATION_DEMO_RUNBOOK.md) for isolated demo accounts, registration assertions and outage/recovery.
+После запуска откройте приложение на `127.0.0.1` и порту `WEB_PORT`. Синтетические учётные записи: `aruzhan@janapost.kz` (сотрудник), `timur@janapost.kz` (руководитель), `aigerim@janapost.kz` (HR); в демо-режиме можно войти одной кнопкой роли. Сгенерированный пароль хранится только в приватном файле окружения. Внешний AI в этом окружении выключен, проект Compose получает уникальное имя `janamen-mock-*`. Генератор не перезаписывает файлы и не работает в продакшене. Подробный сценарий демонстрации, проверки регистрации и сбоя шлюза — в [INTEGRATION_DEMO_RUNBOOK.md](INTEGRATION_DEMO_RUNBOOK.md).
 
-`INTEGRATION_GATEWAY_URL` is still the switch. Empty means no new outbox tasks, no profile network reads and no integration delivery. The ordinary default Compose startup does not start the optional integration services. To enable them, use the generated environment and `--profile integrations` together. Setting the URL alone while leaving the gateway offline is allowed: approvals still succeed and delivery retries independently.
+Переключатель интеграции — `INTEGRATION_GATEWAY_URL`. Пустое значение: новые задания outbox не создаются, профили не читаются по сети, ничего не доставляется. Обычный `docker compose up` дополнительные сервисы интеграции не запускает — для этого нужны сгенерированное окружение и `--profile integrations`. Можно задать адрес и оставить шлюз выключенным: согласования всё равно проходят, доставка повторяется отдельно.
 
-Do not commit/share `.env.gateway`; it is excluded by Git and Docker context. `configure_mock` creates new development credentials, not a rotation of an existing deployment. Existing `.env`, databases and running stacks are not changed by that command.
+Файл `.env.gateway` нельзя коммитить и передавать: он исключён из Git и из контекста сборки Docker. `configure_mock` создаёт новые учётные данные для разработки, а не меняет ключи существующего развёртывания. Существующие `.env`, базы и запущенные стенды команда не трогает.
 
-## Actual topology
+## Фактическая топология
 
 ```mermaid
 flowchart LR
-  Browser --> Web["JanaМен FastAPI: approval, profile, HR card"]
-  Web --> DB[("PostgreSQL: requests, history, notifications, outbox, nonces, sync state")]
-  Worker["Separate integration-worker process"] --> DB
-  Worker -->|"HMAC; internal MOCK network"| Gateway["Separate FastAPI gateway :9000; no host ports"]
-  Gateway --> GDB[("Persistent gateway volume: jobs, nonces, MOCK documents")]
-  Gateway --> OneC["MOCK 1C connector: synthetic snapshot fixture"]
-  Gateway --> Doc["MOCK Documentolog connector: durable MOCK-DOC reference"]
-  Gateway -->|"Signed callback, retried"| Web
-  Future["Future real connectors / private network / mTLS ingress"] -.-> Gateway
+  Browser["Браузер"] --> Web["JanaМен FastAPI: согласование, профиль, карточка HR"]
+  Web --> DB[("PostgreSQL: заявки, история, уведомления, outbox, nonce, состояние синхронизации")]
+  Worker["Отдельный процесс integration-worker"] --> DB
+  Worker -->|"HMAC; внутренняя сеть MOCK"| Gateway["Отдельный FastAPI-шлюз :9000; без портов на хосте"]
+  Gateway --> GDB[("Том шлюза: задания, nonce, MOCK-документы")]
+  Gateway --> OneC["MOCK-коннектор 1С: синтетические снимки"]
+  Gateway --> Doc["MOCK-коннектор Documentolog: постоянный номер MOCK-DOC"]
+  Gateway -->|"Подписанный callback с повторами"| Web
+  Future["Будущие реальные коннекторы / частная сеть / входящий mTLS"] -.-> Gateway
 ```
 
-Compose's `integration` network is `internal: true`. The gateway belongs only to that network. Web and worker also reach the app database through the normal app network. The gateway's database is independent: a persisted SQLite WAL database in `gateway_data`, never the application's user tables. Its schema is created by the gateway itself; changes to the application schema use Alembic `0006_gateway_runtime`. The app worker uses PostgreSQL `FOR UPDATE SKIP LOCKED`; gateway claims use conditional updates and expiring leases, including SQLite concurrency tests.
+Сеть Compose `integration` объявлена как `internal: true`, и шлюз подключён только к ней. Веб-приложение и обработчик также ходят в базу приложения через обычную сеть. База шлюза независима: это SQLite в режиме WAL на томе `gateway_data`, а не таблицы пользователей приложения. Схему шлюза создаёт и обновляет сам шлюз; изменения схемы приложения — через миграции Alembic. Обработчик приложения захватывает задания через PostgreSQL `FOR UPDATE SKIP LOCKED`; шлюз — через условные обновления и истекающую аренду, с тестами параллельности на SQLite.
 
-**Transport boundary:** this local MOCK profile uses HTTP on the private Compose network plus HMAC authentication. It does not claim active mTLS. Existing outbound TLS1.3/mTLS client support remains available, including gateway callback client certificate configuration. Production certificate issuance, inbound mTLS termination and handshake deployment are not supplied by this demo; do not expose it as a production integration. Core production settings require HTTPS and a configured client certificate for an enabled gateway.
+**Граница транспорта.** Локальный MOCK-профиль использует HTTP во внутренней сети Compose плюс аутентификацию HMAC и не заявляет активный mTLS. Поддержка исходящих TLS 1.3/mTLS в клиенте сохранена, включая сертификат клиента для callback шлюза. Выпуск сертификатов для продакшена, приём входящего mTLS и развёртывание рукопожатия в этом демо не поставляются — нельзя выставлять его как промышленную интеграцию. Основные настройки продакшена требуют HTTPS и сертификат клиента для включённого шлюза.
 
-## Shared signature and anti-replay rules
+## Общие правила подписи и защиты от повторов
 
-Reuse `app/integrations/signing.py`, without a custom cipher:
+Используется `app/integrations/signing.py`, без собственного шифрования:
 
 ```text
 METHOD_UPPER + "\n" + PATH_WITH_QUERY + "\n" + TIMESTAMP + "\n" + NONCE + "\n" + SHA256_HEX(RAW_BODY)
 X-Signature = base64(HMAC-SHA256(key, that message))
 ```
 
-Headers: **`X-Key-Id`, `X-Timestamp`, `X-Nonce`, `X-Signature`**. `Idempotency-Key` also accompanies document POSTs and must match the body. Unknown/retired key, wrong body/path/query signature, clock skew beyond300 seconds or an already seen nonce is rejected with401. Comparison uses `hmac.compare_digest`. Nonces persist in `gateway_nonces` and existing app `integration_nonces`; cleanup retains900 seconds, exceeding the signature window. Replaying captured signed requests remains rejected after a service restart. Retrying a legitimate operation uses a fresh nonce and the same idempotency key.
+Заголовки: **`X-Key-Id`, `X-Timestamp`, `X-Nonce`, `X-Signature`**. С POST-запросами документов передаётся также `Idempotency-Key`, который должен совпадать с телом. Неизвестный или выведенный из оборота ключ, неверная подпись тела, пути или параметров, расхождение часов больше 300 секунд или уже виденный nonce — отказ 401. Сравнение — через `hmac.compare_digest`. Nonce хранятся в `gateway_nonces` и в `integration_nonces` приложения; очистка сохраняет их 900 секунд, что больше окна подписи. Перехваченный подписанный запрос отклоняется и после перезапуска сервиса. Законный повтор операции идёт с новым nonce и тем же ключом идемпотентности.
 
-Each direction has a separate key. Verification maps support overlapping current/previous key IDs during operator-controlled rotation. There is no bearer-token fallback, anonymous health route, browser CORS or public Swagger/OpenAPI route on the gateway. Its container readiness check signs `/health`. Callback `nonce` must equal signed `X-Nonce`. The shared signing helper gained an optional nonce argument solely to bind that field into the body/signature.
+У каждого направления свой ключ. На время смены ключей проверка принимает текущий и предыдущий ID ключа. У шлюза нет запасного входа по Bearer-токену, анонимного `/health`, CORS для браузера и публичного Swagger/OpenAPI. Проверка готовности контейнера подписывает запрос к `/health`. Поле `nonce` в callback должно совпадать с подписанным `X-Nonce`.
 
-Golden vectors in `tests/test_integration_hardening.py` pin UTF-8 bytes, uppercase method, literal encoded path/query, decimal timestamp, LF separators, lowercase hex SHA-256 and Base64 HMAC. They also pin the inclusive ±300-second boundary. The signer itself is unchanged.
+Эталонные векторы в `tests/test_integration_hardening.py` фиксируют байты UTF-8, метод в верхнем регистре, путь и параметры как есть, десятичную метку времени, разделители LF, SHA-256 в нижнем регистре и HMAC в Base64, а также границу ±300 секунд включительно.
 
-Authenticated business routes use a durable fixed UTC-minute limit per verified key ID: `GATEWAY_REQUESTS_PER_MINUTE` (default 600, range 1–100000). Signed `GET /health`, including the container probe, has an independent `GATEWAY_HEALTH_REQUESTS_PER_MINUTE` limit (default 60, same range); neither quota can spend the other's capacity. The server selects the health budget only for that method and exact path. Query parameters remain signed; other methods/routes cannot borrow that quota. Admission and nonce consumption commit together before a handler runs. Concurrent processes cannot exceed either bucket; restarts retain counts. Rejected requests return `429`, `Retry-After` seconds until the next minute and `Cache-Control: no-store`, without creating a job or nonce. Invalid/replayed signatures return 401. Rotated key IDs have separate buckets; fixed windows permit a burst across a minute boundary. This is not a public-internet denial-of-service defense. Keep the gateway private. Safe rejection logs contain only the category/status, never headers or bodies.
+Бизнес-маршруты ограничены по каждому проверенному ID ключа фиксированным окном в одну минуту UTC: `GATEWAY_REQUESTS_PER_MINUTE` (по умолчанию 600, диапазон 1–100000). Подписанный `GET /health`, включая проверку контейнера, имеет отдельный лимит `GATEWAY_HEALTH_REQUESTS_PER_MINUTE` (по умолчанию 60); квоты не расходуют друг друга. Лимит для `/health` применяется только к этому методу и точному пути. Допуск запроса и расход nonce фиксируются вместе до запуска обработчика; параллельные процессы не превышают лимит, перезапуск счётчики не сбрасывает. Отклонённый запрос получает `429`, `Retry-After` до следующей минуты и `Cache-Control: no-store`, задание и nonce при этом не создаются. Это не защита от DoS из публичного интернета — шлюз должен оставаться в частной сети. Логи отказов содержат только категорию и статус, без заголовков и тел.
 
-The existing v3 business key hashes/counts are preserved; health uses additional namespaced rows in the same table. No schema change or quota reset is required. Health remains private, signed and replay-protected; no anonymous probe endpoint is introduced.
+При запуске шлюз обновляет своё хранилище до версии **v3** только добавлением (таблица `gateway_rate_limits`), не переписывая задания, ссылки, состояние callback и nonce. Миграцию сначала выполняет один экземпляр шлюза. Последняя миграция приложения — `0011_merge_profile_updates`. Внутренний [снимок OpenAPI шлюза](gateway-openapi.json) описывает наши канонические маршруты; публичного endpoint-а схемы нет.
 
-Gateway startup upgrades its independent store additively to **v3**, creating `gateway_rate_limits` without rewriting jobs, references, callback state or nonces. Deploy one gateway instance for migration first. Core head remains `0011_merge_profile_updates`. An internal [OpenAPI snapshot](gateway-openapi.json) documents our canonical routes; no public schema endpoint is enabled.
+Собственное шифрование (AES/JWE) не добавлялось. Логи интеграции содержат только техническое состояние, счётчики и коды; канонические тела, имена, суммы, API-ключи и секреты callback не пишутся в логи и не попадают в ответы об ошибках. В хранилище сохраняется минимальный канонический снимок, нужный для безопасных повторов после перезапуска — хранение и логирование разделены. Контроль доступа и сроков хранения в продакшене остаётся задачей эксплуатации.
 
-No AES/JWE/custom encryption was added. Integration logs contain only technical state/counters/codes; canonical bodies, names, amounts, API keys and callback secrets are not logged or included in validation error responses. State includes the minimum canonical payload needed for restart-safe retries; storage is different from logging. Production storage/access/retention controls remain an operational requirement.
+## Канонические endpoint-ы шлюза
 
-## Canonical gateway endpoints
+Все endpoint-ы требуют правильной машинной подписи, включая GET и `/health`.
 
-All endpoints require a valid machine signature, including GETs and `/health`.
-
-| Method | Path | Behavior |
+| Метод | Путь | Поведение |
 |---|---|---|
-| POST | `/v1/documents` | Validate canonical request, enforce matching key/body and persist one job; return202 with job ID/status and `mode: MOCK` |
-| GET | `/v1/documents/{idempotency_key}` | Return persisted job/terminal result for reconciliation;404 if unknown |
-| GET | `/v1/employees?updated_since=...` | Return canonical synthetic snapshots, `mode: MOCK`, high-water `next_cursor`; query is signed exactly |
-| GET | `/v1/employees/{employee_code}` | Return one synthetic canonical snapshot;404 if unknown |
-| GET | `/health` | Mode, actual connector availability, pending jobs/callback counts and last successful registration |
+| POST | `/v1/documents` | Проверяет канонический запрос, совпадение ключа и тела и сохраняет одно задание; возвращает 202 с ID задания, статусом и `mode: MOCK` |
+| GET | `/v1/documents/{idempotency_key}` | Возвращает сохранённое задание или итоговый результат для сверки; 404, если ключ неизвестен |
+| GET | `/v1/employees?updated_since=...` | Канонические синтетические снимки, `mode: MOCK`, курсор `next_cursor`; параметры подписываются точно |
+| GET | `/v1/employees/{employee_code}` | Один синтетический снимок; 404, если код неизвестен |
+| GET | `/health` | Режим, фактическая доступность коннекторов, число ожидающих заданий и callback, последняя успешная регистрация |
 
-Vacation request example (our API, not a vendor document):
+Пример заявки на отпуск (наш API, а не документ вендора):
 
 ```json
 {
@@ -91,19 +91,21 @@ Vacation request example (our API, not a vendor document):
 }
 ```
 
-Codes, dates, charged days and decision metadata are frozen in the outbox at approval. Names, emails, free-text reasons, training and AI data do not travel. For advance requests the explicit **canonical extension** is `kind: ADVANCE_PAYMENT_REQUEST`, `amount` as an exact decimal string, `currency: KZT`, and no vacation `period`. This only registers a synthetic request; it never instructs or executes a payment.
+Коды, даты, списываемые дни и данные решения фиксируются в outbox в момент одобрения. Имена, e-mail, свободный текст причины, обучение и данные AI не передаются. Для аванса используется **каноническое расширение** `kind: ADVANCE_PAYMENT_REQUEST`, сумма `amount` строкой с точным десятичным значением, `currency: KZT` и без `period`. Это только регистрация синтетической заявки — выплата не инициируется и не выполняется.
 
-The202 acknowledgement contains `gateway_job_id` (`job_<32hex>`), `idempotency_key`, `status`, `mode: MOCK`, `occurred_at`, optional `external_ref` and `error_code`. A terminal REGISTERED result must contain `MOCK-DOC-<32hex>`. Empty/malformed2xx responses are delivery errors, never successful registrations. Same key plus the same normalized canonical content returns the original job; same key with different content returns409. The mock connector enforces a second unique idempotency constraint on its durable document row.
+Ответ 202 содержит `gateway_job_id` (`job_<32hex>`), `idempotency_key`, `status`, `mode: MOCK`, `occurred_at`, необязательные `external_ref` и `error_code`. Итоговый результат `REGISTERED` обязан содержать `MOCK-DOC-<32hex>`. Пустой или искажённый ответ 2xx — ошибка доставки, а не успешная регистрация. Тот же ключ с тем же нормализованным содержимым возвращает исходное задание; тот же ключ с другим содержимым — 409. MOCK-коннектор дополнительно обеспечивает уникальность ключа в своей таблице документов.
 
-## Flow A — approval to asynchronous MOCK registration
+## Поток A — от одобрения к асинхронной MOCK-регистрации
 
-1. Existing approval transaction commits Approved + frozen charged days/provisional balance flag + history + notification + immutable outbox snapshot. `INTEGRATION_GATEWAY_URL` determines whether the registration task is added. There is no network call in that transaction.
-2. App worker claims due PENDING tasks, signs `POST /v1/documents`, validates the acknowledgement and stores the job ID. Request sync status becomes SENT. Business status stays Approved.
-3. Gateway worker claims a durable job using a lease. The MOCK Documentolog connector writes one durable synthetic reference in the same transaction as completion. It cannot call a vendor API.
-4. Gateway sends a signed callback to the **existing** `/api/v1/internal/integrations/documentolog/status` route. The app matches the outbox key, approved request and job ID, then atomically updates `external_sync_id`/API alias `external_ref`, sync state, history and exactly one employee registration notice.
-5. If a callback is lost, the gateway retries with fresh nonces. The app worker also polls `GET /v1/documents/{key}`; callback and reconciliation use the same idempotent transition, so whichever arrives second does not add another notice.
+![Потоки интеграций 1С:ЗУП и Documentolog](images/integration-flows.png)
 
-Callback body adds the explicit mode/error metadata to the design's example:
+1. Транзакция одобрения фиксирует статус «Одобрено», замороженные списываемые дни и признак предварительного остатка, историю, уведомление и неизменяемый снимок в outbox. Задание регистрации добавляется, только если задан `INTEGRATION_GATEWAY_URL`. Сетевых вызовов в этой транзакции нет.
+2. Обработчик приложения берёт готовые задания `PENDING`, подписывает `POST /v1/documents`, проверяет ответ и сохраняет ID задания. Статус синхронизации заявки становится `SENT`; бизнес-статус остаётся «Одобрено».
+3. Обработчик шлюза берёт надёжное задание в аренду. MOCK-коннектор Documentolog в той же транзакции, что и завершение, записывает один постоянный синтетический номер. Вызвать API вендора он не может.
+4. Шлюз отправляет подписанный callback на **существующий** маршрут `/api/v1/internal/integrations/documentolog/status`. Приложение сверяет ключ outbox, одобренную заявку и ID задания и атомарно обновляет `external_sync_id` (в API — `external_ref`), состояние синхронизации, историю и ровно одно уведомление сотруднику о регистрации.
+5. Если callback потерян, шлюз повторяет его с новыми nonce. Обработчик приложения также опрашивает `GET /v1/documents/{key}`; callback и сверка используют один идемпотентный переход, поэтому второй из них не создаёт ещё одно уведомление.
+
+Тело callback дополняет пример из проекта явными полями режима и ошибки:
 
 ```json
 {
@@ -118,46 +120,46 @@ Callback body adds the explicit mode/error metadata to the design's example:
 }
 ```
 
-The nonce and job/reference values shown are illustrative synthetic values, not valid signed messages or credentials.
+Значения nonce, ID задания и номера — иллюстративные, это не настоящие подписанные сообщения и не учётные данные.
 
-Request sync states are exposed separately from the Approved business state: **NOT_REQUIRED, PENDING, SENT, REGISTERED, FAILED, DEAD**. Disabled/legacy null state is represented as NOT_REQUIRED in the API. The legacy `external_sync_id` field remains for compatibility; `external_ref`, `sync_status`, `integration_mode` are exposed explicitly. Older legacy-contract pending rows are preserved, parked as DEAD/LEGACY_CONTRACT by the migration, and shown for HR review; they are never silently sent to an incompatible endpoint. Historical SIGNED rows are not relabeled as a registration by this new gateway.
+Состояния синхронизации показываются отдельно от бизнес-статуса «Одобрено»: **NOT_REQUIRED, PENDING, SENT, REGISTERED, FAILED, DEAD**. Выключенная интеграция или старые пустые значения показываются в API как `NOT_REQUIRED`. Старое поле `external_sync_id` сохранено для совместимости; явно отдаются `external_ref`, `sync_status`, `integration_mode`. Ожидающие записи старого контракта при миграции переводятся в `DEAD/LEGACY_CONTRACT` и показываются HR для проверки — они никогда молча не отправляются на несовместимый endpoint.
 
-### Failure and restart behavior
+### Сбои и перезапуск
 
-- Gateway/network/429/5xx: approval remains Approved. Delivery retries with jitter and the existing30s,60s,5m,15m,1h,6h,12h schedule; after8 consecutive delivery errors the outbox is DEAD and HR is notified.
-- Malformed success envelope: `INVALID_ACK`, retried as a gateway error; no false SENT/REGISTERED result.
-- Non-transient app delivery4xx: FAILED, no automatic retry; reason appears in the HR queue.
-- MOCK Documentolog validation rejection: gateway job FAILED, no connector retry; signed failure callback updates separate sync state. Temporary MOCK connector failure uses backoff and becomes DEAD after8 attempts.
-- Callback failure: retry independently; the registered MOCK document is never recreated. Terminal job remains available for GET reconciliation even if callback delivery exhausts attempts.
-- Restart mid-job: persistent job/nonce/document rows survive. An expired processing lease can be reclaimed. Fresh-nonce retries with the same key return the same job/reference. Application outbox content never changes when profiles/calendar settings later change.
+- Шлюз недоступен, ошибка сети, 429 или 5xx: заявка остаётся «Одобрено». Доставка повторяется со случайной задержкой по расписанию 30 с, 60 с, 5 мин, 15 мин, 1 ч, 6 ч, 12 ч; после 8 подряд ошибок задание outbox становится `DEAD`, HR получает уведомление.
+- Искажённый успешный ответ: `INVALID_ACK`, повторяется как ошибка шлюза; ложного `SENT`/`REGISTERED` нет.
+- Непереходная ошибка 4xx при доставке из приложения: `FAILED` без автоповтора; причина видна в очереди HR.
+- Отказ проверки в MOCK Documentolog: задание шлюза `FAILED` без повтора; подписанный callback об ошибке обновляет отдельный статус синхронизации. Временный сбой MOCK-коннектора повторяется с задержкой и после 8 попыток становится `DEAD`.
+- Сбой callback: повторяется независимо; зарегистрированный MOCK-документ не создаётся заново. Итоговое задание остаётся доступным для сверки через GET, даже если попытки callback исчерпаны.
+- Перезапуск посреди задания: задания, nonce и документы сохраняются. Истёкшую аренду можно взять заново. Повтор с новым nonce и тем же ключом возвращает то же задание и номер. Содержимое outbox не меняется, даже если позже изменились профили или календарь.
 
-## Flow B — scheduled/read-only MOCK snapshots
+## Поток B — плановые MOCK-снимки только для чтения
 
-The app integration worker polls snapshots on a configured interval (default900 seconds), using the last successful `updated_since` cursor. `POST /api/v1/admin/integrations/refresh` is HR-only and uses a database-backed cooldown (default60 seconds). An on-demand refresh fetches the full fixture so previously unmatched codes can be reviewed again after mapping.
+Обработчик приложения запрашивает снимки с заданным интервалом (по умолчанию 900 секунд), начиная с последнего успешного курсора `updated_since`. `POST /api/v1/admin/integrations/refresh` доступен только HR и ограничен паузой в базе (по умолчанию 60 секунд). Обновление по запросу загружает полный набор, чтобы ранее несопоставленные коды можно было проверить повторно после задания соответствия.
 
-`apply_snapshot` is the integration's single writer of profile facts. It matches **only employee code**, not email/name; it updates an existing profile and preserves role/login identity. Unknown employee/manager codes go to `integration_reviews` for HR. No arbitrary new user/role is provisioned. Older snapshots and insufficient/conflicting balances are held for review. Integration data does not enter the knowledge base or AI provider.
+`apply_snapshot` — единственное место, где интеграция записывает данные профиля. Сопоставление идёт **только по табельному номеру**, не по e-mail или имени; обновляется существующий профиль, роль и учётная запись не меняются. Неизвестные коды сотрудников и руководителей попадают в `integration_reviews` для HR. Новые пользователи и роли не создаются. Устаревшие снимки и недостаточные или конфликтующие остатки ждут проверки. Данные интеграции не попадают в базу знаний и к AI-провайдеру.
 
-Profiles store source mode, original snapshot balance, `as_of` and `synced_at`. A successful source check leaves a truthful freshness record; failed checks retain the last snapshot and expose `is_stale`. Profile/dashboard requests never synchronously call the gateway. Disconnecting a previously synced source also marks that retained snapshot stale. The UI says MOCK and read-only, never official 1C data.
+Профиль хранит режим источника, исходный остаток из снимка, `as_of` и `synced_at`. Успешная проверка источника оставляет честную отметку свежести; при сбое сохраняется последний снимок с признаком `is_stale`. Запросы профиля и главной страницы никогда не обращаются к шлюзу синхронно. Отключение ранее синхронизированного источника тоже помечает сохранённый снимок устаревшим. Интерфейс пишет «MOCK» и «только чтение» и никогда не называет данные официальными данными 1С.
 
-For reconciliation, the **canonical snapshot extension** `confirmed_request_codes` explicitly identifies local approvals already included in the source balance. An approved local request keeps frozen charged days and is provisional until confirmed. Effective local balance is source balance minus still-unconfirmed charged days. A Documentolog registration alone does **not** prove a 1C balance posting and does not clear the provisional adjustment. The default MOCK fixture confirms no approvals. Existing pre-migration approvals retain their legacy balance state; official historical reconciliation requires operator/partner confirmation.
+Для сверки **каноническое расширение снимка** `confirmed_request_codes` перечисляет локальные одобрения, уже учтённые в остатке источника. Одобренная локальная заявка хранит замороженные списываемые дни и считается предварительной до подтверждения. Действующий локальный остаток = остаток источника минус ещё не подтверждённые списанные дни. Сама регистрация в Documentolog **не доказывает** проведение остатка в 1С и не снимает предварительную корректировку. Стандартный MOCK-набор не подтверждает ни одного одобрения.
 
-## HR operational display
+## Экран эксплуатации для HR
 
-`GET /api/v1/admin/integrations` uses persisted facts, not hardcoded statistics or a live network request during page load. Each card includes mode (UNCONNECTED or observed MOCK), pending/failed delivery counts, actual last success time, last source error and confirmed synthetic record count. A configured but never successfully observed gateway remains UNCONNECTED. CONNECTED cannot be produced by this MOCK implementation.
+`GET /api/v1/admin/integrations` показывает сохранённые факты, а не жёстко заданную статистику и не живой сетевой запрос при загрузке страницы. Каждая карточка содержит режим (UNCONNECTED или наблюдаемый MOCK), число ожидающих и ошибочных доставок, фактическое время последнего успеха, последнюю ошибку источника и число подтверждённых синтетических записей. Настроенный, но ни разу не ответивший шлюз остаётся UNCONNECTED. Статус CONNECTED эта MOCK-реализация выдать не может.
 
-HR-only queue and review endpoints:
+Endpoint-ы очереди и проверки — только для HR:
 
-- `GET /api/v1/admin/integrations/queue`: paginated FAILED/DEAD request codes, safe error code and mode.
-- `GET /api/v1/admin/integrations/reviews`: paginated unmatched/conflicting employee codes and reason.
-- `POST /api/v1/admin/integrations/refresh`: role checked and rate limited.
+- `GET /api/v1/admin/integrations/queue` — постранично заявки в `FAILED`/`DEAD`, безопасный код ошибки и режим;
+- `GET /api/v1/admin/integrations/reviews` — постранично несопоставленные или конфликтующие табельные номера и причина;
+- `POST /api/v1/admin/integrations/refresh` — с проверкой роли и ограничением частоты.
 
-Every MOCK reference displayed in a request detail carries a MOCK label. The admin headline changes from UNCONNECTED to observed MOCK and explicitly says no live enterprise connection. Both RU/KK labels are maintained.
+Каждый MOCK-номер в карточке заявки помечен как MOCK. Заголовок админ-панели меняется с UNCONNECTED на наблюдаемый MOCK и прямо пишет, что реального корпоративного подключения нет. Подписи поддерживаются на русском и казахском.
 
-## Configuration and verification
+## Настройки и проверка
 
-Existing settings: `INTEGRATION_GATEWAY_URL`, `INTEGRATION_OUTBOUND_KEY_ID`, `INTEGRATION_OUTBOUND_KEY`, `INTEGRATION_INBOUND_KEYS`, and outbound `INTEGRATION_TLS_CERT/KEY/CA`.
+Настройки приложения: `INTEGRATION_GATEWAY_URL`, `INTEGRATION_OUTBOUND_KEY_ID`, `INTEGRATION_OUTBOUND_KEY`, `INTEGRATION_INBOUND_KEYS`, исходящие `INTEGRATION_TLS_CERT/KEY/CA`.
 
-Gateway settings are separately prefixed `GATEWAY_`: MODE (only MOCK accepted), DATABASE_URL, APP_KEY_ID/APP_KEY or JANAMEN_KEYS verification map, CALLBACK_URL/KEY_ID/KEY, optional TLS_CA/CERT/KEY, WORKER_ENABLED/POLL_SECONDS, optional MOCK_EMPLOYEES_FILE. MOCK_ONE_C_UNAVAILABLE and MOCK_DOCUMENTOLOG_FAILURE allow controlled local failure testing; they do not select real connectors.
+Настройки шлюза начинаются с `GATEWAY_`: `MODE` (принимается только MOCK), `DATABASE_URL`, `APP_KEY_ID`/`APP_KEY` или карта проверки `JANAMEN_KEYS`, `CALLBACK_URL`/`KEY_ID`/`KEY`, необязательные `TLS_CA`/`CERT`/`KEY`, `WORKER_ENABLED`/`POLL_SECONDS`, необязательный `MOCK_EMPLOYEES_FILE`. `MOCK_ONE_C_UNAVAILABLE` и `MOCK_DOCUMENTOLOG_FAILURE` включают управляемые сбои для локальной проверки и не выбирают реальные коннекторы.
 
 ```bash
 python -m pytest -q tests/test_gateway_service.py tests/test_integration_gateway.py tests/test_migrations.py
@@ -168,12 +170,12 @@ python -m ruff check app tests migrations smoke_test.py dependency_audit.py
 python -m mypy app
 ```
 
-Tests use isolated databases and synthetic keys. The six acceptance conditions from design section10 map to signature/replay tests, concurrent idempotency/restart tests, gateway-down approval/retry/DEAD tests, callback/reconciliation notification tests, bearer-denial tests, and profile-outage snapshot tests. Actual results for this implementation are recorded in `docs/GATEWAY_IMPLEMENTATION_REPORT.md`; test existence alone is not a claim of execution.
+Тесты используют изолированные базы и синтетические ключи. Шесть условий приёмки из проекта интеграции покрыты тестами подписи и повторов, параллельной идемпотентности и перезапуска, одобрения при выключенном шлюзе с повторами и `DEAD`, уведомлений при callback и сверке, отказа в доступе по Bearer-токену и работы профиля при сбое. Результаты прогонов — в [docs/TESTING.md](TESTING.md).
 
-## Still needed for any live connection
+## Что нужно для реального подключения
 
-Jana Post must provide vendor API documentation, test systems, employee-code mapping and balance-posting confirmation semantics, document types, authorized service accounts and private network/certificate ownership. Real connectors, VPN, inbound mTLS deployment, electronic signatures, production secret/storage/retention operations, automated dead-letter replay and a partner reconciliation schedule are not delivered. This service is a durable **MOCK** integration gateway, not evidence of a live enterprise connection.
+От Jana Post нужны документация API вендоров, тестовые системы, сопоставление табельных номеров и правила подтверждения проведения остатков, типы документов, сервисные учётные записи, владелец частной сети и сертификатов. Не поставляются: реальные коннекторы, VPN, развёртывание входящего mTLS, электронная подпись, промышленное управление секретами, хранением и сроками, автоматический повтор `DEAD`-заданий и регламент сверки с партнёрами. Этот сервис — надёжный **MOCK**-шлюз, а не доказательство реального корпоративного подключения.
 
-## Controlled recovery and store upgrades
+## Управляемое восстановление и обновление хранилища
 
-The fix-plan follow-up adds audited HR recovery/mapping commands, signed generation-aware retries, and gateway schema v2. See [Recovery and operations](RECOVERY_AND_OPERATIONS.md) for request contracts, lost-store behavior, immutable submission keys and the backup/restore procedure. All connectors remain MOCK; these are JanaМен canonical endpoints, not vendor APIs.
+HR может выполнять проверяемые действия: повтор задания с учётом поколения и ручное сопоставление сотрудника, обе с обязательной причиной. Хранилище шлюза обновляется версиями. Контракты запросов, поведение при потере хранилища, неизменяемые ключи отправки и порядок резервного копирования — в [RECOVERY_AND_OPERATIONS.md](RECOVERY_AND_OPERATIONS.md). Все коннекторы остаются MOCK; это канонические endpoint-ы JanaМен, а не API вендоров.

@@ -1,7 +1,0 @@
-{
-  "command": ".venv/bin/python -m pytest -q tests/test_ai_gemini.py -k employee_free_text",
-  "executed": true,
-  "exit_code": 1,
-  "seconds": 2.74,
-  "output": "privacy-regression-before.txt"
-}

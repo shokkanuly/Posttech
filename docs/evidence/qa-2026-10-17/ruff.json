@@ -1,7 +1,0 @@
-{
-  "command": ".venv/bin/python -m ruff check app tests migrations smoke_test.py dependency_audit.py",
-  "executed": true,
-  "exit_code": 0,
-  "seconds": 0.12,
-  "output": "ruff.txt"
-}

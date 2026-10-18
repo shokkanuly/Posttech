@@ -68,7 +68,10 @@ def generate_grounded_answer(passages: list[dict], language: str) -> dict | None
             "temperature": 0,
             "responseMimeType": "application/json",
             "responseSchema": RESPONSE_SCHEMA,
-            "maxOutputTokens": 800,
+            # Thinking tokens count against the limit: unbounded thinking truncated the JSON
+            # and took 10-30 s. Low thinking answers in ~2-3 s (checked on gemini-3.8-flash).
+            "maxOutputTokens": 2048,
+            "thinkingConfig": {"thinkingLevel": "low"},
         },
     }
     try:

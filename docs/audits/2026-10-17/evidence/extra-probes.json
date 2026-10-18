@@ -1,0 +1,94 @@
+[
+  {
+    "name": "conflicting_approved_sources",
+    "http": 200,
+    "response": {
+      "question": "Auditpolicy vacation days?",
+      "answer": "Synthetic example; not official HR policy. Source: Audit conflicting source 0 — Auditpolicy vacation days (v1.0)\nAuditpolicy vacation days are 24 calendar days.\n\nSynthetic example; not official HR policy. Source: Audit conflicting source 1 — Auditpolicy vacation days (v1.0)\nAuditpolicy vacation days are 40 calendar days.",
+      "answer_status": "grounded",
+      "sources": [
+        {
+          "chunk_id": 8,
+          "document_id": 4,
+          "document_title": "Audit conflicting source 0",
+          "section_title": "Auditpolicy vacation days",
+          "snippet": "Auditpolicy vacation days are 24 calendar days.",
+          "version": "1.0",
+          "document_revision": 3,
+          "language": "en",
+          "is_synthetic": true,
+          "relevance": 0.9519
+        },
+        {
+          "chunk_id": 9,
+          "document_id": 5,
+          "document_title": "Audit conflicting source 1",
+          "section_title": "Auditpolicy vacation days",
+          "snippet": "Auditpolicy vacation days are 40 calendar days.",
+          "version": "1.0",
+          "document_revision": 3,
+          "language": "en",
+          "is_synthetic": true,
+          "relevance": 0.9484
+        }
+      ],
+      "escalation_guidance": "Contact HR support at hr-support@janapost.kz for confirmation.",
+      "engine": "extractive",
+      "processing_time_ms": 15.78,
+      "language": "en"
+    }
+  },
+  {
+    "name": "additional_invalid_payload",
+    "payload": {
+      "type": "Advance payment",
+      "start_date": "2026-12-20",
+      "amount": -1
+    },
+    "http": 422
+  },
+  {
+    "name": "additional_invalid_payload",
+    "payload": {
+      "type": "Advance payment",
+      "start_date": "2026-12-20",
+      "amount": "NaN"
+    },
+    "http": 422
+  },
+  {
+    "name": "additional_invalid_payload",
+    "payload": {
+      "type": "Vacation",
+      "start_date": "2026-12-20",
+      "end_date": "9999-12-31"
+    },
+    "http": 422
+  },
+  {
+    "name": "db_constraint_negative_balance",
+    "accepted_by_database": true
+  },
+  {
+    "name": "db_constraint_unknown_status",
+    "accepted_by_database": true
+  },
+  {
+    "name": "db_constraint_reversed_dates",
+    "accepted_by_database": true
+  },
+  {
+    "name": "calendar_change_history",
+    "exclusions": "[]",
+    "exit": 0,
+    "result": "{\"used\": {\"used_days\": 2.0, \"pending_days\": 1.0}, \"balance\": 22.0}",
+    "error": ""
+  },
+  {
+    "name": "calendar_change_history",
+    "exclusions": "[\"2026-11-26\"]",
+    "exit": 0,
+    "result": "{\"used\": {\"used_days\": 1.0, \"pending_days\": 1.0}, \"balance\": 22.0}",
+    "error": ""
+  }
+]

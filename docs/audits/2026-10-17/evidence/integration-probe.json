@@ -1,0 +1,15 @@
+{
+  "empty_200_acknowledgement_accepted": true,
+  "request_status": "ORDER_CREATED",
+  "external_id": null,
+  "tasks": [
+    {
+      "operation": "ONE_C_ORDER",
+      "status": "DONE"
+    },
+    {
+      "operation": "DOCUMENTOLOG_REGISTER",
+      "status": "PENDING"
+    }
+  ]
+}

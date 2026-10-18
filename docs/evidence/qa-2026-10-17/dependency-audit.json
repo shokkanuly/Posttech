@@ -1,0 +1,7 @@
+{
+  "command": ".venv/bin/python dependency_audit.py --requirements requirements-dev.txt --requirements requirements-ml.txt --output docs/evidence/qa-2026-10-17/dependency-advisories.json",
+  "executed": true,
+  "exit_code": 0,
+  "seconds": 0.82,
+  "output": "dependency-audit.txt"
+}

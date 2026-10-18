@@ -78,6 +78,7 @@ class AcademyService:
             description=course.description,
             duration_minutes=course.duration_minutes,
             is_mandatory=course.is_mandatory,
+            is_synthetic=course.is_synthetic,
             due_date=course.due_date,
             total_lessons=len(course.lessons),
             cover_gradient=course.cover_gradient,

@@ -82,6 +82,9 @@ class RequestResponse(BaseModel):
     reviewer_name: Optional[str] = None
     review_comment: Optional[str] = None
     external_sync_id: Optional[str] = None
+    external_ref: Optional[str] = None
+    sync_status: str = "NOT_REQUIRED"
+    integration_mode: Optional[str] = None
     submitted_date_formatted: str
     period_or_details: str
     vacation_days: Optional[float] = None  # chargeable days under the configured local calendar

@@ -28,10 +28,19 @@ def _signature(key: str, method: str, path: str, timestamp: str, nonce: str, bod
 
 
 def sign(
-    key_id: str, key: str, method: str, path: str, body: bytes, now: float | None = None
+    key_id: str,
+    key: str,
+    method: str,
+    path: str,
+    body: bytes,
+    now: float | None = None,
+    *,
+    nonce: str | None = None,
 ) -> dict[str, str]:
     timestamp = str(int(time.time() if now is None else now))
-    nonce = secrets.token_hex(16)
+    nonce = nonce or secrets.token_hex(16)
+    if not NONCE.fullmatch(nonce):
+        raise ValueError("Invalid signing nonce")
     return {
         "X-Key-Id": key_id,
         "X-Timestamp": timestamp,
@@ -52,7 +61,12 @@ def verify(
     key = keys.get(headers.get("x-key-id", ""))
     timestamp = headers.get("x-timestamp", "")
     nonce = headers.get("x-nonce", "")
-    if not key or not (timestamp.isascii() and timestamp.isdigit()) or not NONCE.fullmatch(nonce):
+    if (
+        not key
+        or len(timestamp) > 20
+        or not (timestamp.isascii() and timestamp.isdigit())
+        or not NONCE.fullmatch(nonce)
+    ):
         raise SignatureError
     if abs((time.time() if now is None else now) - int(timestamp)) > MAX_SKEW_SECONDS:
         raise SignatureError

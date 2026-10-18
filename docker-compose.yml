@@ -1,3 +1,13 @@
+x-integration-environment: &integration-environment
+  INTEGRATION_GATEWAY_URL: ${INTEGRATION_GATEWAY_URL:-}
+  INTEGRATION_OUTBOUND_KEY_ID: ${INTEGRATION_OUTBOUND_KEY_ID:-}
+  INTEGRATION_OUTBOUND_KEY: ${INTEGRATION_OUTBOUND_KEY:-}
+  INTEGRATION_INBOUND_KEYS: ${INTEGRATION_INBOUND_KEYS:-{}}
+  INTEGRATION_TLS_CERT: ${INTEGRATION_TLS_CERT:-}
+  INTEGRATION_TLS_KEY: ${INTEGRATION_TLS_KEY:-}
+  INTEGRATION_TLS_CA: ${INTEGRATION_TLS_CA:-}
+  INTEGRATION_SYNC_INTERVAL_SECONDS: ${INTEGRATION_SYNC_INTERVAL_SECONDS:-900}
+
 services:
   db:
     image: postgres:17-alpine
@@ -25,6 +35,7 @@ services:
     ports:
       - "127.0.0.1:${WEB_PORT:-8000}:8000"
     environment:
+      <<: *integration-environment
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DEMO_MODE: ${DEMO_MODE:-true}
       DEMO_PASSWORD: ${DEMO_PASSWORD:-Password123!}
@@ -34,6 +45,7 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-[]}
       AI_PROVIDER: ${AI_PROVIDER:-grounded_knowledge}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_DATA_SHARING_APPROVED: ${GEMINI_DATA_SHARING_APPROVED:-false}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       # Public holidays are built in (app/leave_calendar.py); this adds HR-approved extra dates.
       LEAVE_EXCLUDED_DATES: '${LEAVE_EXCLUDED_DATES:-[]}'
@@ -57,6 +69,61 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
+    networks:
+      - default
+      - integration
+
+  gateway:
+    profiles: [integrations]
+    build: .
+    command: ["python", "-m", "uvicorn", "app.gateway.main:app", "--host", "0.0.0.0", "--port", "9000", "--no-access-log"]
+    environment:
+      GATEWAY_MODE: MOCK
+      GATEWAY_DATABASE_URL: sqlite:////data/gateway.db
+      GATEWAY_APP_KEY_ID: ${INTEGRATION_OUTBOUND_KEY_ID:-}
+      GATEWAY_APP_KEY: ${INTEGRATION_OUTBOUND_KEY:-}
+      # Optional verification map permits current and previous app keys during rotation.
+      GATEWAY_JANAMEN_KEYS: ${GATEWAY_JANAMEN_KEYS:-{}}
+      GATEWAY_CALLBACK_URL: http://web:8000/api/v1/internal/integrations/documentolog/status
+      GATEWAY_CALLBACK_KEY_ID: ${GATEWAY_CALLBACK_KEY_ID:-}
+      GATEWAY_CALLBACK_KEY: ${GATEWAY_CALLBACK_KEY:-}
+    volumes:
+      - gateway_data:/data
+    networks:
+      - integration
+    # No host ports. Every route, including /health, requires a machine signature.
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.gateway.healthcheck"]
+      interval: 15s
+      timeout: 8s
+      retries: 3
+
+  integration-worker:
+    profiles: [integrations]
+    build: .
+    command: ["python", "-m", "app.integrations.outbox"]
+    environment:
+      <<: *integration-environment
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://janamen:${POSTGRES_PASSWORD:-janamen_local_only}@db:5432/janamen
+      # Worker never uses an external AI provider or seeds data.
+      AI_PROVIDER: grounded_knowledge
+      GEMINI_API_KEY: ""
+    depends_on:
+      db:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    networks:
+      - default
+      - integration
+    healthcheck:
+      disable: true
+
+networks:
+  integration:
+    internal: true
 
 volumes:
   janamen_pg:
+  gateway_data:

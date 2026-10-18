@@ -1,0 +1,126 @@
+ Image janamen-qa-check-integration-worker Building
+ Image janamen-qa-check-web Building
+ Image janamen-qa-check-gateway Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.41kB done
+#1 DONE 0.0s
+
+#2 [gateway internal] load build definition from Dockerfile
+#2 transferring dockerfile: 776B done
+#2 DONE 0.0s
+
+#3 [integration-worker internal] load metadata for docker.io/library/python:3.14-slim
+#3 ...
+
+#4 [auth] library/python:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#3 [integration-worker internal] load metadata for docker.io/library/python:3.14-slim
+#3 DONE 3.3s
+
+#5 [integration-worker internal] load .dockerignore
+#5 transferring context: 247B done
+#5 DONE 0.0s
+
+#6 [gateway  1/12] FROM docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+#6 resolve docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 done
+#6 DONE 0.0s
+
+#7 [gateway internal] load build context
+#7 transferring context: 105.83kB 0.0s done
+#7 DONE 0.0s
+
+#8 [gateway  4/12] COPY requirements.txt .
+#8 CACHED
+
+#9 [gateway  2/12] WORKDIR /app
+#9 CACHED
+
+#10 [gateway  3/12] RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+#10 CACHED
+
+#11 [gateway  5/12] RUN pip install --no-cache-dir -r requirements.txt
+#11 CACHED
+
+#12 [integration-worker  6/12] COPY app/ ./app/
+#12 DONE 0.1s
+
+#13 [integration-worker  7/12] COPY migrations/ ./migrations/
+#13 DONE 0.0s
+
+#14 [web  8/12] COPY alembic.ini .
+#14 DONE 0.0s
+
+#15 [integration-worker  9/12] COPY static/ ./static/
+#15 DONE 0.0s
+
+#16 [gateway 10/12] COPY knowledge/ ./knowledge/
+#16 DONE 0.0s
+
+#17 [web 11/12] COPY ml/ ./ml/
+#17 DONE 0.0s
+
+#18 [gateway 12/12] RUN useradd --uid 10001 --create-home janamen && mkdir -p /data && chown -R janamen:janamen /app /data
+#18 DONE 0.3s
+
+#19 [web] exporting to image
+#19 exporting layers 0.1s done
+#19 exporting manifest sha256:0518a1a71ff938e1f0bd530232fb4903e00cf8f7a8206ccb1b6ed56814ad45c8 0.0s done
+#19 exporting config sha256:275b3525ddc424056e2f3db6ecf9289e7ca93c049dff29552169e811d1056d9e 0.0s done
+#19 exporting attestation manifest sha256:529899da226dfb2d8721f335552d24dfb2648e2b675270447e965998d984bb9c 0.0s done
+#19 exporting manifest list sha256:110c151002a83b944eb5b3e5e718f8f41f9cb6142c4fb749228e417a613fd2bf 0.0s done
+#19 naming to docker.io/library/janamen-qa-check-web:latest done
+#19 unpacking to docker.io/library/janamen-qa-check-web:latest
+#19 unpacking to docker.io/library/janamen-qa-check-web:latest 0.1s done
+#19 DONE 0.4s
+
+#20 [gateway] exporting to image
+#20 exporting layers 0.2s done
+#20 exporting manifest sha256:033f6da6bf3356d8e57d27b31698efd99a0301cbe32fb60668c05745a706ba1f 0.0s done
+#20 exporting config sha256:4eb966ef3c6e0b7180f034427749b95f057cbfe16fb23e44e9daca2d8ca19a6c 0.0s done
+#20 exporting attestation manifest sha256:ba92d1e75efee23236dd613e1389c8174d0868e29757e7fb8fc0d1e9f4af28d6 0.0s done
+#20 exporting manifest list sha256:e4329d34a7c369efd3cdba0fc28ffe170834ef44d3a113427c18f809d134bc06 0.0s done
+#20 naming to docker.io/library/janamen-qa-check-gateway:latest done
+#20 unpacking to docker.io/library/janamen-qa-check-gateway:latest 0.1s done
+#20 DONE 0.4s
+
+#21 [integration-worker] exporting to image
+#21 exporting layers 0.2s done
+#21 exporting manifest sha256:938cfecfd6ecbfbc5fab3f151ae3c3b69a693e436f6b0803d2964c26ac4485e6 0.0s done
+#21 exporting config sha256:4770fee15674b55e6bfb1699abda75f0d29b0bb9f68c2b3f13f410fa85672c0c 0.0s done
+#21 exporting attestation manifest sha256:ab45f01bd729fd188185acb682ee3b0c852475199c20cb7a252f2ba59cf53db8 0.0s done
+#21 exporting manifest list sha256:92ef90a9f2a72e9de99ecc39c246323c308579628234bd297eabd2b5bda90035 0.0s done
+#21 naming to docker.io/library/janamen-qa-check-integration-worker:latest done
+#21 unpacking to docker.io/library/janamen-qa-check-integration-worker:latest 0.1s done
+#21 DONE 0.4s
+
+#22 [gateway] resolving provenance for metadata file
+#22 DONE 0.0s
+
+#23 [integration-worker] resolving provenance for metadata file
+#23 DONE 0.0s
+
+#24 [web] resolving provenance for metadata file
+#24 DONE 0.0s
+ Image janamen-qa-check-gateway Built
+ Image janamen-qa-check-web Built
+ Image janamen-qa-check-integration-worker Built
+ Container janamen-qa-check-db-1 Running
+ Container janamen-qa-check-gateway-1 Recreate
+ Container janamen-qa-check-web-1 Recreate
+ Container janamen-qa-check-gateway-1 Recreated
+ Container janamen-qa-check-web-1 Recreated
+ Container janamen-qa-check-integration-worker-1 Recreate
+ Container janamen-qa-check-integration-worker-1 Recreated
+ Container janamen-qa-check-gateway-1 Starting
+ Container janamen-qa-check-db-1 Waiting
+ Container janamen-qa-check-gateway-1 Started
+ Container janamen-qa-check-db-1 Healthy
+ Container janamen-qa-check-web-1 Starting
+ Container janamen-qa-check-web-1 Started
+ Container janamen-qa-check-web-1 Waiting
+ Container janamen-qa-check-db-1 Waiting
+ Container janamen-qa-check-db-1 Healthy
+ Container janamen-qa-check-web-1 Healthy
+ Container janamen-qa-check-integration-worker-1 Starting
+ Container janamen-qa-check-integration-worker-1 Started

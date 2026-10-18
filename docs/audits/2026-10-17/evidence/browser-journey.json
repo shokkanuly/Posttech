@@ -1,0 +1,28 @@
+{
+  "url": "http://127.0.0.1:8767",
+  "observed_width_px": 319,
+  "employee": "employee.demo@example.com",
+  "manager": "manager.demo@example.com",
+  "request_id": 9,
+  "request_code": "REQ-N000009",
+  "date": "2026-12-10",
+  "employee_balance_before": 22,
+  "employee_balance_after": 21,
+  "browser_steps": [
+    "Employee login",
+    "Vacation submitted through modal: Pending",
+    "Role selector signed out; manager password required",
+    "Team queue shows request",
+    "Approval dialog opened",
+    "Tab after opening focused background Reject: accessibility defect",
+    "Approved with synthetic comment",
+    "Role selector signed out; employee password required",
+    "Own dashboard shows Approved",
+    "Notifications show matching approval",
+    "Kazakh selected",
+    "Browser reloaded: language retained, login required",
+    "Employee login: same Approved request, balance21, learning50%, notice retained"
+  ],
+  "screenshot": "ui-employee-notification.png",
+  "scope": "Actual UI automation, not a generated screenshot or DOM-only locale fixture"
+}

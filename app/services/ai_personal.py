@@ -7,6 +7,7 @@ external model.
 
 import re
 from datetime import date
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -97,7 +98,7 @@ def _date(day: date, lang: Language) -> str:
     return f"{day.day} {month} {day.year}" + {"ru": " г.", "kk": " ж.", "en": ""}[lang]
 
 
-def _num(value: float) -> str:
+def _num(value: float | Decimal) -> str:
     return f"{value:g}"
 
 

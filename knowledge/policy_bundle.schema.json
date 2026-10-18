@@ -64,6 +64,58 @@
           },
           "title": "Translations",
           "type": "object"
+        },
+        "policy_key": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy Key"
+        },
+        "priority": {
+          "default": 0,
+          "maximum": 100,
+          "minimum": -100,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "effective_from": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effective From"
+        },
+        "effective_until": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effective Until"
+        },
+        "known_conflict": {
+          "default": false,
+          "title": "Known Conflict",
+          "type": "boolean"
         }
       },
       "required": [

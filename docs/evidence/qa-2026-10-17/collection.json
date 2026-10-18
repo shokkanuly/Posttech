@@ -1,0 +1,7 @@
+{
+  "command": ".venv/bin/python -m pytest --collect-only -q",
+  "executed": true,
+  "exit_code": 0,
+  "seconds": 1.58,
+  "output": "collection.txt"
+}

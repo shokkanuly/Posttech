@@ -1,0 +1,47 @@
+{
+  "services": {
+    "db-1": {
+      "running": true,
+      "health": "healthy",
+      "user": "",
+      "published_ports": {
+        "5432/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "15440"
+          }
+        ]
+      }
+    },
+    "web-1": {
+      "running": true,
+      "health": "healthy",
+      "user": "janamen",
+      "published_ports": {
+        "8000/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "18766"
+          }
+        ]
+      }
+    },
+    "gateway-1": {
+      "running": true,
+      "health": "healthy",
+      "user": "janamen",
+      "published_ports": {
+        "8000/tcp": null
+      }
+    },
+    "integration-worker-1": {
+      "running": true,
+      "health": "not configured",
+      "user": "janamen",
+      "published_ports": {
+        "8000/tcp": null
+      }
+    }
+  },
+  "gateway_network_internal": true
+}

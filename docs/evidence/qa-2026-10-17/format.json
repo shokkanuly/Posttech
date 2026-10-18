@@ -1,0 +1,7 @@
+{
+  "command": ".venv/bin/python -m ruff format --check app tests migrations smoke_test.py dependency_audit.py",
+  "executed": true,
+  "exit_code": 0,
+  "seconds": 0.04,
+  "output": "format.txt"
+}

@@ -1,0 +1,7 @@
+{
+  "command": "docker compose -p janamen-qa-check --env-file /tmp/janamen-qa-check.env exec -T db psql -U janamen -d janamen -c 'SELECT version_num FROM alembic_version; SELECT data_type,numeric_precision,numeric_scale FROM information_schema.columns WHERE table_name='\"'\"'requests'\"'\"' AND column_name='\"'\"'amount'\"'\"';'",
+  "executed": true,
+  "exit_code": 0,
+  "seconds": 0.36,
+  "output": "deployed-schema.txt"
+}

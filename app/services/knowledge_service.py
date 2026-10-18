@@ -39,6 +39,11 @@ class KnowledgeService:
                 "updated_at",
                 "language",
                 "translations",
+                "policy_key",
+                "priority",
+                "effective_from",
+                "effective_until",
+                "known_conflict",
             )
         } | document_text(doc)
 
@@ -113,7 +118,11 @@ class KnowledgeService:
     @classmethod
     def update_document(cls, db, document_id, payload, actor):
         changes = payload.model_dump(exclude_unset=True, exclude={"expected_revision"})
-        if not changes or any(v is None and k != "description" for k, v in changes.items()):
+        if not changes or any(
+            v is None
+            and k not in {"description", "policy_key", "effective_from", "effective_until"}
+            for k, v in changes.items()
+        ):
             raise HTTPException(422, "Provide non-null document changes")
         doc = cls.prepare_change(db, document_id, payload.expected_revision)
         approved = changes.pop("is_approved", False)
@@ -126,6 +135,8 @@ class KnowledgeService:
             doc.translations = {}
         for key, value in changes.items():
             setattr(doc, key, value)
+        if doc.effective_from and doc.effective_until and doc.effective_from > doc.effective_until:
+            raise HTTPException(422, "Invalid policy effective period")
         if approved:
             if not doc.is_active or not doc.chunks:
                 raise HTTPException(

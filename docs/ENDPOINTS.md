@@ -44,3 +44,12 @@ See `API_CONTRACT.md` for payloads, pagination, scope and revision checks; `open
 | GET | `/api/v1/admin/summary` | HR administrator |
 | GET | `/health` | Public |
 | GET | `/` | Public |
+
+### Recovery commands (HR administrator)
+
+- `POST /api/v1/admin/integrations/queue/{task_id}/retry`: reason and expected retry counter; durable recovery intent with stale-command protection.
+- `POST /api/v1/admin/integrations/reviews/{employee_code}/resolve`: reason, observed review timestamp, optional existing employee account; fresh signed snapshot required.
+- Machine gateway: signed `POST /v1/documents/{idempotency_key}/retry` with existing job ID and generation key. MOCK only.
+- Employee submission: optional `Idempotency-Key` on `POST /api/v1/requests`, employee-scoped and immutable-body checked.
+
+See [operational contracts](RECOVERY_AND_OPERATIONS.md) and the regenerated [OpenAPI snapshot](openapi.json).

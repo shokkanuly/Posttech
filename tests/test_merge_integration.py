@@ -14,7 +14,8 @@ from sqlalchemy import MetaData, Table, create_engine, inspect, text
 from sqlalchemy.exc import DataError, IntegrityError
 
 from app.migrate import HEAD, upgrade_database
-from app.models import Notification, Request, RequestEvent
+from app.models import Notification, Request
+from app.models.enums import RequestStatus, RequestType
 from app.models.integration import IntegrationOutbox
 from tests.test_integration_gateway import connected, gateway_client
 
@@ -200,32 +201,46 @@ def test_both_deployed_histories_upgrade_without_losing_rows(upgrade_engine, sta
             db.execute(text("UPDATE requests SET amount=-1 WHERE id=1"))
 
 
-def test_profile_submission_retries_stay_local_with_gateway_enabled(
-    client, employee_headers, manager_headers, db_session, connected
+def legacy_profile_change(client, headers, db_session, field, value):
+    """A pending contact change saved before the profile became read-only (deployed data)."""
+    profile = client.get("/api/v1/me/profile", headers={**headers, "Accept-Language": "en"}).json()
+    req = Request(
+        request_code=f"REQ-L{uuid4().hex[:6].upper()}",
+        user_id=profile["user_id"],
+        type=RequestType.PROFILE_UPDATE,
+        start_date=datetime.now(timezone.utc).date(),
+        status=RequestStatus.PENDING,
+        profile_changes={field: {"from": profile[field], "to": value}},
+    )
+    db_session.add(req)
+    db_session.commit()
+    return req.id
+
+
+def test_profile_submissions_are_refused_with_gateway_enabled(
+    client, employee_headers, db_session, connected
 ):
     headers = {**employee_headers, "Idempotency-Key": "profile-merge-submission-001"}
     payload = {
         "type": "Profile update",
         "profile_changes": {"location": "Synthetic updated location"},
     }
-    first = client.post("/api/v1/requests", headers=headers, json=payload)
-    assert first.status_code == 201, first.text
-    rid = first.json()["id"]
     before = db_session.query(Notification).count()
-    repeated = client.post("/api/v1/requests", headers=headers, json=payload)
-    assert repeated.status_code == 201 and repeated.json()["id"] == rid
+    for _ in range(2):
+        assert client.post("/api/v1/requests", headers=headers, json=payload).status_code == 409
     assert db_session.query(Notification).count() == before
-    changed = client.post(
-        "/api/v1/requests",
-        headers=headers,
-        json={**payload, "profile_changes": {"location": "Another synthetic place"}},
+    assert db_session.query(IntegrationOutbox).count() == 0
+
+
+def test_legacy_profile_approval_stays_local_and_applies(
+    client, employee_headers, manager_headers, db_session, connected
+):
+    rid = legacy_profile_change(
+        client, employee_headers, db_session, "location", "Synthetic updated location"
     )
-    assert changed.status_code == 409
     approved = client.post(f"/api/v1/requests/{rid}/approve", headers=manager_headers)
     assert approved.status_code == 200 and approved.json()["sync_status"] == "NOT_REQUIRED"
     assert db_session.query(IntegrationOutbox).count() == 0
-    assert db_session.query(RequestEvent).filter_by(request_id=rid).count() == 2
-    assert client.post("/api/v1/requests", headers=headers, json=payload).json()["id"] == rid
     assert (
         client.get("/api/v1/me/profile", headers=employee_headers).json()["location"]
         == "Synthetic updated location"
@@ -238,25 +253,16 @@ def test_profile_approval_rollback_keeps_contacts_unchanged(
     from app.services.notification_service import notification_service
 
     before = client.get("/api/v1/me/profile", headers=employee_headers).json()
-    created = client.post(
-        "/api/v1/requests",
-        headers=employee_headers,
-        json={
-            "type": "Profile update",
-            "profile_changes": {"location": "Synthetic rollback place"},
-        },
+    rid = legacy_profile_change(
+        client, employee_headers, db_session, "location", "Synthetic rollback place"
     )
-    assert created.status_code == 201
 
     def fail(*args, **kwargs):
         raise RuntimeError("synthetic notification failure")
 
     monkeypatch.setattr(notification_service, "create_notification", fail)
     assert (
-        client.post(
-            f"/api/v1/requests/{created.json()['id']}/approve", headers=manager_headers
-        ).status_code
-        == 500
+        client.post(f"/api/v1/requests/{rid}/approve", headers=manager_headers).status_code == 500
     )
     after = client.get("/api/v1/me/profile", headers=employee_headers).json()
     assert (
@@ -264,7 +270,7 @@ def test_profile_approval_rollback_keeps_contacts_unchanged(
         and after["leave_balance_days"] == before["leave_balance_days"]
     )
     db_session.expire_all()
-    assert db_session.get(Request, created.json()["id"]).status.value == "Pending"
+    assert db_session.get(Request, rid).status.value == "Pending"
     assert db_session.query(IntegrationOutbox).count() == 0
 
 
@@ -282,17 +288,13 @@ def test_submission_hash_matches_the_previous_deployed_contract(
 
 
 def test_contact_change_review_visibility_is_explicit_and_scoped(
-    client, employee_headers, manager_headers, hr_admin_headers
+    client, employee_headers, manager_headers, hr_admin_headers, db_session
 ):
-    req = client.post(
-        "/api/v1/requests",
-        headers=employee_headers,
-        json={
-            "type": "Profile update",
-            "profile_changes": {"emergency_contact": "Synthetic review contact"},
-        },
-    ).json()
-    owner = req["user_id"]
+    rid = legacy_profile_change(
+        client, employee_headers, db_session, "emergency_contact", "Synthetic review contact"
+    )
+    req = {"id": rid}
+    owner = client.get("/api/v1/me/profile", headers=employee_headers).json()["user_id"]
     manager = client.get(f"/api/v1/manager/team/{owner}", headers=manager_headers).json()
     assert manager["emergency_contact"] is None  # current-profile projection remains HR-only
     change = next(r for r in manager["requests"] if r["id"] == req["id"])

@@ -6,9 +6,11 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.localization import LocalizedRoute
+from app.models.enums import UserRole
 from app.models.session import AuthSession
 from app.models.user import User
-from app.schemas.auth import LoginRequest, TokenResponse, UserResponse
+from app.provision_demo import DEMO_ACCOUNTS
+from app.schemas.auth import DemoLoginRequest, LoginRequest, TokenResponse, UserResponse
 from app.schemas.common import MessageResponse
 from app.services.audit_service import audit_service
 from app.services.auth_service import (
@@ -20,6 +22,23 @@ from app.services.auth_service import (
 )
 
 router = APIRouter(route_class=LocalizedRoute, prefix="/auth", tags=["Authentication"])
+
+
+def demo_accounts(db: Session) -> dict[str, str]:
+    """Role -> email of the synthetic demo accounts; provisioned demo accounts win."""
+    accounts = {
+        "employee": "aruzhan@janapost.kz",
+        "manager": "timur@janapost.kz",
+        "hr_admin": "aigerim@janapost.kz",
+    }
+    for user in (
+        db.query(User)
+        .filter(User.email.in_(DEMO_ACCOUNTS.values()), User.is_active.is_(True))
+        .all()
+    ):
+        if DEMO_ACCOUNTS.get(user.role.value) == user.email:
+            accounts[user.role.value] = user.email
+    return accounts
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -54,9 +73,36 @@ def authenticate_login(payload: LoginRequest, db: Session) -> TokenResponse:
         )
     if not user.password_hash.startswith("pbkdf2_sha256$"):
         user.password_hash = auth_service.hash_password(payload.password)
+    return issue_session(db, user, "LOGIN_SUCCESS")
+
+
+@router.post("/demo-login", response_model=TokenResponse)
+def demo_login(payload: DemoLoginRequest, request: Request, db: Session = Depends(get_db)):
+    """One-click sign-in as a synthetic demo role. Exists only in DEMO_MODE (never production)."""
+    if not settings.DEMO_MODE or settings.ENVIRONMENT == "production":
+        raise HTTPException(404, "Not Found")
+    key = login_limiter.check(request.client.host if request.client else "unknown")
+    try:
+        user = (
+            db.query(User)
+            .filter(
+                User.email == demo_accounts(db)[payload.role],
+                User.role == UserRole(payload.role),
+                User.is_active.is_(True),
+            )
+            .first()
+        )
+        if not user:
+            raise HTTPException(404, "Demo account is not available")
+        return issue_session(db, user, "DEMO_LOGIN")
+    finally:
+        login_limiter.finish(key, failed=False)
+
+
+def issue_session(db: Session, user: User, action: str) -> TokenResponse:
     token = auth_service.create_access_token(user.id, db)
     audit_service.log_event(
-        db, action="LOGIN_SUCCESS", actor_id=user.id, target_type="user", target_id=str(user.id)
+        db, action=action, actor_id=user.id, target_type="user", target_id=str(user.id)
     )
     db.commit()
     return TokenResponse(

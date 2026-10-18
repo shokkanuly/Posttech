@@ -1,4 +1,4 @@
-"""Leave calendar marking, approval-based profile updates and HR-only employee details."""
+"""Leave calendar marking, the read-only profile and HR-only employee details."""
 
 from datetime import date, timedelta
 
@@ -60,62 +60,22 @@ def test_vacation_details_show_the_charged_day_breakdown(client, employee_header
     ]
 
 
-def test_profile_update_applies_only_after_manager_approval(
+def test_profile_is_read_only_while_documentolog_is_unconnected(
     client, employee_headers, manager_headers
 ):
     before = me(client, employee_headers)
     created = client.post(
         "/api/v1/requests",
-        headers=employee_headers,
-        json={
-            "type": "Profile update",
-            "profile_changes": {"phone": "+7 701 555 12 34", "emergency_contact": "Mother"},
-            "reason": "New number",
-        },
+        headers={**employee_headers, "Accept-Language": "en"},
+        json={"type": "Profile update", "profile_changes": {"phone": "+7 701 555 12 34"}},
     )
-    assert created.status_code == 201, created.text
-    req = created.json()
-    assert req["status"] == "Pending" and req["vacation_days"] is None
-    assert req["profile_changes"] == {
-        "phone": {"from": None, "to": "+7 701 555 12 34"},
-        "emergency_contact": {"from": None, "to": "Mother"},
-    }
-    pending = me(client, employee_headers)
-    assert pending["phone"] is None and pending["pending_profile_change"] == req["profile_changes"]
-    again = client.post(
-        "/api/v1/requests",
-        headers=employee_headers,
-        json={"type": "Profile update", "profile_changes": {"location": "Astana, Kazakhstan"}},
-    )
-    assert again.status_code == 409
-
-    queue = client.get("/api/v1/manager/requests?status=Pending", headers=manager_headers).json()
-    assert req["id"] in [r["id"] for r in queue]
-    approved = client.post(
-        f"/api/v1/requests/{req['id']}/approve", headers=manager_headers, json={}
-    )
-    assert approved.status_code == 200, approved.text
-    assert approved.json()["external_sync_id"] is None
+    assert created.status_code == 409, created.text
+    assert "Documentolog" in created.json()["error"]["message"]
     after = me(client, employee_headers)
-    assert (after["phone"], after["emergency_contact"]) == ("+7 701 555 12 34", "Mother")
-    assert after["pending_profile_change"] is None
-    assert after["leave_balance_days"] == before["leave_balance_days"]
-
-
-def test_rejected_profile_update_changes_nothing(client, employee_headers, manager_headers):
-    req = client.post(
-        "/api/v1/requests",
-        headers=employee_headers,
-        json={"type": "Profile update", "profile_changes": {"location": "Astana, Kazakhstan"}},
-    ).json()
-    client.post(f"/api/v1/requests/{req['id']}/reject", headers=manager_headers, json={})
-    assert me(client, employee_headers)["location"] != "Astana, Kazakhstan"
+    assert after["phone"] == before["phone"] and after["pending_profile_change"] is None
 
 
 def test_profile_update_accepts_only_real_contact_changes(client, employee_headers):
-    current = client.get(
-        "/api/v1/me/profile", headers={**employee_headers, "Accept-Language": "en"}
-    ).json()
     invalid = [
         {"type": "Profile update", "profile_changes": {"department": "Finance"}},
         {"type": "Profile update", "profile_changes": {"phone": "call me"}},
@@ -126,7 +86,6 @@ def test_profile_update_accepts_only_real_contact_changes(client, employee_heade
             "profile_changes": {"phone": "+77015550000"},
         },
         {"type": "Vacation", "start_date": "2026-12-01", "profile_changes": {"phone": "+7701"}},
-        {"type": "Profile update", "profile_changes": {"location": current["location"]}},
     ]
     for body in invalid:
         res = client.post("/api/v1/requests", headers=employee_headers, json=body)

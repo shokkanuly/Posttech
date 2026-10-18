@@ -98,13 +98,20 @@ function formatPeriod(request) {
   return request.end_date && request.end_date !== request.start_date ? `${start} — ${formatDate(request.end_date)}` : start;
 }
 
+const todayIso = (days = 0) => new Date(Date.now() + 5 * 3600e3 + days * 86400e3).toISOString().slice(0, 10); // Kazakhstan, UTC+5
+const upcomingVacations = requests => requests
+  .filter(r => r.type === "Vacation" && r.status !== "Rejected" && (r.end_date || r.start_date) >= todayIso())
+  .sort((a, b) => a.start_date.localeCompare(b.start_date));
+
 // Every day of a vacation, marked: weekends are charged, public holidays are not (server rule).
-// booked: the employee's other active vacations, outlined so their exact dates are visible.
-function renderLeaveCalendar(cal, booked = []) {
+// booked: active vacations, outlined so their exact dates are visible.
+// own=false is the manager/HR view: each vacation is labelled with the employee's name.
+function renderLeaveCalendar(cal, booked = [], own = true) {
   const days = cal ? cal.days : [];
   const byDay = Object.fromEntries(days.map(d => [d.day, d]));
   const kindLabel = { workday: "Working day", weekend: "Weekend", holiday: "Public holiday" };
-  const bookedOn = iso => booked.find(b => b.start_date <= iso && iso <= (b.end_date || b.start_date));
+  const bookedOn = iso => booked.filter(b => b.start_date <= iso && iso <= (b.end_date || b.start_date));
+  const who = b => own ? "" : `${b.user_name} · `;
   const monthKeys = new Set(days.map(d => d.day.slice(0, 7)));
   booked.forEach(b => {
     for (const d = new Date(`${b.start_date}T12:00:00Z`); d <= new Date(`${b.end_date || b.start_date}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 1)) {
@@ -122,8 +129,8 @@ function renderLeaveCalendar(cal, booked = []) {
       const iso = `${ym}-${String(i + 1).padStart(2, "0")}`;
       const d = byDay[iso];
       const b = bookedOn(iso);
-      const classes = ["cal-day", d?.kind, b && "booked"].filter(Boolean).join(" ");
-      const title = [d && (d.holiday || kindLabel[d.kind]), b && `${b.request_code} · ${b.status}`].filter(Boolean).join(" · ");
+      const classes = ["cal-day", d?.kind, b.length && "booked"].filter(Boolean).join(" ");
+      const title = [d && (d.holiday || kindLabel[d.kind]), ...b.map(x => `${who(x)}${x.request_code} · ${x.status}`)].filter(Boolean).join(" · ");
       return `<span class="${classes}"${title ? ` title="${esc(title)}"` : ""}>${i + 1}</span>`;
     });
     return `<div class="cal-month"><b data-verbatim>${monthNames[month - 1]} ${year}</b><div class="cal-grid">
@@ -132,7 +139,7 @@ function renderLeaveCalendar(cal, booked = []) {
   }).join("");
   const holidays = days.filter(d => d.kind === "holiday")
     .map(d => `<li><span data-verbatim>${esc(formatDate(d.day))}</span> — <span>${esc(d.holiday)}</span></li>`).join("");
-  const plans = booked.map(b => `<li><b data-verbatim>${esc(formatPeriod(b))}</b> · <span data-verbatim>${esc(b.request_code)}</span> · <span>${esc(b.status)}</span></li>`).join("");
+  const plans = booked.map(b => `<li>${own ? "" : `<b>${esc(b.user_name)}</b> · `}<b data-verbatim>${esc(formatPeriod(b))}</b> · <span data-verbatim>${esc(b.request_code)}</span> · <span>${esc(b.status)}</span></li>`).join("");
   const num = value => Math.round(Number(value) * 10) / 10;
   return `<div class="leave-cal">
     ${cal ? `<div class="cal-summary">
@@ -141,8 +148,8 @@ function renderLeaveCalendar(cal, booked = []) {
       <span class="holiday"><span>Public holidays (not charged)</span> <b>${cal.holiday_days}</b></span>
       <span class="charged"><span>Will be charged</span> <b>${num(cal.charged_days)}</b></span>
     </div>` : ""}
-    ${plans ? `<div class="cal-plans"><b>Your planned vacations</b><ul>${plans}</ul></div>` : ""}
-    <div class="cal-legend"><span><i class="workday"></i><span>Working day</span></span><span><i class="weekend"></i><span>Weekend</span></span><span><i class="holiday"></i><span>Public holiday</span></span>${plans ? `<span><i class="booked"></i><span>Your vacation</span></span>` : ""}</div>
+    ${plans ? `<div class="cal-plans"><b>${own ? "Your planned vacations" : "Planned vacations"}</b><ul>${plans}</ul></div>` : ""}
+    <div class="cal-legend"><span><i class="workday"></i><span>Working day</span></span><span><i class="weekend"></i><span>Weekend</span></span><span><i class="holiday"></i><span>Public holiday</span></span>${plans ? `<span><i class="booked"></i><span>${own ? "Your vacation" : "Vacation"}</span></span>` : ""}</div>
     <div class="cal-months">${months}</div>
     ${holidays ? `<ul class="cal-holidays">${holidays}</ul>` : ""}
     <p class="muted small">Annual leave is counted in calendar days: weekends are charged, public holidays are not.</p>
@@ -197,15 +204,7 @@ async function initApp() {
         email: document.getElementById("loginEmail").value,
         password: document.getElementById("loginPassword").value,
       }) });
-      state.token = result.access_token;
-      state.user = result.user;
-      const me = await api("/me");
-      state.profile = me.profile;
-      document.getElementById("loginPassword").value = "";
-      document.getElementById("loginGate").hidden = true;
-      document.getElementById("app").hidden = false;
-      updateUserUI();
-      await go("home");
+      await enterApp(result);
     } catch (error) {
       showLogin(document.getElementById("loginEmail").value);
       document.getElementById("loginError").textContent = error.message;
@@ -215,10 +214,7 @@ async function initApp() {
   });
 
   document.querySelectorAll("[data-persona]").forEach(card => {
-    card.addEventListener("click", () => {
-      document.getElementById("loginEmail").value = demoAccounts[card.dataset.persona] || "";
-      document.getElementById("loginPassword").focus();
-    });
+    card.addEventListener("click", () => demoLogin(card.dataset.persona));
   });
 
   try {
@@ -230,10 +226,33 @@ async function initApp() {
       card.querySelector("[data-email]").textContent = demoAccounts[card.dataset.persona] || "";
     });
     document.getElementById("loginHint").textContent = config.demo_mode
-      ? "Synthetic demo. Use a test account and the demo password configured by the operator."
+      ? "Synthetic demo. Pick a role on the right to sign in instantly, or use a test account and the demo password."
       : "Use your account email and password.";
     showLogin(demoAccounts.employee || "");
   } catch (error) {
+    document.getElementById("loginError").textContent = error.message;
+  }
+}
+
+async function enterApp(session) {
+  state.token = session.access_token;
+  state.user = session.user;
+  const me = await api("/me");
+  state.profile = me.profile;
+  document.getElementById("loginPassword").value = "";
+  document.getElementById("loginGate").hidden = true;
+  document.getElementById("app").hidden = false;
+  updateUserUI();
+  await go("home");
+}
+
+// Demo mode only (the server refuses otherwise): one click signs in as that role.
+async function demoLogin(role) {
+  document.getElementById("loginError").textContent = "";
+  try {
+    await enterApp(await api("/auth/demo-login", { method: "POST", body: JSON.stringify({ role }) }));
+  } catch (error) {
+    showLogin(demoAccounts[role] || "");
     document.getElementById("loginError").textContent = error.message;
   }
 }
@@ -280,8 +299,9 @@ async function logout(email = "") {
 }
 
 async function switchRole(roleKey) {
-  const email = demoAccounts[roleKey];
-  if (email) await logout(email);
+  if (!demoAccounts[roleKey]) return;
+  await logout(demoAccounts[roleKey]);
+  await demoLogin(roleKey);
 }
 
 const ROLE_ACCESS = { manager: ["manager"], hr_admin: ["hr_admin"] };
@@ -407,12 +427,14 @@ async function loadDashboard() {
     banner.querySelector("[data-open-academy]")?.addEventListener("click", () => go("academy"));
 
     document.getElementById("homeActivity").innerHTML = notifications.length ? notifications.map(n => `
-      <article class="update-card">
+      <article class="update-card clickable-card" tabindex="0" role="button" data-notification="${n.id}">
         <span class="notice-icon">${notificationIcon(n.type)}</span>
         <b>${esc(n.title)}</b>
         <p>${esc(n.message)}</p>
         <small>${esc(n.time_ago)}</small>
       </article>`).join("") : `<div class="empty">No updates yet.</div>`;
+    bindNotificationClicks("homeActivity");
+    await renderNextActions({ dashboard: data, courses, requests });
   } catch (err) {
     toast(`Error: ${err.message}`);
   }
@@ -423,11 +445,12 @@ async function loadProfilePage() {
   try {
     const [p, notifications] = await Promise.all([api("/me/profile"), api("/notifications?limit=3")]);
     document.getElementById("profNotifications").innerHTML = notifications.length ? notifications.map(n => `
-      <div class="course-line">
+      <div class="course-line clickable-card" tabindex="0" role="button" data-notification="${n.id}">
         <span class="notice-icon">${notificationIcon(n.type)}</span>
         <div><b>${esc(n.title)}</b><div class="req-sub">${esc(n.time_ago)}</div></div>
         ${n.is_read ? "" : `<span class="unread-dot" aria-label="unread"></span>`}
       </div>`).join("") : `<div class="empty">No updates yet.</div>`;
+    bindNotificationClicks("profNotifications");
     document.getElementById("profAvatar").textContent = initials(p.full_name);
     document.getElementById("profName").textContent = p.full_name;
     document.getElementById("profPosition").textContent = p.position;
@@ -438,7 +461,7 @@ async function loadProfilePage() {
     document.getElementById("profEmpCode").textContent = p.employee_code;
     document.getElementById("profDept").textContent = p.department;
     document.getElementById("profCompany").textContent = p.company;
-    document.getElementById("profManager").textContent = p.manager_name || "None (Department Head)";
+    document.getElementById("profManager").textContent = p.manager_name || "No direct manager — HR approves your requests";
     document.getElementById("profHireDate").textContent = formatDate(p.hire_date);
     document.getElementById("profLocation").textContent = p.location;
     document.getElementById("profPhone").textContent = p.phone || "—";
@@ -447,7 +470,6 @@ async function loadProfilePage() {
     const pending = document.getElementById("profPending");
     pending.hidden = !p.pending_profile_change;
     pending.innerHTML = p.pending_profile_change ? `<b>Awaiting approval</b>${renderProfileChanges(p.pending_profile_change)}` : "";
-    document.getElementById("editProfileBtn").disabled = Boolean(p.pending_profile_change);
     document.getElementById("profLeaveBalance").textContent = days(p.leave_balance_days);
     document.getElementById("profLearningPct").textContent = `${Math.round(p.learning_progress_percent)}%`;
     document.getElementById("profCourses").innerHTML = p.courses.length ? p.courses.map(c => `
@@ -458,7 +480,10 @@ async function loadProfilePage() {
           <div class="req-sub"><span>${c.is_mandatory ? "Mandatory" : "Recommended"}</span>${c.due_date ? ` · <span>Due ${esc(formatDate(c.due_date))}</span>` : ""}${c.score === null ? "" : ` · <span>${Math.round(c.score)}% lessons passed</span>`}</div>
           <div class="progress"><span style="width:${c.progress_percent}%"></span></div>
         </div>
+        ${c.status === "COMPLETED" ? `<button class="small-btn" data-certificate="${c.id}">Certificate</button>` : ""}
       </div>`).join("") : `<div class="empty">No courses assigned.</div>`;
+    document.querySelectorAll("#profCourses [data-certificate]").forEach(b => b.addEventListener("click",
+      () => openCertificate(p.courses.find(c => c.id === Number(b.dataset.certificate)))));
   } catch (err) {
     toast(`Error: ${err.message}`);
   }
@@ -514,7 +539,8 @@ async function loadAcademyPage() {
             <span>${c.assigned ? (c.due_date ? `Due ${esc(formatDate(c.due_date))}` : "Assigned") : "Available to enroll"}</span>
           </div>
         </div>
-        <button class="btn ${done ? "btn-light" : "btn-primary"}" onclick="openCoursePlayer(${c.id})"><span>${action}</span>${icon("arrow")}</button>
+        <button class="btn ${done ? "btn-light" : "btn-primary"}" onclick="${c.assigned ? "openCoursePlayer" : "openCoursePreview"}(${c.id})"><span>${action}</span>${icon("arrow")}</button>
+        ${done ? `<button class="text-link" onclick="openCertificate(state.courses.find(x => x.id === ${c.id}))">Certificate</button>` : ""}
       </article>`;
     }).join("");
   } catch (err) {
@@ -528,7 +554,7 @@ async function loadNotificationsPage() {
     const notifs = await apiAll("/notifications");
     state.notifications = notifs;
     document.getElementById("notificationsList").innerHTML = notifs.length ? notifs.map(n => `
-      <button class="notice" onclick="markNotificationRead(${n.id})">
+      <button class="notice" onclick="openNotification(${n.id})">
         <span class="notice-icon">${notificationIcon(n.type)}</span>
         <span style="flex:1">
           <b>${esc(n.title)}</b>
@@ -543,11 +569,34 @@ async function loadNotificationsPage() {
   }
 }
 
-async function markNotificationRead(id) {
+function bindNotificationClicks(containerId) {
+  document.querySelectorAll(`#${containerId} [data-notification]`).forEach(el => {
+    const open = () => openNotification(Number(el.dataset.notification));
+    el.addEventListener("click", open);
+    el.addEventListener("keydown", e => { if (e.key === "Enter") open(); });
+  });
+}
+
+// The notification itself, shown on top of the request or course it is about.
+function noticeBanner(n) {
+  return `<div class="notice-banner">
+    <span class="notice-icon">${notificationIcon(n.type)}</span>
+    <div><b>${esc(n.title)}</b><p>${esc(n.message)}</p>
+      <small><span data-verbatim>${esc(formatDate(n.created_at))} ${esc(formatTime(n.created_at))}</span> · ${esc(n.time_ago)}</small></div>
+  </div>`;
+}
+
+// Opening marks it read, then shows the linked request or course in full.
+async function openNotification(id) {
   try {
-    await api(`/notifications/${id}`, { method: "PATCH", body: JSON.stringify({ is_read: true }) });
-    await loadNotificationsPage();
-    await updateNotificationBadge();
+    const n = await api(`/notifications/${id}`, { method: "PATCH", body: JSON.stringify({ is_read: true }) });
+    if (n.reference_type === "request" && n.reference_record_id) await openRequestDetailModal(n.reference_record_id, n);
+    else if (n.reference_type === "course" && n.reference_record_id) await openCoursePreview(n.reference_record_id, n);
+    else {
+      document.getElementById("notificationModalBody").innerHTML = noticeBanner(n);
+      document.getElementById("notificationModal").classList.add("open");
+    }
+    await refreshCurrentPage();
   } catch (err) {
     toast(err.message);
   }
@@ -607,8 +656,10 @@ function renderDirectory(tbodyId, members) {
 
 async function openEmployeeCard(userId) {
   try {
-    const e = await api(`/manager/team/${userId}`);
+    const [e, courses] = await Promise.all([api(`/manager/team/${userId}`), apiAll("/courses")]);
     document.getElementById("employeeModalName").textContent = e.full_name;
+    const assigned = new Set(e.courses.map(c => c.id));
+    const open = courses.filter(c => !assigned.has(c.id));
     const stat = (value, label, green) => `<div class="mini-stat ${green ? "green" : ""}"><strong>${days(value)}</strong><span>${label}</span></div>`;
     document.getElementById("employeeModalBody").innerHTML = `
       <p class="muted">${esc(e.position)} · ${esc(e.department)}</p>
@@ -616,6 +667,29 @@ async function openEmployeeCard(userId) {
         ${stat(e.leave_balance_days, "Leave balance")}${stat(e.used_days, "Used")}
         ${stat(e.pending_days, "Pending")}${stat(e.available_days, "Available", true)}
       </div>
+      ${e.user_id === state.user.id ? "" : `
+      <h4 class="sub-title">Actions</h4>
+      <div class="action-grid">
+        <form class="panel-gray" id="assignCourseForm">
+          <b>Assign a course</b>
+          ${open.length ? `<select class="field" name="course" aria-label="Course">${open.map(c => `<option value="${c.id}">${esc(c.title)}</option>`).join("")}</select>
+          <button class="btn btn-primary btn-sm" type="submit">Assign course</button>`
+          : `<p class="muted small">All courses are already assigned.</p>`}
+        </form>
+        <form class="panel-gray" id="fileRequestForm">
+          <b>File a request for the employee</b>
+          <select class="field" name="type" aria-label="Request type">
+            <option value="Advance payment">Advance payment</option>
+            <option value="Vacation">Vacation</option>
+          </select>
+          <input class="field" type="date" name="start" required aria-label="Start date">
+          <input class="field" type="date" name="end" aria-label="End date" hidden>
+          <input class="field" type="number" name="amount" min="5000" step="5000" placeholder="Amount (₸)" aria-label="Amount (₸)" required>
+          <input class="field" name="reason" maxlength="2000" placeholder="Reason / comment" aria-label="Reason / comment">
+          <p class="muted small">You file and approve it in one step; the employee is notified.</p>
+          <button class="btn btn-primary btn-sm" type="submit">File and approve</button>
+        </form>
+      </div>`}
       <dl class="detail-grid">
         <div class="detail"><dt>Employee ID</dt><dd data-verbatim>${esc(e.employee_code)}</dd></div>
         <div class="detail"><dt>Company</dt><dd>${esc(e.company)}</dd></div>
@@ -635,6 +709,8 @@ async function openEmployeeCard(userId) {
         <div class="detail"><dt>Account created</dt><dd>${esc(formatDate(e.account_created_at))}</dd></div>
         <div class="detail"><dt>Last sign-in</dt><dd>${e.last_sign_in_at ? esc(`${formatDate(e.last_sign_in_at)} ${formatTime(e.last_sign_in_at)}`) : "Never"}</dd></div>
       </dl>` : ""}
+      <h4 class="sub-title">Vacation calendar</h4>
+      ${upcomingVacations(e.requests).length ? renderLeaveCalendar(null, upcomingVacations(e.requests), false) : `<div class="empty">No planned vacations.</div>`}
       <h4 class="sub-title">Vacation and request history</h4>
       <div class="table-wrap"><table class="table">
         <thead><tr><th>Request</th><th>Period / details</th><th>Days</th><th>Status</th></tr></thead>
@@ -665,10 +741,66 @@ async function openEmployeeCard(userId) {
             <p>${h.detail ? `<span>${esc(h.detail)}</span> · ` : ""}${h.actor ? `<span>${esc(h.actor)}</span> · ` : ""}${esc(formatDate(h.at))} ${esc(formatTime(h.at))}</p>
           </div>
         </div>`).join("") : `<div class="empty">No history yet.</div>`}</div>`;
+    bindEmployeeActions(e);
     document.getElementById("employeeModal").classList.add("open");
   } catch (err) {
     toast(err.message);
   }
+}
+
+// Who is away when: every current or planned vacation in the reviewer's scope.
+async function renderTeamCalendar(containerId) {
+  try {
+    const vacations = upcomingVacations(await apiAll("/manager/requests?type=Vacation"));
+    document.getElementById(containerId).innerHTML = vacations.length
+      ? renderLeaveCalendar(null, vacations, false) : `<div class="empty">No planned vacations.</div>`;
+  } catch (err) { toast(err.message); }
+}
+
+// Manager/HR actions in the employee card; scope and rules are enforced by the API.
+function bindEmployeeActions(e) {
+  const courseForm = document.getElementById("assignCourseForm");
+  courseForm?.addEventListener("submit", async ev => {
+    ev.preventDefault();
+    if (!courseForm.elements.course) return;
+    try {
+      const course = await api(`/manager/team/${e.user_id}/courses`, { method: "POST",
+        body: JSON.stringify({ course_id: Number(courseForm.elements.course.value) }) });
+      toast(`Course assigned: ${course.title}`);
+      await openEmployeeCard(e.user_id);
+    } catch (err) { toast(err.message); }
+  });
+  const form = document.getElementById("fileRequestForm");
+  if (!form) return;
+  const { type, start, end, amount } = form.elements;
+  const today = todayIso();
+  start.min = end.min = today;
+  const sync = () => {
+    const advance = type.value === "Advance payment";
+    amount.hidden = !advance; amount.required = advance;
+    end.hidden = advance; end.required = !advance;
+  };
+  type.addEventListener("change", sync);
+  start.addEventListener("change", () => { end.min = start.value || today; });
+  sync();
+  form.addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    const advance = type.value === "Advance payment";
+    try {
+      const r = await api(`/manager/team/${e.user_id}/requests`, { method: "POST", body: JSON.stringify({
+        type: type.value, start_date: start.value,
+        end_date: advance ? null : end.value || null,
+        amount: advance ? parseFloat(amount.value) : null,
+        reason: form.elements.reason.value.trim() || null,
+      }) });
+      toast(`${r.request_code} ${r.status.toLowerCase()}`);
+      await openEmployeeCard(e.user_id);
+      await refreshCurrentPage();
+    } catch (err) { toast(err.message); }
+    finally { submit.disabled = false; }
+  });
 }
 
 async function loadTeamPage() {
@@ -694,6 +826,7 @@ async function loadTeamPage() {
       </tr>`).join("")
       : `<tr><td colspan="6" class="empty">No pending requests from your team.</td></tr>`;
     renderDirectory("teamDirectory", members);
+    renderTeamCalendar("teamCalendar");
     const history = await api("/manager/requests?limit=100");
     document.getElementById("teamHistory").innerHTML = history.length ? history.map(r => `
       <tr>
@@ -729,6 +862,7 @@ async function loadAdminPage() {
     ]);
     const byUser = Object.fromEntries(members.map(m => [m.user_id, m]));
     renderDirectory("adminDirectory", members);
+    renderTeamCalendar("adminCalendar");
     document.getElementById("adminEmployeeCount").textContent = summary.active_accounts;
     document.getElementById("adminKnowledgeCount").textContent = chunks.length;
     document.getElementById("adminPendingBadge").textContent = `${requests.length} pending`;
@@ -844,7 +978,7 @@ function setupModals() {
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") document.querySelectorAll(".modal-backdrop").forEach(m => m.classList.remove("open"));
   });
-  ["closeModal", "cancelModal", "closeDetailModal", "closeCourseModal", "closeCitationModal", "cancelReview", "closeEmployeeModal", "closeContactModal", "cancelContactModal"].forEach(id => {
+  ["closeModal", "cancelModal", "closeDetailModal", "closeCourseModal", "closeCitationModal", "cancelReview", "closeEmployeeModal", "closeNotificationModal", "closeCoursePreview", "cancelCoursePreview", "closeCertificate"].forEach(id => {
     document.getElementById(id).addEventListener("click", () => document.getElementById(id).closest(".modal-backdrop").classList.remove("open"));
   });
 
@@ -890,10 +1024,7 @@ function setupModals() {
   // The employee's pending/approved vacations still ahead, shown before any date is picked.
   const loadBookedLeave = async () => {
     try {
-      const today = isoDay(0);
-      state.bookedLeave = (await apiAll("/requests?type=Vacation"))
-        .filter(r => r.status !== "Rejected" && (r.end_date || r.start_date) >= today)
-        .sort((a, b) => a.start_date.localeCompare(b.start_date));
+      state.bookedLeave = upcomingVacations(await apiAll("/requests?type=Vacation"));
     } catch { state.bookedLeave = []; }
   };
   const previewLeave = async () => {
@@ -922,6 +1053,10 @@ function setupModals() {
   document.querySelectorAll('[data-action="new-request"]').forEach(b => {
     b.addEventListener("click", () => {
       if (b.dataset.type) reqType.value = b.dataset.type;
+      // Without a direct manager the server routes the request to HR.
+      document.getElementById("requestRouteHint").textContent = state.profile?.manager_name
+        ? "The server validates your request and routes it to your direct manager."
+        : "The server validates your request and routes it to HR.";
       reqStart.min = reqEnd.min = isoDay(0);
       reqStart.max = reqEnd.max = isoDay(365);
       syncRequestType();
@@ -965,46 +1100,13 @@ function setupModals() {
       submit.disabled = false;
     }
   });
-
-  // Contact details change through a "Profile update" request; the approver applies it.
-  const profileInputs = [["contactPhone", "phone"], ["contactLocation", "location"], ["contactEmergency", "emergency_contact"]];
-  document.getElementById("editProfileBtn").addEventListener("click", () => {
-    const p = state.profile || {};
-    profileInputs.forEach(([id, field]) => { document.getElementById(id).value = p[field] || ""; });
-    document.getElementById("contactReason").value = "";
-    document.getElementById("contactModal").classList.add("open");
-    document.getElementById("contactPhone").focus();
-  });
-  document.getElementById("contactForm").addEventListener("submit", async e => {
-    e.preventDefault();
-    const changes = {};
-    profileInputs.forEach(([id, field]) => {
-      const value = document.getElementById(id).value.trim();
-      if (value && value !== (state.profile?.[field] || "")) changes[field] = value;
-    });
-    if (!Object.keys(changes).length) { toast("Change at least one field"); return; }
-    const submit = e.target.querySelector('button[type="submit"]');
-    submit.disabled = true;
-    try {
-      const reason = document.getElementById("contactReason").value.trim();
-      const body = JSON.stringify({type:"Profile update", profile_changes:changes, reason:reason || null});
-      if (state.contactSubmission?.body !== body) state.contactSubmission = {body, key:crypto.randomUUID()};
-      await api("/requests", {method:"POST", body, headers:{"Idempotency-Key":state.contactSubmission.key}});
-      state.contactSubmission = null;
-      document.getElementById("contactModal").classList.remove("open");
-      toast("Profile changes were sent for approval");
-      await refreshCurrentPage();
-    } catch (err) {
-      toast(err.message);
-    } finally {
-      submit.disabled = false;
-    }
-  });
 }
 
-async function openRequestDetailModal(id) {
+async function openRequestDetailModal(id, notice = null) {
   try {
     const r = await api(`/requests/${id}`);
+    document.getElementById("detailModalNotice").innerHTML = notice ? noticeBanner(notice) : "";
+    document.getElementById("detailModalSteps").innerHTML = requestStepper(r);
     document.getElementById("detailModalTitle").innerHTML = `<span data-verbatim>${esc(r.request_code)}</span> · <span>${esc(r.type)}</span>`;
     document.getElementById("detailModalCode").textContent = r.request_code;
     document.getElementById("detailModalStatus").innerHTML = statusBadge(r.status);
@@ -1026,6 +1128,19 @@ async function openRequestDetailModal(id) {
           <p>${ev.comment ? `<span>${esc(ev.comment)}</span> · ` : ""}${esc(formatDate(ev.created_at))} ${esc(formatTime(ev.created_at))}</p>
         </div>
       </div>`).join("");
+    // Reviewers decide right here; the server re-checks scope and status.
+    const actions = document.getElementById("detailModalActions");
+    const own = r.user_id === state.user.id;
+    const canReview = r.status === "Pending" && !own && state.user.role !== "employee";
+    actions.hidden = !(own || canReview);
+    actions.innerHTML = own ? `<button class="small-btn" onclick="askAIAboutMyRequests()">${icon("spark")}<span>Ask AI Jana</span></button>`
+      : canReview ? `
+      <button class="small-btn danger" data-review="reject">Decline</button>
+      <button class="small-btn primary" data-review="approve">Approve</button>` : "";
+    actions.querySelectorAll("[data-review]").forEach(b => b.addEventListener("click", () => {
+      document.getElementById("requestDetailModal").classList.remove("open");
+      reviewRequestPrompt(r.id, b.dataset.review);
+    }));
     document.getElementById("requestDetailModal").classList.add("open");
   } catch (err) {
     toast(err.message);
@@ -1039,16 +1154,64 @@ function renderCourse(course) {
   document.getElementById("playerProgressBar").style.width = `${course.progress_percent}%`;
   document.getElementById("playerProgressLabel").textContent = `${Math.round(course.progress_percent)}% complete`;
   const currentId = state.currentLesson?.id ?? course.current_lesson_id;
-  document.getElementById("playerLessonsList").innerHTML = course.lessons.map(l => `
-    <button class="${l.id === currentId ? "current" : ""}" data-lesson="${l.id}" onclick="loadLessonInPlayer(${l.id})">
-      <span>${esc(l.title)}</span><span class="done">${l.is_completed ? "✓" : "○"}</span>
-    </button>`).join("");
+  // Lessons open in order: everything after the first unfinished lesson stays locked.
+  const firstOpen = course.lessons.findIndex(l => !l.is_completed);
+  document.getElementById("playerLessonsList").innerHTML = course.lessons.map((l, i) => {
+    const locked = firstOpen !== -1 && i > firstOpen;
+    return `
+    <button class="${l.id === currentId ? "current" : ""}" data-lesson="${l.id}" onclick="loadLessonInPlayer(${l.id})"${locked ? ` disabled title="Pass the previous lesson first"` : ""}>
+      <span>${esc(l.title)}</span><span class="done">${l.is_completed ? "✓" : locked ? "🔒" : "○"}</span>
+    </button>`;
+  }).join("");
+}
+
+// Course overview before enrolling; the player opens only for assigned courses.
+async function openCoursePreview(courseId, notice = null) {
+  try {
+    const c = await api(`/courses/${courseId}`);
+    const done = c.status === "COMPLETED";
+    document.getElementById("previewCourseTitle").textContent = c.title;
+    document.getElementById("previewCourseNotice").innerHTML = notice ? noticeBanner(notice) : "";
+    document.getElementById("previewCourseBody").innerHTML = `
+      <div class="course-meta" style="margin-top:16px">
+        <span class="chip">${c.is_mandatory ? "Mandatory" : "Recommended"}</span>
+        <span class="chip">${c.duration_minutes} min</span>
+        <span class="chip">${c.total_lessons} lessons</span>
+        ${c.due_date ? `<span class="chip">Due ${esc(formatDate(c.due_date))}</span>` : ""}
+      </div>
+      <p class="muted" style="margin-top:16px">${esc(c.description)}</p>
+      ${c.assigned ? `<div class="progress" style="margin-top:16px"><span style="width:${c.progress_percent}%"></span></div>
+        <div class="progress-label"><span>${Math.round(c.progress_percent)}% complete</span><span>Assigned</span></div>`
+        : `<p class="small muted" style="margin-top:16px">After you enroll, the course appears in your assigned training. Lessons open in order: each quiz unlocks after the previous lesson is passed.</p>`}
+      <h4 class="sub-title">Lessons</h4>
+      ${c.lessons.map(l => `<div class="course-line"><span class="notice-icon">${icon(l.is_completed ? "check" : "book")}</span><div><b>${esc(l.title)}</b></div></div>`).join("")}`;
+    const action = document.getElementById("previewCourseAction");
+    action.querySelector("span").textContent = !c.assigned ? "Enroll in course" : done ? "Review course" : c.progress_percent > 0 ? "Continue learning" : "Start course";
+    action.onclick = async () => {
+      if (c.assigned) {
+        document.getElementById("coursePreviewModal").classList.remove("open");
+        await openCoursePlayer(c.id);
+        return;
+      }
+      action.disabled = true;
+      try {
+        await api(`/courses/${c.id}/enroll`, { method: "POST" });
+        toast("You are enrolled. The course is now in your assigned training.");
+        await openCoursePreview(c.id, notice);
+        await refreshCurrentPage();
+      } catch (err) { toast(err.message); }
+      finally { action.disabled = false; }
+    };
+    document.getElementById("coursePreviewModal").classList.add("open");
+  } catch (err) {
+    toast(err.message);
+  }
 }
 
 async function openCoursePlayer(courseId) {
   try {
-    let course = await api(`/courses/${courseId}`);
-    if (!course.assigned) course = await api(`/courses/${courseId}/enroll`, { method: "POST" });
+    const course = await api(`/courses/${courseId}`);
+    if (!course.assigned) { await openCoursePreview(courseId); return; }
     state.currentLesson = null;
     renderCourse(course);
     const firstLesson = course.current_lesson_id || course.lessons[0]?.id;

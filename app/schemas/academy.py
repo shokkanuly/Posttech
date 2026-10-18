@@ -57,7 +57,7 @@ class QuizSubmitRequest(BaseModel):
 
 class QuizSubmitResponse(BaseModel):
     passed: bool
-    correct_index: int
+    correct_index: int | None = None  # only after a pass, so answers cannot be harvested
     explanation: str
     new_progress_percent: float
     course_completed: bool
@@ -67,4 +67,9 @@ class QuizSubmitResponse(BaseModel):
 class EnrollmentCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     user_id: BodyDatabaseID
+    course_id: BodyDatabaseID
+
+
+class CourseAssign(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     course_id: BodyDatabaseID

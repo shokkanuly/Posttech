@@ -188,7 +188,9 @@ class RequestService:
         payload: RequestCreate,
         ip_address: Optional[str] = None,
         idempotency_key: str | None = None,
+        actor: Optional[User] = None,
     ) -> Request:
+        """actor: a manager/HR filing on the employee's behalf; they decide it right after."""
         # 1. Validate Vacation Balance if applicable
         # Serialize reservations for this employee on both SQLite and PostgreSQL.
         # An UPDATE locks the row until commit, before checking balance or overlaps.
@@ -257,31 +259,12 @@ class RequestService:
             and float(payload.amount) > settings.MAX_ADVANCE_AMOUNT
         ):
             raise HTTPException(422, "Advance amount exceeds the allowed maximum")
-        changes = None
         if payload.type == RequestType.PROFILE_UPDATE:
-            requested = (
-                payload.profile_changes.model_dump(exclude_none=True)
-                if payload.profile_changes
-                else {}
+            # Personal data comes only from 1C:ZUP and Documentolog; the profile is read-only.
+            raise HTTPException(
+                409,
+                "Profile data is kept in 1C and Documentolog and is read-only here; contact HR to correct it",
             )
-            changes = {
-                field: {"from": getattr(profile, field), "to": value}
-                for field, value in requested.items()
-                if getattr(profile, field) != value
-            }
-            if not changes:
-                raise HTTPException(422, "The new values match your current profile")
-            waiting = (
-                db.query(Request.id)
-                .filter(
-                    Request.user_id == user.id,
-                    Request.type == RequestType.PROFILE_UPDATE,
-                    Request.status == RequestStatus.PENDING,
-                )
-                .first()
-            )
-            if waiting:
-                raise HTTPException(409, "A profile update is already awaiting approval")
         if payload.type == RequestType.VACATION:
             days_needed = cls._calculate_calendar_days(start, payload.end_date)
             if days_needed == 0:
@@ -329,7 +312,6 @@ class RequestService:
             submission_hash=submission_hash if idempotency_key else None,
             status=RequestStatus.PENDING,
             external_sync_id=None,
-            profile_changes=changes,
         )
         db.add(new_req)
         db.flush()
@@ -339,7 +321,7 @@ class RequestService:
         # 4. Record initial event history
         initial_event = RequestEvent(
             request_id=new_req.id,
-            actor_id=user.id,
+            actor_id=(actor or user).id,
             event_type=RequestEventType.SUBMITTED,
             comment=f"Submitted {payload.type.value} request. {payload.reason or 'No comment'}",
         )
@@ -347,22 +329,23 @@ class RequestService:
 
         # 5. Send persistent notifications
         # Notification to requester
-        notification_service.create_notification(
-            db=db,
-            user_id=user.id,
-            title="Request submitted",
-            message=(
-                f"Your {payload.type.value} request ({req_code}) was submitted and sent to {review_destination} for review."
-                if reviewers
-                else f"Your {payload.type.value} request ({req_code}) was submitted. An authorized reviewer must be configured; contact HR."
-            ),
-            type=NotificationType.REQUEST,
-            reference_type="request",
-            reference_id=req_code,
-        )
+        if not actor:  # a filer decides right away; the decision notification tells the employee
+            notification_service.create_notification(
+                db=db,
+                user_id=user.id,
+                title="Request submitted",
+                message=(
+                    f"Your {payload.type.value} request ({req_code}) was submitted and sent to {review_destination} for review."
+                    if reviewers
+                    else f"Your {payload.type.value} request ({req_code}) was submitted. An authorized reviewer must be configured; contact HR."
+                ),
+                type=NotificationType.REQUEST,
+                reference_type="request",
+                reference_id=req_code,
+            )
 
         # Notify only active, authorized reviewers; HR covers missing/unavailable managers.
-        for reviewer in reviewers:
+        for reviewer in [] if actor else reviewers:
             notification_service.create_notification(
                 db=db,
                 user_id=reviewer.id,
@@ -377,7 +360,7 @@ class RequestService:
         audit_service.log_event(
             db=db,
             action="REQUEST_SUBMITTED",
-            actor_id=user.id,
+            actor_id=(actor or user).id,
             target_type="request",
             target_id=req_code,
             details={
@@ -426,6 +409,7 @@ class RequestService:
         db: Session,
         manager: User,
         status_filter: Optional[RequestStatus] = None,
+        type_filter: Optional[RequestType] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> List[Request]:
@@ -439,6 +423,8 @@ class RequestService:
             )
         if status_filter:
             query = query.filter(Request.status == status_filter)
+        if type_filter:
+            query = query.filter(Request.type == type_filter)
         return (
             query.order_by(Request.created_at.desc(), Request.id.desc())
             .offset(offset)

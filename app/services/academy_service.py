@@ -171,6 +171,13 @@ class AcademyService:
         enrollment = cls.get_enrollment(db, user.id, lesson.course_id)
         if not enrollment:
             raise HTTPException(409, "Enroll in the course before submitting progress")
+        # Lessons are taken in order: a quiz opens once every earlier lesson is passed.
+        done = {p.lesson_id for p in enrollment.lesson_progress if p.is_completed}
+        if any(
+            earlier.order_index < lesson.order_index and earlier.id not in done
+            for earlier in lesson.course.lessons
+        ):
+            raise HTTPException(409, "Complete the previous lessons first")
         # Acquire an enrollment write lock before reading progress, also on SQLite.
         db.execute(
             update(Enrollment)
@@ -236,7 +243,7 @@ class AcademyService:
         db.commit()
         return QuizSubmitResponse(
             passed=passed,
-            correct_index=lesson.quiz_correct_answer or 0,
+            correct_index=(lesson.quiz_correct_answer or 0) if passed else None,
             explanation="Correct. Lesson completed."
             if passed
             else "Review the material and try again.",

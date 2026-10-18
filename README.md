@@ -1,5 +1,7 @@
 # JanaMen (JanaМен) — Цифровой HR-кабинет сотрудника
 
+Подготовка к показу: [план сдачи, сценарий видео, структура презентации и хостинг](docs/DEMO_DELIVERY.md).
+
 Текущая MOCK-интеграция: [результаты реализации](docs/INTEGRATION_IMPLEMENTATION_REPORT.md), [30 приёмочных сценариев](docs/INTEGRATION_ACCEPTANCE_RESULTS.md), [повторяемое демо](docs/INTEGRATION_DEMO_RUNBOOK.md). Реальные 1С и Documentolog остаются отдельным этапом после согласования API и тестового доступа.
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.136.1-009688.svg?style=flat&logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)

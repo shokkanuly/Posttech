@@ -24,15 +24,19 @@ def to_responses(db: Session, notifs: list[Notification]) -> list[NotificationRe
         kind: {n.reference_id for n in notifs if n.reference_type == kind and n.reference_id}
         for kind in ("request", "course")
     }
-    ids = {
-        "request": dict(
-            db.query(Request.request_code, Request.id)
-            .filter(Request.request_code.in_(codes["request"]))
-            .all()
-        ),
-        "course": dict(
-            db.query(Course.code, Course.id).filter(Course.code.in_(codes["course"])).all()
-        ),
+    ids: dict[str, dict[str, int]] = {
+        "request": {
+            code: rid
+            for code, rid in db.query(Request.request_code, Request.id).filter(
+                Request.request_code.in_(codes["request"])
+            )
+        },
+        "course": {
+            code: cid
+            for code, cid in db.query(Course.code, Course.id).filter(
+                Course.code.in_(codes["course"])
+            )
+        },
     }
     return [
         NotificationResponse(
@@ -44,7 +48,7 @@ def to_responses(db: Session, notifs: list[Notification]) -> list[NotificationRe
             is_read=n.is_read,
             reference_type=n.reference_type,
             reference_id=n.reference_id,
-            reference_record_id=ids.get(n.reference_type or "", {}).get(n.reference_id),
+            reference_record_id=ids.get(n.reference_type or "", {}).get(n.reference_id or ""),
             created_at=n.created_at,
             time_ago=notification_service.format_time_ago(n.created_at),
         )

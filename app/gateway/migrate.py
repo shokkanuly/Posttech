@@ -4,7 +4,7 @@ from sqlalchemy import Column, Integer, MetaData, Table, inspect, select, text
 
 from app.gateway.models import GatewayBase
 
-VERSION = 2
+VERSION = 3
 metadata = MetaData()
 version = Table(
     "gateway_schema_version",

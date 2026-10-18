@@ -1,5 +1,6 @@
 """Behavioral acceptance checks for the remaining QA fix plan."""
 
+import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
@@ -13,6 +14,7 @@ from app.gateway.runtime import status_for
 from app.integrations import outbox, profile_sync
 from app.integrations.contracts import RegistrationResult
 from app.models import Notification, Request, RequestEvent
+from app.models.audit import AuditEvent
 from app.models.integration import IntegrationOutbox
 from app.models.profile import EmployeeProfile
 from tests.test_integration_gateway import approve_vacation, connected, gateway_client
@@ -63,6 +65,8 @@ def test_hr_recovery_preserves_document_key_and_rejects_old_callbacks(
     client, db_session, employee_headers, manager_headers, hr_admin_headers, connected
 ):
     rid = approve_vacation(client, employee_headers, manager_headers)
+    original = db_session.query(IntegrationOutbox).one()
+    original_key, original_payload = original.idempotency_key, original.payload.copy()
     assert outbox.dispatch_one(db_session)
     with connected.sessions() as session:
         job = session.query(GatewayJob).one()
@@ -79,6 +83,11 @@ def test_hr_recovery_preserves_document_key_and_rejects_old_callbacks(
         assert client.post(url, headers=headers, json=payload).status_code == 403
     assert client.post(url, headers=hr_admin_headers, json=payload).status_code == 200
     assert client.post(url, headers=hr_admin_headers, json=payload).status_code == 409
+    db_session.expire_all()
+    audit = db_session.query(AuditEvent).filter_by(action="INTEGRATION_RETRY_REQUESTED").one()
+    assert audit.actor_id == client.get("/api/v1/me", headers=hr_admin_headers).json()["user"]["id"]
+    assert audit.target_id == original_payload["request_code"]
+    assert json.loads(audit.details_json) == {"reason": payload["reason"], "retry_count": 1}
     # A duplicate DEAD result in the queue-to-dispatch window cannot cancel recovery.
     assert (
         connected.send_callback(
@@ -99,6 +108,9 @@ def test_hr_recovery_preserves_document_key_and_rejects_old_callbacks(
     assert connected.process_one() and connected.callback_one()
     db_session.expire_all()
     assert db_session.get(Request, rid).integration_status == "REGISTERED"
+    assert db_session.get(Request, rid).status.value == "Approved"
+    task = db_session.query(IntegrationOutbox).one()
+    assert task.idempotency_key == original_key and task.payload == original_payload
     assert db_session.query(Notification).filter_by(title="MOCK document registered").count() == 1
     with connected.sessions() as session:
         assert session.query(GatewayJob).count() == session.query(MockDocument).count() == 1
@@ -147,7 +159,7 @@ def test_two_outbox_workers_create_one_gateway_document(
 
 
 def test_hr_explicitly_resolves_employee_codes_without_creating_accounts(
-    client, db_session, hr_admin_headers, employee_headers, connected
+    client, db_session, hr_admin_headers, employee_headers, manager_headers, connected
 ):
     profile_sync.sync_profiles(db_session, force=True)
     rows = client.get("/api/v1/admin/integrations/reviews", headers=hr_admin_headers).json()
@@ -160,9 +172,24 @@ def test_hr_explicitly_resolves_employee_codes_without_creating_accounts(
             "user_id": user_id,
             "reason": "Verified synthetic employee code",
         }
-        assert client.post(url, headers=employee_headers, json=body).status_code == 403
+        for headers in (employee_headers, manager_headers):
+            assert client.post(url, headers=headers, json=body).status_code == 403
+        assert client.post(url, json=body).status_code == 401
         assert client.post(url, headers=hr_admin_headers, json=body).status_code == 200
         assert client.post(url, headers=hr_admin_headers, json=body).status_code == 404
+        db_session.expire_all()
+        audit = (
+            db_session.query(AuditEvent)
+            .filter_by(action="INTEGRATION_REVIEW_RESOLVED", target_id=code)
+            .one()
+        )
+        assert (
+            audit.actor_id
+            == client.get("/api/v1/me", headers=hr_admin_headers).json()["user"]["id"]
+        )
+        details = json.loads(audit.details_json)
+        assert details["reason"] == body["reason"]
+        assert details["user_id"] == user_id
     db_session.expire_all()
     assert db_session.query(EmployeeProfile).count() == before
     assert (

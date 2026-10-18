@@ -1,8 +1,8 @@
 # JanaМен QA checklist — 17 October 2026
 
-> Follow-up: the baseline findings below describe revision `54321c0`. Implemented fixes, current test results and remaining prerequisites are recorded in [the fix-plan implementation report](docs/FIX_PLAN_IMPLEMENTATION_REPORT.md). Historical counts are retained.
+> Baseline: revision `54321c0` originally had PASS140 / FAIL2 / PARTIAL17 / NOT VERIFIED2 / NOT APPLICABLE1. Entries QA073, QA077, QA110 and QA127 now reflect the rerun [precommit verification](docs/evidence/integration-precommit-2026-10-18/REVIEW.md); other entries retain their stated historical scope. Production and live-vendor gates remain unchanged.
 
-Final-state assessment of all **162** checkbox/numbered acceptance items from the supplied checklist. PASS: 140 / FAIL: 2 / PARTIAL: 17 / NOT VERIFIED: 2 / BLOCKED: 0 / NOT APPLICABLE: 1.
+Assessment of all **162** checkbox/numbered acceptance items from the supplied checklist, including the four verified follow-up updates. PASS: 144 / FAIL: 1 / PARTIAL: 14 / NOT VERIFIED: 2 / BLOCKED: 0 / NOT APPLICABLE: 1.
 
 PASS is scoped to the evidence stated. Real vendor connections, production infrastructure and live Gemini are not established by MOCK tests. All 16 required acceptance scenarios are covered by executed tests; broader operational gaps remain.
 
@@ -242,8 +242,8 @@ PASS is scoped to the evidence stated. Real vendor connections, production infra
 - **QA072 — PASS** — Worker safely claims pending rows.
   Evidence: [app/integrations/outbox.py:dispatch_one](app/integrations/outbox.py#L242) uses PostgreSQL FOR UPDATE SKIP LOCKED; [app/gateway/runtime.py:process_one](app/gateway/runtime.py#L124) uses conditional durable leases. Intended application Compose database is PostgreSQL.
 
-- **QA073 — PARTIAL** — Concurrent workers cannot process the same event unsafely.
-  Evidence: [test_concurrent_same_key_creates_one_job_and_document](tests/test_gateway_service.py#L124) verifies gateway job/document concurrency; PostgreSQL row-claim SQL inspected. Simultaneous independent application-worker processes were not exercised; SQLite application workers do not gain PostgreSQL row locks.
+- **QA073 — PASS** — Concurrent workers cannot process the same event unsafely on PostgreSQL.
+  Evidence: [test_postgresql_independent_workers_and_acceptance_crash](tests/test_outbox_processes.py), rerun against a newly created dedicated disposable PostgreSQL container. Separate processes verify SKIP LOCKED and recovery after a crash following durable gateway acceptance. SQLite is not presented as PostgreSQL concurrency evidence. See [worker results](docs/evidence/integration-precommit-2026-10-18/workers.txt).
 
 - **QA074 — PASS** — Delivery attempts and error reasons are recorded.
   Evidence: [app/integrations/outbox.py:_fail](app/integrations/outbox.py#L218); [test_approval_survives_gateway_down_retries_then_dead](tests/test_integration_gateway.py#L109); [test_malformed_ack_is_not_success](tests/test_integration_gateway.py#L135)
@@ -254,8 +254,8 @@ PASS is scoped to the evidence stated. Real vendor connections, production infra
 - **QA076 — PASS** — Maximum retries transition to a visible DEAD state.
   Evidence: [test_approval_survives_gateway_down_retries_then_dead](tests/test_integration_gateway.py#L109); [test_mock_connector_temporary_failure_reaches_dead_without_document](tests/test_gateway_service.py#L207)
 
-- **QA077 — PARTIAL** — Dead events can be inspected and safely retried by authorized staff.
-  Evidence: [test_validation_failure_not_retried_and_hr_queue_shows_it](tests/test_integration_gateway.py#L145); HR can inspect FAILED/DEAD rows, but there is no authorized replay endpoint/button/runbook. Do not reset rows blindly.
+- **QA077 — PASS** — Eligible failed/dead events can be inspected and recovered by authorized HR staff.
+  Evidence: `POST /api/v1/admin/integrations/queue/{task_id}/retry` requires the backend HR role, reason and expected retry counter. [Recovery tests](tests/test_fix_plan.py) verify employee/manager denial, stale-command rejection, persisted actor/reason audit, unchanged document key/payload, generation checks and reconciliation without duplicate registration. Known missing accepted jobs and terminal validation rejections are not blindly replayed. See [fresh recovery results](docs/evidence/integration-precommit-2026-10-18/recovery.txt) and [runbook](docs/INTEGRATION_DEMO_RUNBOOK.md).
 
 - **QA078 — PASS** — Worker restart does not silently lose jobs.
   Evidence: [test_gateway_restart_recovers_jobs_and_nonces](tests/test_gateway_service.py#L140); [test_callback_retry_is_persistent_and_never_registers_twice](tests/test_gateway_service.py#L166); [test_reconciliation_recovers_lost_callback](tests/test_integration_gateway.py#L159); actual Docker rebuild preserved registered records; no production backup/restore claim.
@@ -361,8 +361,8 @@ PASS is scoped to the evidence stated. Real vendor connections, production infra
 - **QA109 — PASS** — Stale data is visibly marked.
   Evidence: [test_profile_sync_code_matching_and_provisional_balance](tests/test_integration_gateway.py#L211); [test_refresh_is_hr_only_rate_limited_and_stale_snapshot_survives_outage](tests/test_integration_gateway.py#L249); [docker-journey.json](docs/evidence/qa-2026-10-17/docker-journey.json); [browser-observations.json](docs/evidence/qa-2026-10-17/browser-observations.json)
 
-- **QA110 — PARTIAL** — Unmatched employee records enter a controlled HR review process.
-  Evidence: [test_unmatched_employee_and_manager_go_to_review](tests/test_integration_gateway.py#L235); safe persisted HR review list exists, but resolution/remapping workflow is not implemented.
+- **QA110 — PASS** — Unmatched employee records enter a controlled HR review and mapping process.
+  Evidence: `POST /api/v1/admin/integrations/reviews/{employee_code}/resolve` uses a fresh signed snapshot, existing account and exact observed review version. [test_hr_explicitly_resolves_employee_codes_without_creating_accounts](tests/test_fix_plan.py) verifies anonymous/employee/manager denial, HR success, actor/reason audit, duplicate rejection and no new profiles. See [fresh recovery results](docs/evidence/integration-precommit-2026-10-18/recovery.txt). Source conflicts remain quarantined.
 
 - **QA111 — PASS** — Read-only 1C access is used where specified.
   Evidence: [app/gateway/connectors.py](app/gateway/connectors.py) reads synthetic snapshot fixtures only. No write-back method or real vendor API is implemented.
@@ -414,8 +414,8 @@ PASS is scoped to the evidence stated. Real vendor connections, production infra
 - **QA126 — PASS** — Sensitive fields are excluded from unnecessary API responses.
   Evidence: [app/schemas/auth.py](app/schemas/auth.py), [app/schemas/profile.py](app/schemas/profile.py); [test_jwt_role_is_never_authority](tests/test_reliability.py#L57); [test_employee_free_text_is_absent_from_provider_http_body](tests/test_ai_gemini.py#L146); secrets/password hashes not serialized in user/profile DTOs.
 
-- **QA127 — FAIL** — Repeated requests do not create unintended duplicate records.
-  Evidence: [extra-probes.json](docs/evidence/qa-2026-10-17/extra-probes.json) repeats the identical advance payload twice: HTTP201/201,2 distinct request records. No client request-idempotency contract; vacation overlap and integration keys have separate protection.
+- **QA127 — PASS** — Retrying an idempotent submission does not create duplicate business records.
+  Evidence: [test_submission_retry_is_employee_scoped_and_immutable](tests/test_fix_plan.py) and [test_concurrent_submission_retries_create_one_request](tests/test_fix_plan.py), rerun on disposable PostgreSQL, verify one request for the same employee/key/body and conflict on changed bodies. The browser reuses submission keys. Callers omitting the optional key intentionally retain the create contract. Repeated HTTP demo checks one request and no second leave debit; [fresh evidence](docs/evidence/integration-precommit-2026-10-18/REVIEW.md).
 
 ## PHASE 7: FRONTEND AND USER EXPERIENCE
 

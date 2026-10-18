@@ -1,0 +1,107 @@
+{
+  "observed_at_utc": "2026-10-18T04:55:33.942222+00:00",
+  "availability": "Session observation only; not guaranteed for future runs",
+  "project": "janamen-mock-precommit-a0210a70",
+  "web_port": 63490,
+  "postgres_port": 63491,
+  "private_environment_path": "/var/folders/c7/hdw9k4tn52z32sbg0dld44100000gn/T/janamen-precommit-20261018-kjg5e_uo/demo.env",
+  "mode": "MOCK",
+  "scenarios": {
+    "smoke-first": {
+      "scenario": "happy",
+      "request_code": "REQ-N000021",
+      "business_status": "Approved",
+      "integration_status": "REGISTERED",
+      "external_ref": "MOCK-DOC-297cb67558a74d119d89ba06bf4fea0c",
+      "reused_request": false
+    },
+    "smoke-repeat": {
+      "scenario": "happy",
+      "request_code": "REQ-N000021",
+      "business_status": "Approved",
+      "integration_status": "REGISTERED",
+      "external_ref": "MOCK-DOC-297cb67558a74d119d89ba06bf4fea0c",
+      "reused_request": true
+    },
+    "outage-pending": {
+      "scenario": "outage",
+      "request_code": "REQ-N000022",
+      "business_status": "Approved",
+      "integration_status": "PENDING",
+      "external_ref": null,
+      "reused_request": false
+    },
+    "outage-recovered": {
+      "scenario": "outage",
+      "request_code": "REQ-N000022",
+      "business_status": "Approved",
+      "integration_status": "REGISTERED",
+      "external_ref": "MOCK-DOC-d58e7e060da24b2c9ef8592a9a720505",
+      "reused_request": true
+    }
+  },
+  "core": {
+    "migration_head": "0011_merge_profile_updates",
+    "requests": [
+      {
+        "request_code": "REQ-N000021",
+        "outbox_count": 1,
+        "registration_notices": 1,
+        "registration_audits": 1,
+        "outbox_status": "DONE"
+      },
+      {
+        "request_code": "REQ-N000022",
+        "outbox_count": 1,
+        "registration_notices": 1,
+        "registration_audits": 1,
+        "outbox_status": "DONE"
+      }
+    ],
+    "business_requests_count": 2,
+    "leave_debit_matches_unique_approvals": true
+  },
+  "gateway": {
+    "schema_version": 3,
+    "jobs": 2,
+    "documents": 2,
+    "callbacks_delivered": 2,
+    "health_probes": 2,
+    "business_quota_unchanged": true,
+    "business_limit": 600,
+    "health_limit": 60,
+    "source_hashes": {
+      "app/gateway/main.py": "eb65dfd34e5a3cef7ba1980a44f13d7c76b959713b496b42bd1d22a0fc7dc6c0",
+      "app/gateway/runtime.py": "db4e86e87dad35b08257c71c73d265c0f0fb4b3ea251f043596fe2b99c973789",
+      "app/gateway/config.py": "549afee8d1c1e9126c6aeb9bdbb454e91355500a9916144d0bc2cfe42023c92f"
+    },
+    "runtime_source_matches_checkout": true
+  },
+  "services": [
+    {
+      "Service": "db",
+      "State": "running",
+      "Health": "healthy",
+      "Ports": "127.0.0.1:63491->5432/tcp"
+    },
+    {
+      "Service": "gateway",
+      "State": "running",
+      "Health": "healthy",
+      "Ports": "8000/tcp"
+    },
+    {
+      "Service": "integration-worker",
+      "State": "running",
+      "Health": "",
+      "Ports": "8000/tcp"
+    },
+    {
+      "Service": "web",
+      "State": "running",
+      "Health": "healthy",
+      "Ports": "127.0.0.1:63490->8000/tcp"
+    }
+  ],
+  "gateway_published_ports": []
+}

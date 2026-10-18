@@ -18,6 +18,13 @@ class GatewayNonce(GatewayBase):
     seen_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
 
 
+class GatewayRateLimit(GatewayBase):
+    __tablename__ = "gateway_rate_limits"
+    key_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    window_start: Mapped[int] = mapped_column(Integer, nullable=False)
+    requests: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
 class GatewayJob(GatewayBase):
     __tablename__ = "gateway_jobs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

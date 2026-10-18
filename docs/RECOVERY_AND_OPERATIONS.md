@@ -30,7 +30,7 @@ The browser creates a key and reuses it after a failed response while the form b
 
 Back up core and gateway stores before upgrade. Run `python -m app.migrate` for the core. Head `0010_source_metadata` adds submission keys, recovery intent/generations, database domain checks, policy metadata and course provenance. Invalid legacy status/date/balance/amount rows cause an explicit stop for operator review. There is no silent repair. PostgreSQL amounts use `NUMERIC(12,2)`; API amount validation retains the configured limit. SQLite guards inserts and updates with triggers rather than rebuilding referenced parent tables. SQLite is not a fixed-decimal storage engine. Downgrades are forward-only; restore an approved backup to roll back.
 
-Gateway startup upgrades its independent schema from unversioned v1 to **v2**, preserving jobs, mock documents and nonces and adding `recovery_key`. Unknown future schema versions stop startup. Run schema upgrades with one gateway instance before starting additional workers. The local gateway job store is SQLite on a persistent volume; this is not an HA deployment.
+Gateway startup upgrades its independent schema from unversioned v1 through **v3**, preserving jobs, mock documents, callbacks and nonces. v2 adds `recovery_key`; v3 adds the durable `gateway_rate_limits` table. Unknown future schema versions stop startup. Run schema upgrades with one gateway instance before starting additional workers. Back up before deployment; older service versions refuse a v3 store, so rollback requires a compatible service or an approved restore/reconciliation plan. The local gateway job store is SQLite on a persistent volume; this is not an HA deployment.
 
 ## Gateway backup and restoration rehearsal
 

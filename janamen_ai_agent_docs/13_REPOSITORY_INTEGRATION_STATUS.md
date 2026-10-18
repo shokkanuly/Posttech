@@ -1,5 +1,7 @@
 # Current repository integration status — 18 October 2026
 
+Latest follow-up: [precommit review evidence](../docs/evidence/integration-precommit-2026-10-18/REVIEW.md), [implementation overview](../docs/INTEGRATION_IMPLEMENTATION_REPORT.md), [acceptance records](../docs/INTEGRATION_ACCEPTANCE_RESULTS.md) and [repeatable isolated demo](../docs/INTEGRATION_DEMO_RUNBOOK.md). Durable signed-call quotas now separate business requests from health probes within gateway v3, preserving existing business counts. Recovery/remapping authorization, audit and immutable-key/payload checks were rerun on a dedicated disposable PostgreSQL database. Exact counts, selected targets and availability observations belong to the session evidence. The supplied [blueprint](reference/integration_blueprint_2026-10-18.md) is design context, with actual implementation/evidence taking precedence.
+
 This is the follow-up to the supplied 17 October QA baseline. The source is the existing `codex/fix-plan` branch combined with `main` at `0ec30d2`, not a new gateway implementation. See [the PR5 integration report](../docs/PR5_INTEGRATION_REPORT.md) for actual test commands, results, screenshots and remaining gates.
 
 ## Implemented in this repository

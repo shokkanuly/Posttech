@@ -22,6 +22,9 @@ class GatewaySettings(BaseSettings):
     TLS_KEY: str = Field(default="", repr=False)
     WORKER_ENABLED: bool = True
     POLL_SECONDS: float = Field(default=1, ge=0.05, le=60)
+    # Shared across gateway processes/restarts, separately for each verified key ID.
+    REQUESTS_PER_MINUTE: int = Field(default=600, ge=1, le=100000)
+    HEALTH_REQUESTS_PER_MINUTE: int = Field(default=60, ge=1, le=100000)
     MOCK_EMPLOYEES_FILE: str = ""
     MOCK_ONE_C_UNAVAILABLE: bool = False
     MOCK_DOCUMENTOLOG_FAILURE: Literal["none", "temporary", "validation"] = "none"

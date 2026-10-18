@@ -1,0 +1,13 @@
+✔ all catalog messages have Russian and Kazakh translations (1.976041ms)
+✔ every template compiles and preserves the same placeholders (0.586542ms)
+✔ Russian default, Kazakh preference, templates and dynamic DOM text (5.352292ms)
+✔ authored source text and proper identifiers remain untouched (0.136333ms)
+✔ date labels use Russian and Kazakh month names even without browser ICU data (4.397584ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 72.064416

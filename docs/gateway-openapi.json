@@ -1,0 +1,820 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "JanaMen gateway — MOCK ONLY",
+    "version": "0.1.0",
+    "description": "JanaMen-owned MOCK canonical API; not a vendor API. Every operation requires X-Key-Id, X-Timestamp, X-Nonce and X-Signature. See INTEGRATIONS.md for exact raw-body HMAC signing. Business routes and signed GET /health use independent durable per-key UTC-minute quotas; 429 includes Retry-After."
+  },
+  "paths": {
+    "/v1/documents": {
+      "post": {
+        "summary": "Documents",
+        "operationId": "documents_v1_documents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid signature, timestamp, key or reused nonce"
+          },
+          "413": {
+            "description": "Body exceeds 65536 bytes"
+          },
+          "429": {
+            "description": "Verified-key minute quota exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the next UTC minute",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 60
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/documents/{idempotency_key}": {
+      "get": {
+        "summary": "Document Status",
+        "operationId": "document_status_v1_documents__idempotency_key__get",
+        "parameters": [
+          {
+            "name": "idempotency_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idempotency Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid signature, timestamp, key or reused nonce"
+          },
+          "413": {
+            "description": "Body exceeds 65536 bytes"
+          },
+          "429": {
+            "description": "Verified-key minute quota exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the next UTC minute",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 60
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/documents/{idempotency_key}/retry": {
+      "post": {
+        "summary": "Retry Document",
+        "operationId": "retry_document_v1_documents__idempotency_key__retry_post",
+        "parameters": [
+          {
+            "name": "idempotency_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idempotency Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoveryCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid signature, timestamp, key or reused nonce"
+          },
+          "413": {
+            "description": "Body exceeds 65536 bytes"
+          },
+          "429": {
+            "description": "Verified-key minute quota exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the next UTC minute",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 60
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/employees": {
+      "get": {
+        "summary": "Employees",
+        "operationId": "employees_v1_employees_get",
+        "parameters": [
+          {
+            "name": "updated_since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Updated Since"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid signature, timestamp, key or reused nonce"
+          },
+          "413": {
+            "description": "Body exceeds 65536 bytes"
+          },
+          "429": {
+            "description": "Verified-key minute quota exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the next UTC minute",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 60
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/employees/{employee_code}": {
+      "get": {
+        "summary": "Employee",
+        "operationId": "employee_v1_employees__employee_code__get",
+        "parameters": [
+          {
+            "name": "employee_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Employee Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeSnapshot"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid signature, timestamp, key or reused nonce"
+          },
+          "413": {
+            "description": "Body exceeds 65536 bytes"
+          },
+          "429": {
+            "description": "Verified-key minute quota exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the next UTC minute",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 60
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayHealth"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid signature, timestamp, key or reused nonce"
+          },
+          "413": {
+            "description": "Body exceeds 65536 bytes"
+          },
+          "429": {
+            "description": "Verified-key minute quota exceeded",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the next UTC minute",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 60
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DocumentRequest": {
+        "properties": {
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 4,
+            "pattern": "^[A-Za-z0-9_:-]+$",
+            "title": "Idempotency Key"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "VACATION_REQUEST",
+              "ADVANCE_PAYMENT_REQUEST"
+            ],
+            "title": "Kind"
+          },
+          "request_code": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Request Code"
+          },
+          "employee_code": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Employee Code"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Period"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "KZT"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "approved_by_employee_code": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Approved By Employee Code"
+          },
+          "approved_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Approved At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "idempotency_key",
+          "kind",
+          "request_code",
+          "employee_code",
+          "approved_by_employee_code",
+          "approved_at"
+        ],
+        "title": "DocumentRequest"
+      },
+      "EmployeePage": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "const": "MOCK",
+            "title": "Mode"
+          },
+          "employees": {
+            "items": {
+              "$ref": "#/components/schemas/EmployeeSnapshot"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Employees"
+          },
+          "next_cursor": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Next Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "mode",
+          "employees",
+          "next_cursor"
+        ],
+        "title": "EmployeePage"
+      },
+      "EmployeeSnapshot": {
+        "properties": {
+          "employee_code": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Employee Code"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "company": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Company"
+          },
+          "department": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Department"
+          },
+          "position": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Position"
+          },
+          "manager_employee_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Employee Code"
+          },
+          "hire_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Hire Date"
+          },
+          "leave_balance_days": {
+            "type": "number",
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Leave Balance Days"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "confirmed_request_codes": {
+            "items": {
+              "type": "string",
+              "maxLength": 50,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Confirmed Request Codes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "employee_code",
+          "full_name",
+          "company",
+          "department",
+          "position",
+          "hire_date",
+          "leave_balance_days",
+          "as_of"
+        ],
+        "title": "EmployeeSnapshot"
+      },
+      "GatewayHealth": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "healthy",
+            "title": "Status"
+          },
+          "mode": {
+            "type": "string",
+            "const": "MOCK",
+            "title": "Mode"
+          },
+          "one_c": {
+            "type": "string",
+            "enum": [
+              "MOCK",
+              "UNAVAILABLE"
+            ],
+            "title": "One C"
+          },
+          "documentolog": {
+            "type": "string",
+            "enum": [
+              "MOCK",
+              "UNAVAILABLE"
+            ],
+            "title": "Documentolog"
+          },
+          "pending_jobs": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Pending Jobs"
+          },
+          "pending_callbacks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Pending Callbacks"
+          },
+          "last_success": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "mode",
+          "one_c",
+          "documentolog",
+          "pending_jobs",
+          "pending_callbacks",
+          "last_success"
+        ],
+        "title": "GatewayHealth"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "JobStatus": {
+        "properties": {
+          "gateway_job_id": {
+            "type": "string",
+            "pattern": "^job_[a-f0-9]{32}$",
+            "title": "Gateway Job Id"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 4,
+            "pattern": "^[A-Za-z0-9_:-]+$",
+            "title": "Idempotency Key"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PROCESSING",
+              "REGISTERED",
+              "FAILED",
+              "DEAD"
+            ],
+            "title": "Status"
+          },
+          "mode": {
+            "type": "string",
+            "const": "MOCK",
+            "title": "Mode"
+          },
+          "external_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^MOCK-DOC-[a-f0-9]{32}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Ref"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z0-9_]{1,40}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "recovery_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gateway_job_id",
+          "idempotency_key",
+          "status",
+          "mode",
+          "occurred_at"
+        ],
+        "title": "JobStatus"
+      },
+      "Period": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "title": "End"
+          },
+          "days": {
+            "type": "number",
+            "maximum": 731.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Days"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "days"
+        ],
+        "title": "Period"
+      },
+      "RecoveryCommand": {
+        "properties": {
+          "gateway_job_id": {
+            "type": "string",
+            "pattern": "^job_[a-f0-9]{32}$",
+            "title": "Gateway Job Id"
+          },
+          "recovery_key": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Recovery Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gateway_job_id",
+          "recovery_key"
+        ],
+        "title": "RecoveryCommand"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

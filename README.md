@@ -1,5 +1,7 @@
 # JanaMen (JanaМен) — Цифровой HR-кабинет сотрудника
 
+Текущая MOCK-интеграция: [результаты реализации](docs/INTEGRATION_IMPLEMENTATION_REPORT.md), [30 приёмочных сценариев](docs/INTEGRATION_ACCEPTANCE_RESULTS.md), [повторяемое демо](docs/INTEGRATION_DEMO_RUNBOOK.md). Реальные 1С и Documentolog остаются отдельным этапом после согласования API и тестового доступа.
+
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.136.1-009688.svg?style=flat&logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)
 [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.14-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose%20Ready-2496ED.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)

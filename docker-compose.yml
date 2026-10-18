@@ -79,6 +79,8 @@ services:
     command: ["python", "-m", "uvicorn", "app.gateway.main:app", "--host", "0.0.0.0", "--port", "9000", "--no-access-log"]
     environment:
       GATEWAY_MODE: MOCK
+      GATEWAY_REQUESTS_PER_MINUTE: ${GATEWAY_REQUESTS_PER_MINUTE:-600}
+      GATEWAY_HEALTH_REQUESTS_PER_MINUTE: ${GATEWAY_HEALTH_REQUESTS_PER_MINUTE:-60}
       GATEWAY_DATABASE_URL: sqlite:////data/gateway.db
       GATEWAY_APP_KEY_ID: ${INTEGRATION_OUTBOUND_KEY_ID:-}
       GATEWAY_APP_KEY: ${INTEGRATION_OUTBOUND_KEY:-}

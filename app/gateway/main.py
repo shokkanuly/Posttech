@@ -71,10 +71,25 @@ def create_app(config: GatewaySettings | None = None) -> FastAPI:
             nonce = signing.verify(
                 request.headers, runtime.config.JANAMEN_KEYS, request.method, path, body
             )
-            await asyncio.to_thread(runtime.remember_nonce, nonce)
-        except (signing.SignatureError, HTTPException):
+            await asyncio.to_thread(
+                runtime.remember_nonce,
+                nonce,
+                request.headers["x-key-id"],
+                health_check=request.method == "GET" and request.url.path == "/health",
+            )
+        except signing.SignatureError:
+            logger.warning("Gateway authentication rejected")
             return JSONResponse(
-                status_code=401, content={"detail": "Invalid integration signature"}
+                status_code=401,
+                content={"detail": "Invalid integration signature"},
+                headers={"Cache-Control": "no-store"},
+            )
+        except HTTPException as error:
+            logger.warning("Gateway admission rejected (%s)", error.status_code)
+            return JSONResponse(
+                status_code=error.status_code,
+                content={"detail": error.detail},
+                headers={**(error.headers or {}), "Cache-Control": "no-store"},
             )
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"
